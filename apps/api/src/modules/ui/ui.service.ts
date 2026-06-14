@@ -456,13 +456,13 @@ export class UiService {
           ? (this.prisma as any).currencyDef.findMany({ where: { id: { in: currencyKeys } }, select: { id: true, sortOrder: true } })
           : Promise.resolve([]),
         itemKeys.length > 0
-          ? (this.prisma as any).itemDefinition.findMany({ where: { id: { in: itemKeys } }, select: { id: true, rarity: true } })
+          ? (this.prisma as any).itemDefinition.findMany({ where: { key: { in: itemKeys } }, select: { key: true, rarity: true } })
           : Promise.resolve([]),
       ]);
 
       const currencySortOrder = new Map<string, number>((currencyDefs as any[]).map((c: any) => [c.id, c.sortOrder ?? 0]));
-      const itemRarityOrder = new Map<string, number>((itemDefs as any[]).map((d: any) => [d.id, RARITY_ORDER[d.rarity] ?? 0]));
-      const itemRarityStr = new Map<string, string>((itemDefs as any[]).map((d: any) => [d.id, d.rarity]));
+      const itemRarityOrder = new Map<string, number>((itemDefs as any[]).map((d: any) => [d.key, RARITY_ORDER[d.rarity] ?? 0]));
+      const itemRarityStr = new Map<string, string>((itemDefs as any[]).map((d: any) => [d.key, d.rarity]));
 
       const sorted = merged.sort((a: any, b: any) => {
         const ga = XP_TYPES.has(a.type) ? 0 : a.type === 'currency' ? 1 : 2;
@@ -784,15 +784,15 @@ export class UiService {
     const [currencyDefs, balances] = await Promise.all([
       currencyIds.length > 0
         ? (this.prisma as any).currency.findMany({
-            where: { id: { in: currencyIds } },
-            select: { id: true, name: true, iconKey: true },
+            where: { key: { in: currencyIds } },
+            select: { id: true, key: true, name: true, iconKey: true },
           })
         : Promise.resolve([]),
       job.userId ? this.currencyService.getBalances(job.userId) : Promise.resolve({}),
     ]);
 
     const currencyDefMap = new Map<string, { name: string; iconKey?: string }>(
-      (currencyDefs as any[]).map((c: any) => [c.id, { name: c.name, iconKey: c.iconKey ?? undefined }]),
+      (currencyDefs as any[]).map((c: any) => [c.key, { name: c.name, iconKey: c.iconKey ?? undefined }]),
     );
 
     const canAfford = computedCosts.every((c: any) => {
@@ -906,7 +906,7 @@ export class UiService {
       } else if (job.type === 'BuildingJob') {
         return await (this.prisma as any).buildingDef.findFirst({ where: { id: defId }, include: { displayDef: true } });
       } else if (job.type === 'DustingJob') {
-        return await (this.prisma as any).itemDefinition.findFirst({ where: { id: defId } });
+        return await (this.prisma as any).itemDefinition.findFirst({ where: { OR: [{ id: defId }, { key: defId }] } });
       }
     } catch {}
     return null;
@@ -1086,22 +1086,36 @@ export class UiService {
     );
     const balances: Record<string, Record<string, number>> = { currency: {}, item: {} };
     if (currencyIds.length > 0) {
-      // NOTE: schema model is `UserCurrencyBalance` — accessed via
-      // `prisma.userCurrencyBalance` (matches CurrencyService usage).
-      const rows = await this.prisma.userCurrencyBalance.findMany({
-        where: { userId, currencyId: { in: currencyIds } },
+      const curDefs = await (this.prisma as any).currency.findMany({
+        where: { OR: currencyIds.flatMap((s: string) => [{ id: s }, { key: s }]) },
+        select: { id: true, key: true },
       });
-      for (const r of rows) balances.currency[r.currencyId] = Number(r.balance ?? 0);
+      const uuidToSlug = new Map<string, string>(curDefs.map((c: any) => [c.id, c.key]));
+      const curUuids: string[] = curDefs.map((c: any) => c.id);
+      const rows = await this.prisma.userCurrencyBalance.findMany({
+        where: { userId, currencyId: { in: curUuids } },
+      });
+      for (const r of rows) {
+        const slug = uuidToSlug.get(r.currencyId) ?? r.currencyId;
+        balances.currency[slug] = Number(r.balance ?? 0);
+      }
     }
     if (itemIds.length > 0) {
       // Sum across stacks per definition — a player may hold multiple
       // ItemInstance rows for the same item, so taking just one would
       // wrongly mark options as unaffordable.
+      const itemDefRows = await (this.prisma as any).itemDefinition.findMany({
+        where: { OR: itemIds.flatMap((s: string) => [{ id: s }, { key: s }]) },
+        select: { id: true, key: true },
+      });
+      const uuidToSlug = new Map<string, string>(itemDefRows.map((d: any) => [d.id, d.key]));
+      const itemUuids: string[] = itemDefRows.map((d: any) => d.id);
       const rows = await (this.prisma as any).itemInstance.findMany({
-        where: { userId, definitionId: { in: itemIds } },
+        where: { userId, definitionId: { in: itemUuids } },
       });
       for (const r of rows) {
-        balances.item[r.definitionId] = (balances.item[r.definitionId] ?? 0) + Number(r.quantity ?? 0);
+        const slug = uuidToSlug.get(r.definitionId) ?? r.definitionId;
+        balances.item[slug] = (balances.item[slug] ?? 0) + Number(r.quantity ?? 0);
       }
     }
 

@@ -22,18 +22,18 @@ export async function formatGrantSummary(tx: any, grants: any[]): Promise<string
 
   const [itemDefs, currencies, entityDefs] = await Promise.all([
     itemKeys.length
-      ? tx.itemDefinition.findMany({ where: { id: { in: itemKeys } }, select: { id: true, name: true } })
+      ? tx.itemDefinition.findMany({ where: { key: { in: itemKeys } }, select: { key: true, name: true } })
       : [],
     currencyKeys.length
-      ? tx.currency.findMany({ where: { id: { in: currencyKeys } }, select: { id: true, name: true } })
+      ? tx.currency.findMany({ where: { key: { in: currencyKeys } }, select: { key: true, name: true } })
       : [],
     entityDefIds.length
       ? tx.entityDefinition.findMany({ where: { id: { in: entityDefIds } }, select: { id: true, name: true } })
       : [],
   ]);
 
-  const itemNameMap = new Map<string, string>((itemDefs as any[]).map((d) => [d.id, d.name]));
-  const currencyNameMap = new Map<string, string>((currencies as any[]).map((d) => [d.id, d.name]));
+  const itemNameMap = new Map<string, string>((itemDefs as any[]).map((d) => [d.key, d.name]));
+  const currencyNameMap = new Map<string, string>((currencies as any[]).map((d) => [d.key, d.name]));
   const entityNameMap = new Map<string, string>((entityDefs as any[]).map((d) => [d.id, d.name]));
 
   return grants

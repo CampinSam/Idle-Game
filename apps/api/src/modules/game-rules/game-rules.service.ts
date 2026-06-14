@@ -219,7 +219,7 @@ export class GameRulesService {
     while (pending.size > 0) {
       const ids = Array.from(pending);
       pending.clear();
-      const rows = await (this.prisma as any).bundleDef.findMany({ where: { id: { in: ids } } });
+      const rows = await (this.prisma as any).bundleDef.findMany({ where: { OR: [{ id: { in: ids } }, { key: { in: ids } }] } });
       const byId = new Map<string, any>(rows.map((r: any) => [r.id, r]));
       for (const id of ids) {
         if (out.has(id)) continue;
@@ -530,10 +530,10 @@ export class GameRulesService {
 
   async resolveName(type: string, key: string): Promise<string> {
     if (type === 'currency') {
-      const cur = await (this.prisma as any).currency.findUnique({ where: { id: key }, select: { name: true } }) as { name?: string } | null;
+      const cur = await (this.prisma as any).currency.findFirst({ where: { OR: [{ id: key }, { key }] }, select: { name: true } }) as { name?: string } | null;
       if (cur?.name) return cur.name;
     } else if (type === 'item') {
-      const item = await (this.prisma as any).itemDefinition.findUnique({ where: { id: key }, select: { name: true } }) as { name?: string } | null;
+      const item = await (this.prisma as any).itemDefinition.findFirst({ where: { OR: [{ id: key }, { key }] }, select: { name: true } }) as { name?: string } | null;
       if (item?.name) return item.name;
     }
     return key;

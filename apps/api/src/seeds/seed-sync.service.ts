@@ -18,12 +18,12 @@ export const SEED_TABLE_ORDER = [
   'missionCategoryDef',
   'missionDef',
   'recipeDef',
+  'lootboxDef',
+  'bundleDef',
   'itemDefinition',
   'giftDef',
   'shopItemDef',
   'eventDefinition',
-  'lootboxDef',
-  'bundleDef',
   'checkInDef',
   'questDef',
   'modalDef',
@@ -83,11 +83,29 @@ type RecordTransform = (r: any) => any;
 
 const TABLE_TRANSFORMS: Partial<Record<SeedTableName, RecordTransform>> = {
   currency: (r) => {
-    const c = { ...r };
+    const { id, ...rest } = r;
+    const c = { ...rest };
+    const key: string = r.key ?? id;
+    c.key = key;
     if (c.cap != null) c.cap = BigInt(c.cap);
     if (c.cntWithdrawalFee != null) c.cntWithdrawalFee = BigInt(c.cntWithdrawalFee);
     if (c.cntAutoApprovalThreshold != null) c.cntAutoApprovalThreshold = BigInt(c.cntAutoApprovalThreshold);
     return c;
+  },
+  lootboxDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  bundleDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  itemDefinition: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
   },
   shopItemDef: (r) => {
     const c = { ...r };
@@ -160,6 +178,10 @@ const TABLE_WHERE: Partial<Record<SeedTableName, WhereBuilder>> = {
   questDef: (r) => ({ key: r.key }),
   checkInDef: (r) => ({ key: r.key }),
   giftDef: (r) => ({ key: r.key }),
+  currency: (r) => ({ key: r.key }),
+  lootboxDef: (r) => ({ key: r.key }),
+  bundleDef: (r) => ({ key: r.key }),
+  itemDefinition: (r) => ({ key: r.key }),
 };
 
 function getBucketName(): string {
@@ -349,6 +371,43 @@ export class SeedSyncService {
           const where = buildWhere(record);
           const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
           await model.upsert({ where, update: rest, create: record });
+        }
+      }
+      return;
+    }
+
+    if (modelName === 'itemDefinition') {
+      // UUID PK migration: ItemDefinition.lootboxDefId may arrive as a slug
+      // in legacy seed records.  lootboxDef is seeded before itemDefinition (see
+      // SEED_TABLE_ORDER), so we can resolve slug → UUID via a single DB query.
+      const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const lootboxDefs = await (this.prisma as any).lootboxDef.findMany({ select: { id: true, key: true } });
+      const lootboxDefByKey = new Map(lootboxDefs.map((l: any) => [l.key, l.id]));
+
+      for (const raw of records) {
+        const base = transform ? transform(raw) : raw;
+        const record = this.normalizeDates(base);
+
+        // Resolve slug lootboxDefId → UUID. If already a UUID or null, leave it.
+        const rawLootboxDefId: string | null = raw.lootboxDefId ?? null;
+        if (rawLootboxDefId !== null && !UUID_V4.test(rawLootboxDefId)) {
+          record.lootboxDefId = lootboxDefByKey.get(rawLootboxDefId) ?? null;
+          if (record.lootboxDefId === null) {
+            this.logger.warn(
+              `upsertTable(itemDefinition): lootboxDefId slug "${rawLootboxDefId}" not found in lootbox_defs — setting null`,
+            );
+          }
+        }
+
+        const where = buildWhere(record);
+        const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+        try {
+          await model.upsert({ where, update: rest, create: record });
+        } catch (err: any) {
+          this.logger.error(
+            `upsertTable: failed to upsert itemDefinition (where=${JSON.stringify(where)}): ${err?.message}`,
+          );
+          throw err;
         }
       }
       return;

@@ -109,22 +109,28 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
       }).then(r => r.length),
     ]);
 
-    // Economy
+    // Economy — resolve currency slugs to UUIDs for FK column queries
+    const [softArcaniumCur, hardEssenceCur] = await Promise.all([
+      (this.prisma as any).currency.findFirst({ where: { OR: [{ id: 'soft_arcanium' }, { key: 'soft_arcanium' }] }, select: { id: true } }),
+      (this.prisma as any).currency.findFirst({ where: { OR: [{ id: 'hard_essence' }, { key: 'hard_essence' }] }, select: { id: true } }),
+    ]);
+    const softArcaniumId: string = softArcaniumCur?.id ?? 'soft_arcanium';
+    const hardEssenceId: string = hardEssenceCur?.id ?? 'hard_essence';
     const [arcaniumGenerated7d, arcaniumSpent7d, essenceEarned7d, essenceSpent7d] = await Promise.all([
       this.prisma.currencyLedger.aggregate({
-        where: { currencyId: 'soft_arcanium', delta: { gt: 0 }, createdAt: { gte: ago7d } },
+        where: { currencyId: softArcaniumId, delta: { gt: 0 }, createdAt: { gte: ago7d } },
         _sum: { delta: true },
       }),
       this.prisma.currencyLedger.aggregate({
-        where: { currencyId: 'soft_arcanium', delta: { lt: 0 }, createdAt: { gte: ago7d } },
+        where: { currencyId: softArcaniumId, delta: { lt: 0 }, createdAt: { gte: ago7d } },
         _sum: { delta: true },
       }),
       this.prisma.currencyLedger.aggregate({
-        where: { currencyId: 'hard_essence', delta: { gt: 0 }, createdAt: { gte: ago7d } },
+        where: { currencyId: hardEssenceId, delta: { gt: 0 }, createdAt: { gte: ago7d } },
         _sum: { delta: true },
       }),
       this.prisma.currencyLedger.aggregate({
-        where: { currencyId: 'hard_essence', delta: { lt: 0 }, createdAt: { gte: ago7d } },
+        where: { currencyId: hardEssenceId, delta: { lt: 0 }, createdAt: { gte: ago7d } },
         _sum: { delta: true },
       }),
     ]);

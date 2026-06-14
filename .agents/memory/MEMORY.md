@@ -3,3 +3,4 @@
 - [Nested flex percentage flex-basis pitfall](flex-nested-percentage-basis.md) — page-root wrappers inside <Outlet /> should use h-full not flex-1; bottom-pinned panels belong inside the card (flex-shrink-0), not outside it.
 - [iOS scroll + animation fill-mode](ios-scroll-animation-fillmode.md) — transform on page-transition-wrapper (via fill-mode:both) blocks touch scroll on iOS; fix + touch-pan-y pattern.
 - [NFT sweep architecture](nft-sweep-architecture.md) — entity-centric sweep replaces per-user sweep; login uses DB-only claimFromCachedOwnership; syncUserCollections uses strict RPC methods.
+- [UUID PK migration pattern](uuid-pk-migration-pattern.md) — economy tables (Currency, ItemDefinition, LootboxDef, BundleDef) migrated to UUID PKs with key slug alias; service lookup rules and seed-sync wiring.

@@ -262,14 +262,19 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException(`Player ${userId} not found`);
 
-    const [result, currencyDef] = await Promise.all([
-      this.prisma.userCurrencyBalance.upsert({
-        where: { userId_currencyId: { userId, currencyId } },
-        create: { userId, currencyId, balance: BigInt(balance) },
-        update: { balance: BigInt(balance) },
-      }),
-      (this.prisma as any).currency.findUnique({ where: { id: currencyId }, select: { name: true } }),
-    ]);
+    const currencyRow = await (this.prisma as any).currency.findFirst({
+      where: { OR: [{ id: currencyId }, { key: currencyId }] },
+      select: { id: true, name: true },
+    });
+    if (!currencyRow) throw new NotFoundException(`Currency "${currencyId}" not found`);
+    const currencyUuid: string = currencyRow.id;
+
+    const result = await this.prisma.userCurrencyBalance.upsert({
+      where: { userId_currencyId: { userId, currencyId: currencyUuid } },
+      create: { userId, currencyId: currencyUuid, balance: BigInt(balance) },
+      update: { balance: BigInt(balance) },
+    });
+    const currencyDef = { name: currencyRow.name };
 
     const pb = new PatchBuilder();
     await buildCurrencyPatches(pb, this.prisma, userId);
@@ -584,7 +589,7 @@ export class AdminService {
     if (!itemId) throw new BadRequestException('itemId is required');
     if (!quantity || quantity < 1) throw new BadRequestException('quantity must be >= 1');
 
-    const itemDef = await this.prisma.itemDefinition.findUnique({ where: { id: itemId } });
+    const itemDef = await (this.prisma as any).itemDefinition.findFirst({ where: { OR: [{ id: itemId }, { key: itemId }] } });
     if (!itemDef) throw new NotFoundException(`Item "${itemId}" not found`);
 
     let result: any;
@@ -604,14 +609,14 @@ export class AdminService {
       await this.prisma.$transaction(async (tx) => {
         for (let i = 0; i < quantity; i++) {
           const inst = await tx.itemInstance.create({
-            data: { userId, definitionId: itemId, quantity: 1 },
+            data: { userId, definitionId: itemDef.id, quantity: 1 },
           });
           instanceIds.push(inst.id);
         }
         await tx.itemLedger.create({
           data: {
             userId,
-            itemId,
+            itemId: itemDef.id,
             delta: BigInt(quantity),
             reason: 'Admin grant',
             sourceType: 'admin',

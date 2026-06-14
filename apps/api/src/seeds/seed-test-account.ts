@@ -257,7 +257,7 @@ async function main() {
   // missing definition seed is caught early rather than silently skipped.
   console.log('[lootboxes] Verifying lootbox item definitions exist:');
   for (const id of LOOTBOX_ITEM_DEF_IDS) {
-    const existing = await (prisma as any).itemDefinition.findUnique({ where: { id } });
+    const existing = await (prisma as any).itemDefinition.findUnique({ where: { key: id } });
     if (!existing) {
       throw new Error(
         `ItemDefinition "${id}" not found. Run the definition seed first (pnpm prisma db seed).`,

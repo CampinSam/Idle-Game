@@ -81,8 +81,13 @@ export class CryptoWalletController {
   @Get('ada-balance')
   async getAdaBalance(@Request() req: any) {
     const userId: string = req.user.id;
+    const adaCur = await (this.prisma as any).currency.findFirst({
+      where: { OR: [{ id: 'ada' }, { key: 'ada' }] },
+      select: { id: true },
+    });
+    const adaId: string = adaCur?.id ?? 'ada';
     const balanceRow = await (this.prisma as any).userCurrencyBalance.findUnique({
-      where: { userId_currencyId: { userId, currencyId: 'ada' } },
+      where: { userId_currencyId: { userId, currencyId: adaId } },
     });
     return { lovelace: (balanceRow?.balance ?? 0n).toString() };
   }

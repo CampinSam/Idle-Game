@@ -212,15 +212,18 @@ export async function fetchBuildingJobs(prisma: PrismaService | any, userId: str
 }
 
 export async function fetchCurrencyIds(prisma: PrismaService | any): Promise<Set<string>> {
-  const currencies = await (prisma as any).currency.findMany({ select: { id: true } });
-  return new Set(currencies.map((c: any) => c.id));
+  const currencies = await (prisma as any).currency.findMany({ select: { key: true } });
+  return new Set(currencies.map((c: any) => c.key));
 }
 
 export async function fetchCurrencyMap(prisma: PrismaService | any, userId: string): Promise<Record<string, number>> {
-  const rows = await (prisma as any).userCurrencyBalance.findMany({ where: { userId } });
+  const rows = await (prisma as any).userCurrencyBalance.findMany({
+    where: { userId },
+    include: { currency: { select: { key: true } } },
+  });
   const map: Record<string, number> = {};
   for (const row of rows) {
-    map[row.currencyId] = Number(row.balance);
+    map[row.currency.key] = Number(row.balance);
   }
   return map;
 }

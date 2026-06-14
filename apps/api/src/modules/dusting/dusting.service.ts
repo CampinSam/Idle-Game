@@ -229,7 +229,7 @@ export class DustingService {
       throw new BadRequestException('Dusting is not yet complete');
     }
 
-    const def = await (this.prisma as any).itemDefinition.findUnique({ where: { id: job.defId } });
+    const def = await (this.prisma as any).itemDefinition.findFirst({ where: { OR: [{ id: job.defId }, { key: job.defId }] } });
     if (!def) throw new NotFoundException('Item definition not found');
 
     const dustingData = def.dustingData as DustingData | null;

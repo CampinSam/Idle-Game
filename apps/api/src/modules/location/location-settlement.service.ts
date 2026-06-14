@@ -429,22 +429,36 @@ export class LocationSettlementService {
       .map(([id]) => id);
 
     if (currencyIds.length > 0) {
+      const curDefs = await (tx as any).currency.findMany({
+        where: { OR: currencyIds.flatMap((s: string) => [{ id: s }, { key: s }]) },
+        select: { id: true, key: true },
+      });
+      const uuidToSlug = new Map<string, string>(curDefs.map((c: any) => [c.id, c.key]));
+      const uuids: string[] = curDefs.map((c: any) => c.id);
       const rows = await (tx as any).userCurrencyBalance.findMany({
-        where: { userId, currencyId: { in: currencyIds } },
+        where: { userId, currencyId: { in: uuids } },
         select: { currencyId: true, balance: true },
       });
       for (const row of rows) {
-        balances[row.currencyId] = Number(row.balance);
+        const slug = uuidToSlug.get(row.currencyId) ?? row.currencyId;
+        balances[slug] = Number(row.balance);
       }
     }
 
     if (itemIds.length > 0) {
+      const itemDefs = await (tx as any).itemDefinition.findMany({
+        where: { OR: itemIds.flatMap((s: string) => [{ id: s }, { key: s }]) },
+        select: { id: true, key: true },
+      });
+      const uuidToSlug = new Map<string, string>(itemDefs.map((d: any) => [d.id, d.key]));
+      const uuids: string[] = itemDefs.map((d: any) => d.id);
       const rows = await (tx as any).itemInstance.findMany({
-        where: { userId, definitionId: { in: itemIds } },
+        where: { userId, definitionId: { in: uuids } },
         select: { definitionId: true, quantity: true },
       });
       for (const row of rows) {
-        balances[row.definitionId] = (balances[row.definitionId] || 0) + row.quantity;
+        const slug = uuidToSlug.get(row.definitionId) ?? row.definitionId;
+        balances[slug] = (balances[slug] || 0) + row.quantity;
       }
     }
 

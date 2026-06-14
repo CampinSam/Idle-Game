@@ -169,7 +169,8 @@ model NftAsset {
 }
 
 model Currency {
-  id           String                @id
+  id           String                @id @default(uuid())
+  key          String                @unique
   name         String
   symbol       String?
   iconKey      String?
@@ -682,7 +683,8 @@ model EntityPowerUsage {
 }
 
 model ItemDefinition {
-  id             String         @id
+  id             String         @id @default(uuid())
+  key            String         @unique
   type           ItemType
   rarity         ItemRarity     @default(COMMON)
   name           String
@@ -878,7 +880,8 @@ model GiftClaimTx {
 }
 
 model LootboxDef {
-  id          String   @id
+  id          String   @id @default(uuid())
+  key         String   @unique
   name        String
   description String?
   version     Int      @default(1)
@@ -893,7 +896,8 @@ model LootboxDef {
 }
 
 model BundleDef {
-  id          String   @id
+  id          String   @id @default(uuid())
+  key         String   @unique
   name        String
   description String?
   version     Int      @default(1)

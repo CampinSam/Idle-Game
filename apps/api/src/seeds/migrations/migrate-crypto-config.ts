@@ -54,14 +54,14 @@ async function main() {
     if (config?.withdrawalFee != null) updateData.cntWithdrawalFee = BigInt(config.withdrawalFee);
     if (config?.autoApprovalThreshold != null) updateData.cntAutoApprovalThreshold = BigInt(config.autoApprovalThreshold);
 
-    const currency = await prisma.currency.findUnique({ where: { id: 'crypto_derp' } });
+    const currency = await prisma.currency.findUnique({ where: { key: 'crypto_derp' } });
     if (!currency) {
       console.error('crypto_derp Currency row not found — run the definitions seed first');
       process.exit(1);
     }
 
     await prisma.currency.update({
-      where: { id: 'crypto_derp' },
+      where: { key: 'crypto_derp' },
       data: updateData,
     });
 
