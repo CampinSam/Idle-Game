@@ -49,7 +49,9 @@ export class GiftService {
     modalDefId: string | null;
   }> {
     if ('giftDefId' in spec) {
-      const def = await this.giftDef.findUnique({ where: { id: spec.giftDefId } });
+      const def = await this.giftDef.findFirst({
+        where: { OR: [{ id: spec.giftDefId }, { key: spec.giftDefId }] },
+      });
       if (!def) {
         throw new NotFoundException(`GiftDef "${spec.giftDefId}" not found`);
       }

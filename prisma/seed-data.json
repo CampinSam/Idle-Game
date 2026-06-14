@@ -15770,7 +15770,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-06-05T17:14:39.178Z",
-      "updatedAt": "2026-06-11T01:09:25.802Z"
+      "updatedAt": "2026-06-11T01:09:25.802Z",
+      "key": "gift_checkin_daily_arcanium_md"
     },
     {
       "id": "gift_checkin_daily_arcanium_lg",
@@ -15795,7 +15796,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-06-05T17:14:39.182Z",
-      "updatedAt": "2026-06-11T01:09:25.805Z"
+      "updatedAt": "2026-06-11T01:09:25.805Z",
+      "key": "gift_checkin_daily_arcanium_lg"
     },
     {
       "id": "gift_checkin_weekly_essence_sm",
@@ -15820,7 +15822,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-06-05T17:14:39.186Z",
-      "updatedAt": "2026-06-11T01:09:25.809Z"
+      "updatedAt": "2026-06-11T01:09:25.809Z",
+      "key": "gift_checkin_weekly_essence_sm"
     },
     {
       "id": "gift_checkin_weekly_essence_md",
@@ -15845,7 +15848,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-06-05T17:14:39.191Z",
-      "updatedAt": "2026-06-11T01:09:25.813Z"
+      "updatedAt": "2026-06-11T01:09:25.813Z",
+      "key": "gift_checkin_weekly_essence_md"
     },
     {
       "id": "gift_perp_clone",
@@ -15868,7 +15872,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-06-05T17:14:39.159Z",
-      "updatedAt": "2026-06-11T01:09:25.787Z"
+      "updatedAt": "2026-06-11T01:09:25.787Z",
+      "key": "gift_perp_clone"
     },
     {
       "id": "gift_starter_bird",
@@ -15891,7 +15896,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-06-05T17:14:39.165Z",
-      "updatedAt": "2026-06-11T01:09:25.791Z"
+      "updatedAt": "2026-06-11T01:09:25.791Z",
+      "key": "gift_starter_bird"
     },
     {
       "id": "gift_welcome_gems",
@@ -15919,7 +15925,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-06-05T17:14:39.169Z",
-      "updatedAt": "2026-06-11T01:09:25.795Z"
+      "updatedAt": "2026-06-11T01:09:25.795Z",
+      "key": "gift_welcome_gems"
     },
     {
       "id": "gift_checkin_daily_arcanium_sm",
@@ -15944,7 +15951,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-06-05T17:14:39.174Z",
-      "updatedAt": "2026-06-11T01:09:25.798Z"
+      "updatedAt": "2026-06-11T01:09:25.798Z",
+      "key": "gift_checkin_daily_arcanium_sm"
     },
     {
       "id": "gift_checkin_weekly_gems",
@@ -15969,7 +15977,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-06-05T17:14:39.195Z",
-      "updatedAt": "2026-06-11T01:09:25.817Z"
+      "updatedAt": "2026-06-11T01:09:25.817Z",
+      "key": "gift_checkin_weekly_gems"
     },
     {
       "id": "gift_checkin_seasonal_frost_sm",
@@ -15994,7 +16003,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-05-15T22:57:43.514Z",
-      "updatedAt": "2026-06-11T01:09:25.821Z"
+      "updatedAt": "2026-06-11T01:09:25.821Z",
+      "key": "gift_checkin_seasonal_frost_sm"
     },
     {
       "id": "gift_checkin_seasonal_frost_md",
@@ -16019,7 +16029,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-05-15T22:57:43.518Z",
-      "updatedAt": "2026-06-11T01:09:25.825Z"
+      "updatedAt": "2026-06-11T01:09:25.825Z",
+      "key": "gift_checkin_seasonal_frost_md"
     },
     {
       "id": "gift_checkin_seasonal_frost_lg",
@@ -16044,7 +16055,8 @@
       "enabled": true,
       "modalDefId": null,
       "createdAt": "2026-05-15T22:57:43.522Z",
-      "updatedAt": "2026-06-11T01:09:25.828Z"
+      "updatedAt": "2026-06-11T01:09:25.828Z",
+      "key": "gift_checkin_seasonal_frost_lg"
     }
   ],
   "shopItemDef": [
@@ -17211,7 +17223,8 @@
       },
       "enabled": true,
       "createdAt": "2026-06-05T17:14:39.291Z",
-      "updatedAt": "2026-06-08T23:20:08.936Z"
+      "updatedAt": "2026-06-08T23:20:08.936Z",
+      "key": "checkin_daily_login"
     },
     {
       "id": "checkin_weekly_bonus",
@@ -17269,7 +17282,8 @@
       },
       "enabled": true,
       "createdAt": "2026-06-05T17:14:39.295Z",
-      "updatedAt": "2026-06-08T23:20:08.940Z"
+      "updatedAt": "2026-06-08T23:20:08.940Z",
+      "key": "checkin_weekly_bonus"
     }
   ],
   "questDef": [
@@ -17325,7 +17339,8 @@
       "createdAt": "2026-06-05T17:14:39.309Z",
       "updatedAt": "2026-06-11T01:09:25.975Z",
       "permanentEffectSpec": null,
-      "tier": 1
+      "tier": 1,
+      "key": "quest_outpost_builder"
     },
     {
       "id": "q_daily_swift_missions",
@@ -17366,7 +17381,8 @@
       "createdAt": "2026-06-05T17:14:39.579Z",
       "updatedAt": "2026-06-11T01:09:25.988Z",
       "permanentEffectSpec": null,
-      "tier": 1
+      "tier": 1,
+      "key": "q_daily_swift_missions"
     },
     {
       "id": "ach_mission_novice",
@@ -17397,7 +17413,8 @@
       "createdAt": "2026-06-05T17:14:39.593Z",
       "updatedAt": "2026-06-11T01:09:26.002Z",
       "permanentEffectSpec": null,
-      "tier": 1
+      "tier": 1,
+      "key": "ach_mission_novice"
     },
     {
       "id": "q_daily_craft_one",
@@ -17428,7 +17445,8 @@
       "createdAt": "2026-06-05T17:14:39.574Z",
       "updatedAt": "2026-06-11T01:09:25.980Z",
       "permanentEffectSpec": null,
-      "tier": 1
+      "tier": 1,
+      "key": "q_daily_craft_one"
     },
     {
       "id": "q_daily_complete_missions",
@@ -17459,7 +17477,8 @@
       "createdAt": "2026-06-05T17:14:39.563Z",
       "updatedAt": "2026-06-11T01:09:25.984Z",
       "permanentEffectSpec": null,
-      "tier": 1
+      "tier": 1,
+      "key": "q_daily_complete_missions"
     },
     {
       "id": "ach_master_crafter",
@@ -17494,7 +17513,8 @@
         "targetType": "player",
         "effectDefId": "eff_reward_boost"
       },
-      "tier": 3
+      "tier": 3,
+      "key": "ach_master_crafter"
     },
     {
       "id": "q_weekly_check_in_streak",
@@ -17525,7 +17545,8 @@
       "createdAt": "2026-06-05T17:14:39.588Z",
       "updatedAt": "2026-06-11T01:09:25.961Z",
       "permanentEffectSpec": null,
-      "tier": 1
+      "tier": 1,
+      "key": "q_weekly_check_in_streak"
     },
     {
       "id": "quest_iron_collector",
@@ -17564,7 +17585,8 @@
       "createdAt": "2026-06-05T17:14:39.305Z",
       "updatedAt": "2026-06-11T01:09:25.998Z",
       "permanentEffectSpec": null,
-      "tier": 1
+      "tier": 1,
+      "key": "quest_iron_collector"
     },
     {
       "id": "ach_mission_veteran",
@@ -17599,7 +17621,8 @@
         "targetType": "player",
         "effectDefId": "eff_xp_boost_timed"
       },
-      "tier": 3
+      "tier": 3,
+      "key": "ach_mission_veteran"
     },
     {
       "id": "q_daily_check_in",
@@ -17630,7 +17653,8 @@
       "createdAt": "2026-06-05T17:14:39.568Z",
       "updatedAt": "2026-06-11T01:09:26.010Z",
       "permanentEffectSpec": null,
-      "tier": 1
+      "tier": 1,
+      "key": "q_daily_check_in"
     },
     {
       "id": "ach_first_craft",
@@ -17661,7 +17685,8 @@
       "createdAt": "2026-06-05T17:14:39.602Z",
       "updatedAt": "2026-06-11T01:09:25.966Z",
       "permanentEffectSpec": null,
-      "tier": 1
+      "tier": 1,
+      "key": "ach_first_craft"
     },
     {
       "id": "quest_first_mission",
@@ -17700,7 +17725,8 @@
       "createdAt": "2026-06-05T17:14:39.301Z",
       "updatedAt": "2026-06-11T01:09:25.970Z",
       "permanentEffectSpec": null,
-      "tier": 1
+      "tier": 1,
+      "key": "quest_first_mission"
     },
     {
       "id": "q_weekly_mission_marathon",
@@ -17737,7 +17763,8 @@
       "createdAt": "2026-06-05T17:14:39.584Z",
       "updatedAt": "2026-06-11T01:09:26.013Z",
       "permanentEffectSpec": null,
-      "tier": 1
+      "tier": 1,
+      "key": "q_weekly_mission_marathon"
     },
     {
       "id": "ach_login_devotee",
@@ -17772,7 +17799,8 @@
         "targetType": "player",
         "effectDefId": "eff_currency_boost"
       },
-      "tier": 4
+      "tier": 4,
+      "key": "ach_login_devotee"
     }
   ],
   "modalDef": [

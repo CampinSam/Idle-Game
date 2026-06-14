@@ -127,6 +127,24 @@ const TABLE_TRANSFORMS: Partial<Record<SeedTableName, RecordTransform>> = {
     const key: string = r.key ?? id;
     return { ...rest, key };
   },
+  /** UUID PK migration: QuestDef.id is now a UUID; the slug lives in key. */
+  questDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  /** UUID PK migration: CheckInDef.id is now a UUID; the slug lives in key. */
+  checkInDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  /** UUID PK migration: GiftDef.id is now a UUID; the slug lives in key. */
+  giftDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
 };
 
 type WhereBuilder = (r: any) => any;
@@ -139,6 +157,9 @@ const TABLE_WHERE: Partial<Record<SeedTableName, WhereBuilder>> = {
   // After UUID PK migration: look up by key slug, not by auto-generated UUID id.
   effectDef: (r) => ({ key: r.key }),
   powerDef: (r) => ({ key: r.key }),
+  questDef: (r) => ({ key: r.key }),
+  checkInDef: (r) => ({ key: r.key }),
+  giftDef: (r) => ({ key: r.key }),
 };
 
 function getBucketName(): string {

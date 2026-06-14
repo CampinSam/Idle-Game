@@ -827,7 +827,8 @@ model DefaultModalDef {
 }
 
 model GiftDef {
-  id           String   @id
+  id           String   @id @default(uuid())
+  key          String   @unique
   name         String
   version      Int      @default(1)
   presentation Json     @default("{}")
@@ -923,7 +924,8 @@ model PlayerEvent {
 }
 
 model CheckInDef {
-  id            String            @id
+  id            String            @id @default(uuid())
+  key           String            @unique
   name          String
   description   String?
   rewards       Json              @default("[]")
@@ -957,7 +959,8 @@ model CheckInInstance {
 }
 
 model QuestDef {
-  id                  String          @id
+  id                  String          @id @default(uuid())
+  key                 String          @unique
   name                String
   description         String?
   category            String?
