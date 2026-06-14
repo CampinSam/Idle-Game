@@ -690,6 +690,13 @@ export class AdminController {
     return result;
   }
 
+  @Post('backfill/screen-composer-uuids')
+  async backfillScreenComposerUuids(@Req() req: any) {
+    const result = await this.adminService.backfillScreenComposerUuids();
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'backfill_screen_composer_uuids', diff: { total: result.total, updated: result.updated, unresolvable: result.unresolvable.length } });
+    return result;
+  }
+
   @Post('backfill/production-rates')
   async backfillProductionRates(@Req() req: any) {
     const locations = await (this.prisma as any).locationInstance.findMany({

@@ -26,7 +26,7 @@ import { PubSubService } from '../infrastructure/pubsub.service';
 import { CommandService } from '../commands/command.service';
 import { TickEventProcessorService } from '../tick/tick-event-processor.service';
 import { NotificationService } from '../notification/notification.service';
-import { resolveDefRecord } from '../../utils/resolve-def-id.util';
+import { resolveDefRecord, resolveScreenSectionProps } from '../../utils/resolve-def-id.util';
 import {
   PatchBuilder,
   buildCurrencyPatches,
@@ -1749,6 +1749,86 @@ export class AdminService {
         finishedAt: new Date().toISOString(),
       });
     }
+  }
+
+  async backfillScreenComposerUuids(): Promise<{
+    total: number;
+    updated: number;
+    skipped: number;
+    unresolvable: { rowId: string; key: string; field: string; value: string }[];
+  }> {
+    const rows = await (this.prisma as any).gameDefinition.findMany({
+      where: { type: 'screen_composition' },
+      select: { id: true, key: true, version: true, data: true },
+    });
+
+    let updated = 0;
+    let skipped = 0;
+    const unresolvable: { rowId: string; key: string; field: string; value: string }[] = [];
+
+    for (const row of rows) {
+      const def = row.data as Record<string, any>;
+      const sections: any[] = Array.isArray(def?.sections) ? def.sections : [];
+      if (sections.length === 0) { skipped++; continue; }
+
+      let dirty = false;
+      const newSections = await Promise.all(
+        sections.map(async (section: any) => {
+          if (!section.props || typeof section.props !== 'object') return section;
+
+          const originalProps = section.props as Record<string, unknown>;
+          const resolvedProps = await resolveScreenSectionProps(this.prisma, originalProps);
+
+          for (const [field, originalValue] of Object.entries(originalProps)) {
+            const resolvedValue = resolvedProps[field];
+            if (resolvedValue === originalValue && typeof originalValue === 'string' && originalValue) {
+              // resolveScreenSectionProps only touches known def fields; if a known field
+              // still has the same value it means the lookup failed — log as unresolvable.
+              const { PROP_FIELD_TO_MODEL_KEYS } = { PROP_FIELD_TO_MODEL_KEYS: [
+                'missionDefId', 'recipeDefId', 'lootboxDefId', 'giftDefId', 'bundleDefId',
+                'checkInDefId', 'questDefId', 'itemDefId', 'nftCollectionDefId', 'modalDefId',
+                'defaultModalDefId', 'shopItemDefId', 'shopTabDefId', 'shopSectionDefId',
+                'homeBannerDefId', 'systemIconDefId', 'selectionRuleDefId', 'eventDefId',
+                'displayDefId', 'tagDefId', 'visualEffectDefId', 'missionCategoryDefId',
+                'buildingDefId', 'roomDefId', 'entityDefId', 'locationDefId',
+                'seasonId', 'currencyId',
+                'telemetryDefId', 'locationId', 'offerId', 'storeItemId',
+              ] };
+              if (PROP_FIELD_TO_MODEL_KEYS.includes(field)) {
+                const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(originalValue as string);
+                if (!looksLikeUuid) {
+                  unresolvable.push({ rowId: row.id, key: row.key, field, value: originalValue as string });
+                }
+              }
+            } else if (resolvedValue !== originalValue) {
+              dirty = true;
+            }
+          }
+
+          return { ...section, props: resolvedProps };
+        }),
+      );
+
+      if (!dirty) { skipped++; continue; }
+
+      await (this.prisma as any).gameDefinition.update({
+        where: { id: row.id },
+        data: { data: { ...def, sections: newSections } },
+      });
+      updated++;
+      this.logger.log(`backfillScreenComposerUuids: updated row ${row.id} (key="${row.key}" v${row.version})`);
+    }
+
+    this.logger.log(
+      `backfillScreenComposerUuids complete: total=${rows.length} updated=${updated} skipped=${skipped} unresolvable=${unresolvable.length}`,
+    );
+    if (unresolvable.length > 0) {
+      this.logger.warn(
+        `Unresolvable refs:\n${unresolvable.map(u => `  ${u.rowId} (${u.key}) field=${u.field} value=${u.value}`).join('\n')}`,
+      );
+    }
+
+    return { total: rows.length, updated, skipped, unresolvable };
   }
 
   async getAdminGemPack(packId: string): Promise<any> {

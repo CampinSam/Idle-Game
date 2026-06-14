@@ -57,6 +57,11 @@ const PROP_FIELD_TO_MODEL: Record<string, string> = {
   locationDefId: 'locationDefinition',
   seasonId: 'season',
   currencyId: 'currency',
+  // Screen composer picker prop field names (may differ from the *DefId convention)
+  telemetryDefId: 'telemetryDef',
+  locationId: 'locationDefinition',
+  offerId: 'shopItemDef',
+  storeItemId: 'shopItemDef',
 };
 
 /**

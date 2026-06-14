@@ -2234,6 +2234,36 @@ Roll back to a previous version — same semantics as publish (deactivates all, 
 
 ---
 
+### `POST /api/admin/backfill/screen-composer-uuids`
+
+One-time data migration that resolves key-string references in stored screen composition sections to UUIDs. Safe to run repeatedly — already-UUID values pass through unchanged.
+
+**Auth:** Admin
+
+**What it migrates:** All `GameDefinition` rows with `type = 'screen_composition'`. For each section's `props`, it resolves the following known def-ID fields from key slug → UUID: `missionDefId`, `recipeDefId`, `telemetryDefId`, `locationDefId`, `locationId`, `offerId`, `storeItemId`, and all other fields covered by `PROP_FIELD_TO_MODEL` in `resolve-def-id.util.ts`.
+
+**Response:**
+
+```json
+{
+  "total": 12,
+  "updated": 4,
+  "skipped": 8,
+  "unresolvable": [
+    { "rowId": "...", "key": "home_screen", "field": "missionDefId", "value": "deleted_mission_key" }
+  ]
+}
+```
+
+| Field | Description |
+|---|---|
+| `total` | Total `screen_composition` rows inspected |
+| `updated` | Rows where at least one prop was migrated to UUID |
+| `skipped` | Rows with no sections or no props needing migration |
+| `unresolvable` | Props that held a non-UUID key string that could not be resolved (referencing a deleted def) |
+
+---
+
 ### CRUD via Generic Admin Table Endpoints
 
 `GameDefinition` rows are also available through the standard admin table CRUD:
