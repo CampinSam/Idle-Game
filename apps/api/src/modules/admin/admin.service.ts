@@ -26,7 +26,7 @@ import { PubSubService } from '../infrastructure/pubsub.service';
 import { CommandService } from '../commands/command.service';
 import { TickEventProcessorService } from '../tick/tick-event-processor.service';
 import { NotificationService } from '../notification/notification.service';
-import { resolveDefRecord, resolveScreenSectionProps } from '../../utils/resolve-def-id.util';
+import { resolveDefRecord, resolveScreenSectionProps, KNOWN_DEF_PROP_FIELDS } from '../../utils/resolve-def-id.util';
 import {
   PatchBuilder,
   buildCurrencyPatches,
@@ -1757,6 +1757,8 @@ export class AdminService {
     skipped: number;
     unresolvable: { rowId: string; key: string; field: string; value: string }[];
   }> {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
     const rows = await (this.prisma as any).gameDefinition.findMany({
       where: { type: 'screen_composition' },
       select: { id: true, key: true, version: true, data: true },
@@ -1771,7 +1773,6 @@ export class AdminService {
       const sections: any[] = Array.isArray(def?.sections) ? def.sections : [];
       if (sections.length === 0) { skipped++; continue; }
 
-      let dirty = false;
       const newSections = await Promise.all(
         sections.map(async (section: any) => {
           if (!section.props || typeof section.props !== 'object') return section;
@@ -1779,36 +1780,40 @@ export class AdminService {
           const originalProps = section.props as Record<string, unknown>;
           const resolvedProps = await resolveScreenSectionProps(this.prisma, originalProps);
 
+          // Detect unresolvable flat def-field refs: known field, non-UUID value, unchanged after resolution
           for (const [field, originalValue] of Object.entries(originalProps)) {
-            const resolvedValue = resolvedProps[field];
-            if (resolvedValue === originalValue && typeof originalValue === 'string' && originalValue) {
-              // resolveScreenSectionProps only touches known def fields; if a known field
-              // still has the same value it means the lookup failed — log as unresolvable.
-              const { PROP_FIELD_TO_MODEL_KEYS } = { PROP_FIELD_TO_MODEL_KEYS: [
-                'missionDefId', 'recipeDefId', 'lootboxDefId', 'giftDefId', 'bundleDefId',
-                'checkInDefId', 'questDefId', 'itemDefId', 'nftCollectionDefId', 'modalDefId',
-                'defaultModalDefId', 'shopItemDefId', 'shopTabDefId', 'shopSectionDefId',
-                'homeBannerDefId', 'systemIconDefId', 'selectionRuleDefId', 'eventDefId',
-                'displayDefId', 'tagDefId', 'visualEffectDefId', 'missionCategoryDefId',
-                'buildingDefId', 'roomDefId', 'entityDefId', 'locationDefId',
-                'seasonId', 'currencyId',
-                'telemetryDefId', 'locationId', 'offerId', 'storeItemId',
-              ] };
-              if (PROP_FIELD_TO_MODEL_KEYS.includes(field)) {
-                const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(originalValue as string);
-                if (!looksLikeUuid) {
-                  unresolvable.push({ rowId: row.id, key: row.key, field, value: originalValue as string });
-                }
-              }
-            } else if (resolvedValue !== originalValue) {
-              dirty = true;
+            if (
+              KNOWN_DEF_PROP_FIELDS.has(field) &&
+              typeof originalValue === 'string' &&
+              originalValue &&
+              !UUID_RE.test(originalValue) &&
+              resolvedProps[field] === originalValue
+            ) {
+              unresolvable.push({ rowId: row.id, key: row.key, field, value: originalValue });
             }
+          }
+
+          // Detect unresolvable nested resources[].defId refs
+          if (Array.isArray(originalProps.resources) && Array.isArray(resolvedProps.resources)) {
+            const origResources = originalProps.resources as any[];
+            const resolvedResources = resolvedProps.resources as any[];
+            origResources.forEach((entry, i) => {
+              const defId = entry?.defId;
+              if (
+                typeof defId === 'string' && defId && !UUID_RE.test(defId) &&
+                resolvedResources[i]?.defId === defId
+              ) {
+                unresolvable.push({ rowId: row.id, key: row.key, field: `resources[${i}].defId`, value: defId });
+              }
+            });
           }
 
           return { ...section, props: resolvedProps };
         }),
       );
 
+      // Use JSON comparison so both flat and nested changes are detected
+      const dirty = JSON.stringify(sections) !== JSON.stringify(newSections);
       if (!dirty) { skipped++; continue; }
 
       await (this.prisma as any).gameDefinition.update({
