@@ -846,7 +846,7 @@ model GiftDef {
 model GiftInstance {
   id             String     @id @default(uuid())
   userId         String
-  giftDefId      String
+  giftDefId      String?
   giftDefVersion Int
   status         GiftStatus @default(UNCLAIMED)
   createdAt      DateTime   @default(now())
