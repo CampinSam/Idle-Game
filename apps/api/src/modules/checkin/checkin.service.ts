@@ -39,7 +39,7 @@ export class CheckInService {
     // pg_advisory_xact_lock blocks until it can acquire the lock and releases
     // automatically when the transaction ends, so a second rapid tap will wait,
     // then re-read the already-claimed state and return 0 gifts → 400.
-    await (db as any).$queryRaw`SELECT pg_advisory_xact_lock(1, hashtext(${userId}))`;
+    await (db as any).$executeRaw`SELECT pg_advisory_xact_lock(1, hashtext(${userId}))`;
 
     const now = new Date();
 
