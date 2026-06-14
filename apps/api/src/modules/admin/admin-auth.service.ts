@@ -123,7 +123,7 @@ export class AdminAuthService {
     const existing = await this.prisma.adminAccount.findUnique({ where: { username: data.username } });
     if (existing) throw new ConflictException(`Username '${data.username}' is already taken`);
 
-    const role = await this.prisma.adminRole.findFirst({ where: { OR: [{ id: data.roleId }, { slug: data.roleId }] } });
+    const role = await this.prisma.adminRole.findFirst({ where: { OR: [{ id: data.roleId }, { key: data.roleId }, { slug: data.roleId }] } });
     if (!role) throw new BadRequestException(`Role '${data.roleId}' not found`);
 
     if (!data.password || data.password.length < 8) {
@@ -176,7 +176,7 @@ export class AdminAuthService {
     }
 
     if (data.roleId !== undefined) {
-      const role = await this.prisma.adminRole.findFirst({ where: { OR: [{ id: data.roleId }, { slug: data.roleId }] } });
+      const role = await this.prisma.adminRole.findFirst({ where: { OR: [{ id: data.roleId }, { key: data.roleId }, { slug: data.roleId }] } });
       if (!role) throw new BadRequestException(`Role '${data.roleId}' not found`);
       updates.roleId = role.id;
     }

@@ -282,7 +282,7 @@ export class BootstrapService implements OnModuleInit {
     const DEV_PASSWORD = 'admin';
     const SUPER_ADMIN_ROLE_ID = 'role_super_admin';
 
-    await this.prisma.adminRole.upsert({
+    const superAdminRole = await this.prisma.adminRole.upsert({
       where: { key: SUPER_ADMIN_ROLE_ID },
       update: {},
       create: {
@@ -302,7 +302,7 @@ export class BootstrapService implements OnModuleInit {
       data: {
         username: DEV_USERNAME,
         passwordHash,
-        roleId: SUPER_ADMIN_ROLE_ID,
+        roleId: superAdminRole.id,
         contentScopes: [],
       },
     });
