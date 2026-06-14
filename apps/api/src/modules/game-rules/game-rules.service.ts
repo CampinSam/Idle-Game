@@ -220,7 +220,12 @@ export class GameRulesService {
       const ids = Array.from(pending);
       pending.clear();
       const rows = await (this.prisma as any).bundleDef.findMany({ where: { OR: [{ id: { in: ids } }, { key: { in: ids } }] } });
-      const byId = new Map<string, any>(rows.map((r: any) => [r.id, r]));
+      // Index each row by both UUID id and slug key so callers using either form resolve correctly.
+      const byId = new Map<string, any>();
+      for (const r of rows) {
+        byId.set(r.id, r);
+        if (r.key) byId.set(r.key, r);
+      }
       for (const id of ids) {
         if (out.has(id)) continue;
         const row = byId.get(id) ?? null;
