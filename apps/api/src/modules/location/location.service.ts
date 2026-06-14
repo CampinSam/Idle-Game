@@ -485,7 +485,9 @@ export class LocationService {
     currentLocation?: any,
     parentBuilding?: any,
   ) {
-    const [user, allLocations] = await Promise.all([
+    // Load regions to translate UUID regionId FK values back to slug keys.
+    // Game rules JSON references regions by slug; requirement context must match.
+    const [user, allLocations, regionDefs] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId } }),
       (this.prisma as any).locationInstance.findMany({
         where: { ownerUserId: userId },
@@ -499,32 +501,33 @@ export class LocationService {
           },
         },
       }),
+      this.prisma.regionDefinition.findMany({ select: { id: true, key: true } }),
     ]);
     if (!user) throw new NotFoundException("User not found");
 
-    const allPlayerLocations = allLocations.map((loc: any) => ({
-      buildings: loc.buildings.map((b: any) => ({
-        buildingDefId: b.buildingDefId,
-        rooms: b.rooms?.map((r: any) => ({ roomDefId: r.roomDefId })) ?? [],
-      })),
-      regionId: loc.definition?.regionId ?? null,
-    }));
+    // UUID → slug maps for requirement context normalisation.
+    const regionKeyById = new Map(regionDefs.map((r) => [r.id, r.key]));
 
-    const currentLocationCtx = currentLocation
-      ? {
-          buildings: (currentLocation.buildings ?? []).map((b: any) => ({
-            buildingDefId: b.buildingDefId,
-            rooms: b.rooms?.map((r: any) => ({ roomDefId: r.roomDefId })) ?? [],
-          })),
-          regionId: currentLocation.definition?.regionId ?? null,
-        }
-      : undefined;
+    const toLocationCtx = (loc: any) => ({
+      buildings: (loc.buildings ?? []).map((b: any) => ({
+        // buildingDefId FK column is UUID; game rules compare against slug keys.
+        buildingDefId: b.buildingDef?.key ?? b.buildingDefId,
+        rooms: (b.rooms ?? []).map((r: any) => ({
+          roomDefId: r.roomDef?.key ?? r.roomDefId,
+        })),
+      })),
+      regionId: regionKeyById.get(loc.definition?.regionId) ?? loc.definition?.regionId ?? null,
+    });
+
+    const allPlayerLocations = allLocations.map(toLocationCtx);
+
+    const currentLocationCtx = currentLocation ? toLocationCtx(currentLocation) : undefined;
 
     const parentBuildingCtx = parentBuilding
       ? {
-          buildingDefId: parentBuilding.buildingDefId,
+          buildingDefId: parentBuilding.buildingDef?.key ?? parentBuilding.buildingDefId,
           rooms: (parentBuilding.rooms ?? []).map((r: any) => ({
-            roomDefId: r.roomDefId,
+            roomDefId: r.roomDef?.key ?? r.roomDefId,
           })),
         }
       : undefined;
@@ -566,10 +569,14 @@ export class LocationService {
       location,
     );
 
+    // existingCounts must be keyed by slug (same as entry.buildingDefId from rules JSON).
+    // location.buildings[].buildingDefId is UUID after migration, so we translate via defMap.
+    const buildingDefUuidToKey = new Map(buildingDefs.map((d: any) => [d.id, d.key]));
     const existingCounts = new Map<string, number>();
     for (const b of location.buildings) {
-      const count = existingCounts.get(b.buildingDefId) || 0;
-      existingCounts.set(b.buildingDefId, count + 1);
+      const slug = buildingDefUuidToKey.get(b.buildingDefId) ?? b.buildingDefId;
+      const count = existingCounts.get(slug) || 0;
+      existingCounts.set(slug, count + 1);
     }
 
     const available = allowedBuildings

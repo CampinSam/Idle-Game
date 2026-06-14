@@ -414,36 +414,34 @@ export class JobPreviewService {
       });
     }
 
-    const allLocations = await (this.prisma as any).locationInstance.findMany({
-      where: { ownerUserId: userId },
-      include: {
-        definition: true,
-        buildings: {
-          include: {
-            buildingDef: true,
-            rooms: { include: { roomDef: true } },
+    // Load regions to translate UUID regionId FK values → slug keys for rule evaluation.
+    const [allLocations, regionDefs] = await Promise.all([
+      (this.prisma as any).locationInstance.findMany({
+        where: { ownerUserId: userId },
+        include: {
+          definition: true,
+          buildings: {
+            include: {
+              buildingDef: true,
+              rooms: { include: { roomDef: true } },
+            },
           },
         },
-      },
+      }),
+      this.prisma.regionDefinition.findMany({ select: { id: true, key: true } }),
+    ]);
+
+    const regionKeyById = new Map(regionDefs.map((r: any) => [r.id, r.key]));
+    const toLocationCtx = (loc: any) => ({
+      buildings: (loc.buildings ?? []).map((b: any) => ({
+        buildingDefId: b.buildingDef?.key ?? b.buildingDefId,
+        rooms: (b.rooms ?? []).map((r: any) => ({ roomDefId: r.roomDef?.key ?? r.roomDefId })),
+      })),
+      regionId: regionKeyById.get(loc.definition?.regionId) ?? loc.definition?.regionId ?? null,
     });
 
-    const allPlayerLocations = allLocations.map((loc: any) => ({
-      buildings: (loc.buildings ?? []).map((b: any) => ({
-        buildingDefId: b.buildingDefId,
-        rooms: (b.rooms ?? []).map((r: any) => ({ roomDefId: r.roomDefId })),
-      })),
-      regionId: loc.definition?.regionId ?? null,
-    }));
-
-    const currentLocationCtx = location
-      ? {
-          buildings: (location.buildings ?? []).map((b: any) => ({
-            buildingDefId: b.buildingDefId,
-            rooms: (b.rooms ?? []).map((r: any) => ({ roomDefId: r.roomDefId })),
-          })),
-          regionId: location.definition?.regionId ?? null,
-        }
-      : undefined;
+    const allPlayerLocations = allLocations.map(toLocationCtx);
+    const currentLocationCtx = location ? toLocationCtx(location) : undefined;
 
     const reqContext = this.gameRules.buildRequirementContext(user as any, {
       allPlayerLocations,
@@ -496,7 +494,7 @@ export class JobPreviewService {
       const existingBuilding = await (this.prisma as any).locationBuildingInstance.findFirst({
         where: {
           locationId: dto.locationId,
-          buildingDefId: dto.defId,
+          buildingDefId: def.id,
           location: { ownerUserId: userId },
         },
       });

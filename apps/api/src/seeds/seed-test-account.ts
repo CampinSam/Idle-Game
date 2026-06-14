@@ -222,7 +222,7 @@ async function main() {
     // created or already existed from a prior run).
     const defRecord = await (prisma as any).entityDefinition.findFirst({
       where: { OR: [{ id: defId }, { key: defId }] },
-      select: { rules: true },
+      select: { id: true, rules: true },
     });
     const currentRules = (defRecord?.rules as Record<string, unknown>) ?? {};
     const currentUniques = (currentRules.uniques as Record<string, unknown>) ?? {};
@@ -243,7 +243,7 @@ async function main() {
       },
     };
     await (prisma as any).entityDefinition.update({
-      where: { id: defId },
+      where: { id: defRecord?.id ?? defId },
       data: { rules: { ...currentRules, uniques: mergedUniques } },
     });
 
