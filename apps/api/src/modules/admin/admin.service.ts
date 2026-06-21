@@ -26,7 +26,15 @@ import { PubSubService } from '../infrastructure/pubsub.service';
 import { CommandService } from '../commands/command.service';
 import { TickEventProcessorService } from '../tick/tick-event-processor.service';
 import { NotificationService } from '../notification/notification.service';
-import { resolveDefRecord, resolveScreenSectionProps, KNOWN_DEF_PROP_FIELDS } from '../../utils/resolve-def-id.util';
+import {
+  resolveDefRecord,
+  resolveScreenSectionProps,
+  KNOWN_DEF_PROP_FIELDS,
+  resolveOutcomeArrayUuids,
+  resolveTieredObjectUuids,
+  resolvePhasesArrayUuids,
+  resolveCheckInRewardsUuids,
+} from '../../utils/resolve-def-id.util';
 import {
   PatchBuilder,
   buildCurrencyPatches,
@@ -1834,6 +1842,231 @@ export class AdminService {
     }
 
     return { total: rows.length, updated, skipped, unresolvable };
+  }
+
+  /**
+   * Backfill Phase 2: resolve key-string def references nested inside JSON blobs.
+   *
+   * Covered fields:
+   *  - missionDef:  tiers (tiered object), cost (array), phases (phase array)
+   *  - giftDef:     rewardSpec (array)
+   *  - lootboxDef:  outcomes (array)
+   *  - bundleDef:   bundle (array)
+   *  - questDef:    rewardSpec (array)
+   *  - recipeDef:   tiers (tiered object) — `rewards` field kept for compatibility
+   *  - checkInDef:  rewards (day array) — resolves gift.giftDefId refs
+   *
+   * Within each outcome entry the following refs are migrated to UUID:
+   *  - type:'item'       → key → itemDefinition.id
+   *  - type:'currency'   → key → currency.id
+   *  - type:'bundle_ref' → bundleDefId → bundleDef.id
+   *  - type:'emitEvent'  → payload.gift.giftDefId → giftDef.id
+   *
+   * Safe to run repeatedly: already-UUID values pass through unchanged.
+   */
+  async backfillDefBlobUuids(): Promise<{
+    models: Record<string, { total: number; updated: number; skipped: number }>;
+    totalUpdated: number;
+  }> {
+    type ModelSummary = { total: number; updated: number; skipped: number };
+    const models: Record<string, ModelSummary> = {};
+
+    /** Helper: process a single record's field list and write back if dirty. */
+    const processRecord = async (
+      modelName: string,
+      record: { id: string; [key: string]: any },
+      processFields: (r: any) => Promise<{ data: Record<string, any>; changed: number }>,
+    ): Promise<boolean> => {
+      try {
+        const { data, changed } = await processFields(record);
+        if (changed === 0) return false;
+        await (this.prisma as any)[modelName].update({ where: { id: record.id }, data });
+        return true;
+      } catch (err) {
+        this.logger.warn(`backfillDefBlobUuids: failed for ${modelName} id=${record.id}: ${err}`);
+        return false;
+      }
+    };
+
+    // ── missionDef ───────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).missionDef.findMany({
+        select: { id: true, tiers: true, cost: true, phases: true },
+      });
+      const summary: ModelSummary = { total: rows.length, updated: 0, skipped: 0 };
+
+      for (const row of rows) {
+        const updated = await processRecord('missionDef', row, async (r) => {
+          let changed = 0;
+          const data: Record<string, any> = {};
+
+          // tiers: { [tierKey]: { rewards: [] } }
+          if (r.tiers && typeof r.tiers === 'object' && !Array.isArray(r.tiers)) {
+            const { result: newTiers, changed: c } = await resolveTieredObjectUuids(this.prisma, r.tiers);
+            if (c > 0) { data.tiers = newTiers; changed += c; }
+          }
+
+          // cost: OutcomeEntry[]
+          if (Array.isArray(r.cost)) {
+            const { result: newCost, changed: c } = await resolveOutcomeArrayUuids(this.prisma, r.cost);
+            if (c > 0) { data.cost = newCost; changed += c; }
+          }
+
+          // phases: PhaseEntry[] — each may contain tiers and success/failure
+          if (Array.isArray(r.phases)) {
+            const { result: newPhases, changed: c } = await resolvePhasesArrayUuids(this.prisma, r.phases);
+            if (c > 0) { data.phases = newPhases; changed += c; }
+          }
+
+          return { data, changed };
+        });
+        updated ? summary.updated++ : summary.skipped++;
+      }
+
+      models['missionDef'] = summary;
+      this.logger.log(`backfillDefBlobUuids missionDef: total=${summary.total} updated=${summary.updated} skipped=${summary.skipped}`);
+    }
+
+    // ── lootboxDef ───────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).lootboxDef.findMany({
+        select: { id: true, outcomes: true },
+      });
+      const summary: ModelSummary = { total: rows.length, updated: 0, skipped: 0 };
+
+      for (const row of rows) {
+        const updated = await processRecord('lootboxDef', row, async (r) => {
+          if (!Array.isArray(r.outcomes)) return { data: {}, changed: 0 };
+          const { result: newOutcomes, changed } = await resolveOutcomeArrayUuids(this.prisma, r.outcomes);
+          return { data: changed > 0 ? { outcomes: newOutcomes } : {}, changed };
+        });
+        updated ? summary.updated++ : summary.skipped++;
+      }
+
+      models['lootboxDef'] = summary;
+      this.logger.log(`backfillDefBlobUuids lootboxDef: total=${summary.total} updated=${summary.updated} skipped=${summary.skipped}`);
+    }
+
+    // ── bundleDef ────────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).bundleDef.findMany({
+        select: { id: true, bundle: true },
+      });
+      const summary: ModelSummary = { total: rows.length, updated: 0, skipped: 0 };
+
+      for (const row of rows) {
+        const updated = await processRecord('bundleDef', row, async (r) => {
+          if (!Array.isArray(r.bundle)) return { data: {}, changed: 0 };
+          const { result: newBundle, changed } = await resolveOutcomeArrayUuids(this.prisma, r.bundle);
+          return { data: changed > 0 ? { bundle: newBundle } : {}, changed };
+        });
+        updated ? summary.updated++ : summary.skipped++;
+      }
+
+      models['bundleDef'] = summary;
+      this.logger.log(`backfillDefBlobUuids bundleDef: total=${summary.total} updated=${summary.updated} skipped=${summary.skipped}`);
+    }
+
+    // ── giftDef ──────────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).giftDef.findMany({
+        select: { id: true, rewardSpec: true },
+      });
+      const summary: ModelSummary = { total: rows.length, updated: 0, skipped: 0 };
+
+      for (const row of rows) {
+        const updated = await processRecord('giftDef', row, async (r) => {
+          if (!Array.isArray(r.rewardSpec)) return { data: {}, changed: 0 };
+          const { result: newSpec, changed } = await resolveOutcomeArrayUuids(this.prisma, r.rewardSpec);
+          return { data: changed > 0 ? { rewardSpec: newSpec } : {}, changed };
+        });
+        updated ? summary.updated++ : summary.skipped++;
+      }
+
+      models['giftDef'] = summary;
+      this.logger.log(`backfillDefBlobUuids giftDef: total=${summary.total} updated=${summary.updated} skipped=${summary.skipped}`);
+    }
+
+    // ── questDef ─────────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).questDef.findMany({
+        select: { id: true, rewardSpec: true },
+      });
+      const summary: ModelSummary = { total: rows.length, updated: 0, skipped: 0 };
+
+      for (const row of rows) {
+        const updated = await processRecord('questDef', row, async (r) => {
+          const spec = r.rewardSpec;
+          if (!spec) return { data: {}, changed: 0 };
+          let changed = 0;
+          let newSpec = spec;
+
+          if (Array.isArray(spec)) {
+            const { result, changed: c } = await resolveOutcomeArrayUuids(this.prisma, spec);
+            if (c > 0) { newSpec = result; changed += c; }
+          } else if (spec && typeof spec === 'object' && Array.isArray(spec.rewards)) {
+            const { result: newRewards, changed: c } = await resolveOutcomeArrayUuids(this.prisma, spec.rewards);
+            if (c > 0) { newSpec = { ...spec, rewards: newRewards }; changed += c; }
+          }
+
+          return { data: changed > 0 ? { rewardSpec: newSpec } : {}, changed };
+        });
+        updated ? summary.updated++ : summary.skipped++;
+      }
+
+      models['questDef'] = summary;
+      this.logger.log(`backfillDefBlobUuids questDef: total=${summary.total} updated=${summary.updated} skipped=${summary.skipped}`);
+    }
+
+    // ── recipeDef ────────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).recipeDef.findMany({
+        select: { id: true, tiers: true },
+      });
+      const summary: ModelSummary = { total: rows.length, updated: 0, skipped: 0 };
+
+      for (const row of rows) {
+        const updated = await processRecord('recipeDef', row, async (r) => {
+          let changed = 0;
+          const data: Record<string, any> = {};
+
+          if (r.tiers && typeof r.tiers === 'object' && !Array.isArray(r.tiers)) {
+            const { result: newTiers, changed: c } = await resolveTieredObjectUuids(this.prisma, r.tiers);
+            if (c > 0) { data.tiers = newTiers; changed += c; }
+          }
+
+          return { data, changed };
+        });
+        updated ? summary.updated++ : summary.skipped++;
+      }
+
+      models['recipeDef'] = summary;
+      this.logger.log(`backfillDefBlobUuids recipeDef: total=${summary.total} updated=${summary.updated} skipped=${summary.skipped}`);
+    }
+
+    // ── checkInDef ───────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).checkInDef.findMany({
+        select: { id: true, rewards: true },
+      });
+      const summary: ModelSummary = { total: rows.length, updated: 0, skipped: 0 };
+
+      for (const row of rows) {
+        const updated = await processRecord('checkInDef', row, async (r) => {
+          if (!Array.isArray(r.rewards)) return { data: {}, changed: 0 };
+          const { result: newRewards, changed } = await resolveCheckInRewardsUuids(this.prisma, r.rewards);
+          return { data: changed > 0 ? { rewards: newRewards } : {}, changed };
+        });
+        updated ? summary.updated++ : summary.skipped++;
+      }
+
+      models['checkInDef'] = summary;
+      this.logger.log(`backfillDefBlobUuids checkInDef: total=${summary.total} updated=${summary.updated} skipped=${summary.skipped}`);
+    }
+
+    const totalUpdated = Object.values(models).reduce((sum, m) => sum + m.updated, 0);
+    this.logger.log(`backfillDefBlobUuids complete: totalUpdated=${totalUpdated}`);
+    return { models, totalUpdated };
   }
 
   async getAdminGemPack(packId: string): Promise<any> {

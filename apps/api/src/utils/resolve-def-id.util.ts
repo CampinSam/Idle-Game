@@ -71,6 +71,211 @@ const PROP_FIELD_TO_MODEL: Record<string, string> = {
 /** The full set of field names tracked by PROP_FIELD_TO_MODEL, exported for backfill use. */
 export const KNOWN_DEF_PROP_FIELDS = new Set(Object.keys(PROP_FIELD_TO_MODEL));
 
+// ---------------------------------------------------------------------------
+// Outcome-spec UUID resolver
+// ---------------------------------------------------------------------------
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolves a single key-string value to a UUID using the given Prisma model.
+ * Returns the original value if it is already a UUID or cannot be resolved.
+ */
+async function resolveKeyOrUuid(model: any, value: string): Promise<string> {
+  if (!value || UUID_RE.test(value)) return value;
+  try {
+    const uuid = await resolveDefId(model, value);
+    return uuid ?? value;
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Recursively walks an outcome-spec entry (a single object) and resolves any
+ * key-string references to UUIDs.  Returns `{ entry, changed }` where `changed`
+ * is the number of fields that were rewritten.
+ *
+ * Fields resolved:
+ *  - `type: 'item'`       → `entry.key`                       → itemDefinition.id
+ *  - `type: 'currency'`   → `entry.key`                       → currency.id
+ *  - `type: 'bundle_ref'` → `entry.bundleDefId`               → bundleDef.id
+ *  - `type: 'emitEvent'`  → `entry.payload.gift.giftDefId`    → giftDef.id
+ *  - Inline `bundle[]`    → recursed via resolveOutcomeArrayUuids
+ */
+async function resolveOutcomeEntryUuids(
+  prisma: PrismaService,
+  entry: unknown,
+): Promise<{ entry: unknown; changed: number }> {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    return { entry, changed: 0 };
+  }
+
+  let next: any = entry as any;
+  let changed = 0;
+
+  // Recurse into inline bundle arrays first
+  if (Array.isArray(next.bundle)) {
+    const { result: newBundle, changed: bundleChanged } = await resolveOutcomeArrayUuids(prisma, next.bundle);
+    if (bundleChanged > 0) {
+      next = { ...next, bundle: newBundle };
+      changed += bundleChanged;
+    }
+  }
+
+  const type: string = typeof next.type === 'string' ? next.type : '';
+
+  // Resolve item / currency key
+  if ((type === 'item' || type === 'currency') && typeof next.key === 'string' && next.key) {
+    const modelName = type === 'item' ? 'itemDefinition' : 'currency';
+    const model = (prisma as any)[modelName];
+    if (model) {
+      const uuid = await resolveKeyOrUuid(model, next.key);
+      if (uuid !== next.key) {
+        next = { ...next, key: uuid };
+        changed++;
+      }
+    }
+  }
+
+  // Resolve bundle_ref bundleDefId
+  if (type === 'bundle_ref' && typeof next.bundleDefId === 'string' && next.bundleDefId) {
+    const uuid = await resolveKeyOrUuid((prisma as any).bundleDef, next.bundleDefId);
+    if (uuid !== next.bundleDefId) {
+      next = { ...next, bundleDefId: uuid };
+      changed++;
+    }
+  }
+
+  // Resolve emitEvent payload.gift.giftDefId
+  if (
+    type === 'emitEvent' &&
+    next.payload &&
+    typeof next.payload === 'object' &&
+    next.payload.gift &&
+    typeof next.payload.gift === 'object' &&
+    typeof next.payload.gift.giftDefId === 'string' &&
+    next.payload.gift.giftDefId
+  ) {
+    const uuid = await resolveKeyOrUuid((prisma as any).giftDef, next.payload.gift.giftDefId);
+    if (uuid !== next.payload.gift.giftDefId) {
+      next = {
+        ...next,
+        payload: { ...next.payload, gift: { ...next.payload.gift, giftDefId: uuid } },
+      };
+      changed++;
+    }
+  }
+
+  return { entry: next, changed };
+}
+
+/**
+ * Walks an array of outcome-spec entries, resolving all key-string def references
+ * to UUIDs.  Returns the (potentially mutated) array and total change count.
+ */
+export async function resolveOutcomeArrayUuids(
+  prisma: PrismaService,
+  items: unknown[],
+): Promise<{ result: unknown[]; changed: number }> {
+  let changed = 0;
+  const result: unknown[] = [];
+  for (const item of items) {
+    const { entry, changed: c } = await resolveOutcomeEntryUuids(prisma, item);
+    result.push(entry);
+    changed += c;
+  }
+  return { result, changed };
+}
+
+/**
+ * Resolves UUID refs inside a tiered-object blob.
+ * A tiered object has the shape `{ [tierKey]: { rewards: OutcomeEntry[] } }`.
+ * Returns the updated object and total change count.
+ */
+export async function resolveTieredObjectUuids(
+  prisma: PrismaService,
+  tiered: Record<string, unknown>,
+): Promise<{ result: Record<string, unknown>; changed: number }> {
+  let changed = 0;
+  const result: Record<string, unknown> = {};
+  for (const [tierKey, tier] of Object.entries(tiered)) {
+    if (tier && typeof tier === 'object' && !Array.isArray(tier) && Array.isArray((tier as any).rewards)) {
+      const { result: newRewards, changed: c } = await resolveOutcomeArrayUuids(prisma, (tier as any).rewards);
+      changed += c;
+      result[tierKey] = { ...(tier as any), rewards: newRewards };
+    } else {
+      result[tierKey] = tier;
+    }
+  }
+  return { result, changed };
+}
+
+/**
+ * Resolves UUID refs inside a phases array.
+ * Each phase entry may contain:
+ *   - `tiers`: tiered object (resolved via resolveTieredObjectUuids)
+ *   - `success`: { rewards: [] } (resolved via resolveOutcomeArrayUuids)
+ *   - `failure`: { rewards: [] } (resolved via resolveOutcomeArrayUuids)
+ */
+export async function resolvePhasesArrayUuids(
+  prisma: PrismaService,
+  phases: unknown[],
+): Promise<{ result: unknown[]; changed: number }> {
+  let changed = 0;
+  const result: unknown[] = [];
+  for (const phase of phases) {
+    if (!phase || typeof phase !== 'object' || Array.isArray(phase)) {
+      result.push(phase);
+      continue;
+    }
+    let next: any = phase;
+
+    if (next.tiers && typeof next.tiers === 'object' && !Array.isArray(next.tiers)) {
+      const { result: newTiers, changed: c } = await resolveTieredObjectUuids(prisma, next.tiers);
+      if (c > 0) { next = { ...next, tiers: newTiers }; changed += c; }
+    }
+
+    for (const subKey of ['success', 'failure'] as const) {
+      if (next[subKey] && typeof next[subKey] === 'object' && Array.isArray(next[subKey].rewards)) {
+        const { result: newRewards, changed: c } = await resolveOutcomeArrayUuids(prisma, next[subKey].rewards);
+        if (c > 0) { next = { ...next, [subKey]: { ...next[subKey], rewards: newRewards } }; changed += c; }
+      }
+    }
+
+    result.push(next);
+  }
+  return { result, changed };
+}
+
+/**
+ * Resolves giftDefId references inside a checkInDef rewards array.
+ * Each entry has the shape `{ gift: { giftDefId: string } }`.
+ */
+export async function resolveCheckInRewardsUuids(
+  prisma: PrismaService,
+  rewards: unknown[],
+): Promise<{ result: unknown[]; changed: number }> {
+  let changed = 0;
+  const result: unknown[] = [];
+  for (const day of rewards) {
+    if (!day || typeof day !== 'object' || Array.isArray(day)) { result.push(day); continue; }
+    const dayObj: any = day;
+    if (!dayObj.gift || typeof dayObj.gift !== 'object' || typeof dayObj.gift.giftDefId !== 'string') {
+      result.push(day);
+      continue;
+    }
+    const uuid = await resolveKeyOrUuid((prisma as any).giftDef, dayObj.gift.giftDefId);
+    if (uuid !== dayObj.gift.giftDefId) {
+      result.push({ ...dayObj, gift: { ...dayObj.gift, giftDefId: uuid } });
+      changed++;
+    } else {
+      result.push(day);
+    }
+  }
+  return { result, changed };
+}
+
 /**
  * Resolve the `defId` field within a single `resources` array entry.
  * The `type` field ("currency" | "item") determines which model to query.

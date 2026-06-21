@@ -2264,6 +2264,57 @@ One-time data migration that resolves key-string references in stored screen com
 
 ---
 
+### `POST /api/admin/backfill/def-blob-uuids`
+
+One-time data migration that resolves key-string def references nested inside JSON blobs across all known def models. Safe to run repeatedly — already-UUID values pass through unchanged.
+
+**Auth:** Admin
+
+**What it migrates:**
+
+| Model | Fields inspected | References resolved |
+|---|---|---|
+| `missionDef` | `tiers` (tiered object), `cost` (array), `phases` (phase array) | item/currency `key`, `bundleDefId`, emitEvent `giftDefId` |
+| `lootboxDef` | `outcomes` (array) | item/currency `key`, `bundleDefId`, emitEvent `giftDefId` |
+| `bundleDef` | `bundle` (array) | item/currency `key`, `bundleDefId`, emitEvent `giftDefId` |
+| `giftDef` | `rewardSpec` (array) | item/currency `key`, `bundleDefId`, emitEvent `giftDefId` |
+| `questDef` | `rewardSpec` (array or `{ rewards: [] }`) | item/currency `key`, `bundleDefId`, emitEvent `giftDefId` |
+| `recipeDef` | `tiers` (tiered object) | item/currency `key`, `bundleDefId` |
+| `checkInDef` | `rewards` (day array) | `gift.giftDefId` → giftDef UUID |
+
+Within each outcome entry:
+- `type:'item'` → `entry.key` resolved to `itemDefinition.id`
+- `type:'currency'` → `entry.key` resolved to `currency.id`
+- `type:'bundle_ref'` → `entry.bundleDefId` resolved to `bundleDef.id`
+- `type:'emitEvent'` → `entry.payload.gift.giftDefId` resolved to `giftDef.id`
+- Inline `bundle[]` arrays are recursed
+
+**Response:**
+
+```json
+{
+  "totalUpdated": 7,
+  "models": {
+    "missionDef": { "total": 12, "updated": 3, "skipped": 9 },
+    "lootboxDef": { "total": 5, "updated": 2, "skipped": 3 },
+    "bundleDef": { "total": 8, "updated": 1, "skipped": 7 },
+    "giftDef": { "total": 10, "updated": 1, "skipped": 9 },
+    "questDef": { "total": 4, "updated": 0, "skipped": 4 },
+    "recipeDef": { "total": 6, "updated": 0, "skipped": 6 },
+    "checkInDef": { "total": 2, "updated": 0, "skipped": 2 }
+  }
+}
+```
+
+| Field | Description |
+|---|---|
+| `totalUpdated` | Total rows written across all models |
+| `models.<model>.total` | Rows inspected for that model |
+| `models.<model>.updated` | Rows where at least one ref was migrated to UUID |
+| `models.<model>.skipped` | Rows with no refs needing migration |
+
+---
+
 ### CRUD via Generic Admin Table Endpoints
 
 `GameDefinition` rows are also available through the standard admin table CRUD:

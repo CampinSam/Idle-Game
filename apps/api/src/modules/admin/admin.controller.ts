@@ -697,6 +697,13 @@ export class AdminController {
     return result;
   }
 
+  @Post('backfill/def-blob-uuids')
+  async backfillDefBlobUuids(@Req() req: any) {
+    const result = await this.adminService.backfillDefBlobUuids();
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'backfill_def_blob_uuids', diff: { totalUpdated: result.totalUpdated } });
+    return result;
+  }
+
   @Post('backfill/production-rates')
   async backfillProductionRates(@Req() req: any) {
     const locations = await (this.prisma as any).locationInstance.findMany({
