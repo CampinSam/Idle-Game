@@ -74,12 +74,25 @@ const TABLE_TRANSFORMS: Partial<Record<SeedTableName, RecordTransform>> = {
 
 const TABLE_WHERE: Partial<Record<SeedTableName, (r: any) => any>> = {
   currency: (r) => ({ key: r.key }),
+  regionDefinition: (r) => ({ key: r.key }),
+  entityDefinition: (r) => ({ key: r.key }),
+  locationDefinition: (r) => ({ key: r.key }),
+  buildingDef: (r) => ({ key: r.key }),
+  roomDef: (r) => ({ key: r.key }),
+  missionCategoryDef: (r) => ({ key: r.key }),
+  missionDef: (r) => ({ key: r.key }),
+  recipeDef: (r) => ({ key: r.key }),
+  itemDefinition: (r) => ({ key: r.key }),
+  giftDef: (r) => ({ key: r.key }),
   lootboxDef: (r) => ({ key: r.key }),
   bundleDef: (r) => ({ key: r.key }),
-  itemDefinition: (r) => ({ key: r.key }),
+  checkInDef: (r) => ({ key: r.key }),
+  questDef: (r) => ({ key: r.key }),
+  powerDef: (r) => ({ key: r.key }),
   soundDef: (r) => ({ key: r.key }),
   tagDef: (r) => ({ key: r.key }),
   visualEffectDef: (r) => ({ key: r.key }),
+  effectDef: (r) => ({ key: r.key }),
   gameDefinition: (r) => ({ type_key_version: { type: r.type, key: r.key, version: r.version } }),
 };
 
@@ -202,6 +215,17 @@ async function seedDefinitions() {
 
     const transform = TABLE_TRANSFORMS[modelName];
     const buildWhere = TABLE_WHERE[modelName] ?? ((r: any) => ({ id: r.id }));
+    const usesKeyLookup = !!TABLE_WHERE[modelName] && modelName !== 'gameDefinition';
+
+    // Backfill helper: some tables gained a 'key' column via UUID migrations after
+    // the seed-data snapshot was taken. When seed-data lacks 'key', fall back to 'id'
+    // (the original slug) so Prisma's NOT NULL constraint is satisfied.
+    function withKey(record: any): any {
+      if (usesKeyLookup && record.key == null && record.id != null) {
+        return { ...record, key: record.id };
+      }
+      return record;
+    }
 
     if (modelName === 'missionCategoryDef') {
       const parents = records.filter((r) => !r.parentId);
@@ -210,7 +234,7 @@ async function seedDefinitions() {
       for (const batch of [parents, children]) {
         for (const raw of batch) {
           const base = transform ? transform(raw) : raw;
-          const record = normalizeDates(base);
+          const record = withKey(normalizeDates(base));
           const where = buildWhere(record);
           const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
           await model.upsert({ where, update: rest, create: record });
@@ -224,7 +248,7 @@ async function seedDefinitions() {
     let count = 0;
     for (const raw of records) {
       const base = transform ? transform(raw) : raw;
-      const record = normalizeDates(base);
+      const record = withKey(normalizeDates(base));
       const where = buildWhere(record);
       const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
       await model.upsert({ where, update: rest, create: record });
