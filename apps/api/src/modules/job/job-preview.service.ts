@@ -20,6 +20,8 @@ import {
   calculateTeamMP,
   calculateSuccessChance,
   calculateInjuryChance,
+  calculateEffectiveTeamSPD,
+  calculateSpdTimerMultiplier,
   durationSecondsToTicks,
   workshopTimerMultiplier,
   workshopParallelSlots,
@@ -138,6 +140,7 @@ export class JobPreviewService {
     let synergy: any = null;
     let successChance = 0;
     let injuryChance = 0;
+    let spdTimerMultiplier = 1;
     const difficulty: number = def.difficulty ?? 100;
 
     if (entities.length > 0) {
@@ -225,6 +228,9 @@ export class JobPreviewService {
       if (injuryRate > 0) {
         injuryChance = calculateInjuryChance(difficulty, missionPower, injuryRate) * 100;
       }
+
+      const effectiveSPD = calculateEffectiveTeamSPD(teamForMP);
+      spdTimerMultiplier = calculateSpdTimerMultiplier(effectiveSPD);
     }
 
     return {
@@ -242,6 +248,7 @@ export class JobPreviewService {
         successChance: Math.round(successChance),
         injuryChance: Math.round(injuryChance),
         synergy,
+        spdTimerMultiplier,
       },
     };
   }

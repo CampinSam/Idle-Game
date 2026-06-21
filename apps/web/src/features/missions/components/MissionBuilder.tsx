@@ -119,6 +119,9 @@ export function MissionBuilder(props: MissionBuilderProps) {
 
   const previewRequirements = preview?.requirements ?? [];
 
+  const spdTimerMultiplier = preview?.mission?.spdTimerMultiplier ?? 1;
+  const spdBonusPct = spdTimerMultiplier < 1 ? Math.round((1 - spdTimerMultiplier) * 100) : 0;
+
   const handleAutoAssign = () => {
     const auto = idleEntities.slice(0, teamMax).map((e: any) => e.id);
     setSelectedEntities(auto);
@@ -179,11 +182,12 @@ export function MissionBuilder(props: MissionBuilderProps) {
     rewards: (preview as any)?.rewards ?? [],
     hasLeadIn,
     openLeadIn,
+    spdBonusPct,
   }), [
     rawActiveDef, currentCat, missionCategoryDefs, onBack, missionPower, difficulty,
     successChance, injuryChance, injuryRate, powerRatio, liveSynergy, previewLoading,
     preview, previewRequirements, missionCost, entities, selectedEntities, teamMax,
-    hasLeadIn, openLeadIn,
+    hasLeadIn, openLeadIn, spdBonusPct,
   ]);
 
   if (!rawActiveDef || !currentCat) {
@@ -194,7 +198,10 @@ export function MissionBuilder(props: MissionBuilderProps) {
     );
   }
 
-  const missionDuration = rawActiveDef?.timer?.duration ?? 0;
+  const rawMissionDuration = rawActiveDef?.timer?.duration ?? 0;
+  const missionDuration = spdTimerMultiplier < 1
+    ? Math.max(1, Math.round(rawMissionDuration * spdTimerMultiplier))
+    : rawMissionDuration;
   const diffInfo = getDifficultyDisplay(difficulty);
 
   return (
@@ -225,8 +232,11 @@ export function MissionBuilder(props: MissionBuilderProps) {
           <div className="flex items-center gap-1 flex-wrap pl-0.5">
             <Badge tone="info" className="!border-[rgba(168,85,247,0.4)] !bg-[rgba(168,85,247,0.3)] !text-[#C084FC] !text-[9px]">{diffInfo.tier}</Badge>
             <Badge tone="neutral" className="!border-transparent !text-white !text-[9px]" style={{ background: diffInfo.color }}>{diffInfo.label}</Badge>
-            {missionDuration > 0 && (
+            {rawMissionDuration > 0 && (
               <Badge tone="neutral" className="!bg-[rgba(0,0,0,0.35)] !text-white/80 !border-white/10 !text-[9px]">⏱ {formatDuration(missionDuration)}</Badge>
+            )}
+            {spdBonusPct > 0 && (
+              <Badge tone="success" className="!bg-[rgba(52,211,153,0.15)] !border-[rgba(52,211,153,0.35)] !text-[#34d399] !text-[9px]">⚡ Speed -{spdBonusPct}%</Badge>
             )}
           </div>
         </div>

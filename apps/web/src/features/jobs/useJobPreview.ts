@@ -15,6 +15,7 @@ export interface MissionPreviewData {
   difficulty: number;
   successChance: number;
   injuryChance: number;
+  spdTimerMultiplier: number;
   synergy: {
     synergyScore: number;
     missionPowerBonus: number;
