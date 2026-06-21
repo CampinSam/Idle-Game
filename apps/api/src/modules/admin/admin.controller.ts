@@ -704,6 +704,23 @@ export class AdminController {
     return result;
   }
 
+  /**
+   * GET /admin/audit/def-blob-uuids
+   *
+   * Read-only scan of all JSON blob fields covered by the def-blob-uuids backfill.
+   * Reports every non-UUID key / bundleDefId / giftDefId that remains in the DB.
+   *
+   * Response shape:
+   *   findings[]         — full list of stragglers with model, recordId, fieldPath, value
+   *   summary            — per-model counts { total, clean, hasFinding }
+   *   totalFindings      — integer count
+   *   safeToRemoveFallback — true when totalFindings === 0 (fallback lookup can be dropped)
+   */
+  @Get('audit/def-blob-uuids')
+  async auditDefBlobUuids() {
+    return this.adminService.auditDefBlobUuids();
+  }
+
   @Post('backfill/production-rates')
   async backfillProductionRates(@Req() req: any) {
     const locations = await (this.prisma as any).locationInstance.findMany({

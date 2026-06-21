@@ -72,6 +72,24 @@ const PROP_FIELD_TO_MODEL: Record<string, string> = {
 export const KNOWN_DEF_PROP_FIELDS = new Set(Object.keys(PROP_FIELD_TO_MODEL));
 
 // ---------------------------------------------------------------------------
+// Audit types
+// ---------------------------------------------------------------------------
+
+/**
+ * A single non-UUID ref found during a read-only audit pass.
+ * model    — Prisma model name (e.g. "lootboxDef")
+ * recordId — UUID primary key of the owning record
+ * fieldPath — dot/bracket path to the offending value (e.g. "outcomes[2].key")
+ * value    — the raw non-UUID string that was not resolved during the backfill
+ */
+export type AuditFinding = {
+  model: string;
+  recordId: string;
+  fieldPath: string;
+  value: string;
+};
+
+// ---------------------------------------------------------------------------
 // Outcome-spec UUID resolver
 // ---------------------------------------------------------------------------
 
@@ -349,4 +367,148 @@ export async function resolveScreenSectionProps(
   }
 
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Read-only audit walkers — same shape coverage as the resolvers above,
+// but synchronous and non-mutating. Collect AuditFinding entries for any
+// non-UUID key / bundleDefId / giftDefId values found in JSON blobs.
+// ---------------------------------------------------------------------------
+
+/**
+ * Walk a single outcome-spec entry and append any non-UUID def refs to `out`.
+ */
+function auditOutcomeEntry(
+  record: { model: string; id: string },
+  entry: unknown,
+  fieldPath: string,
+  out: AuditFinding[],
+): void {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return;
+  const e = entry as any;
+
+  // Recurse into inline bundle arrays first
+  if (Array.isArray(e.bundle)) {
+    e.bundle.forEach((item: unknown, idx: number) =>
+      auditOutcomeEntry(record, item, `${fieldPath}.bundle[${idx}]`, out),
+    );
+  }
+
+  const type: string = typeof e.type === 'string' ? e.type : '';
+
+  // item / currency key
+  if (
+    (type === 'item' || type === 'currency') &&
+    typeof e.key === 'string' && e.key &&
+    !UUID_RE.test(e.key)
+  ) {
+    out.push({ model: record.model, recordId: record.id, fieldPath: `${fieldPath}.key`, value: e.key });
+  }
+
+  // bundle_ref bundleDefId
+  if (
+    type === 'bundle_ref' &&
+    typeof e.bundleDefId === 'string' && e.bundleDefId &&
+    !UUID_RE.test(e.bundleDefId)
+  ) {
+    out.push({ model: record.model, recordId: record.id, fieldPath: `${fieldPath}.bundleDefId`, value: e.bundleDefId });
+  }
+
+  // emitEvent payload.gift.giftDefId
+  if (
+    type === 'emitEvent' &&
+    e.payload?.gift &&
+    typeof e.payload.gift.giftDefId === 'string' && e.payload.gift.giftDefId &&
+    !UUID_RE.test(e.payload.gift.giftDefId)
+  ) {
+    out.push({
+      model: record.model,
+      recordId: record.id,
+      fieldPath: `${fieldPath}.payload.gift.giftDefId`,
+      value: e.payload.gift.giftDefId,
+    });
+  }
+}
+
+/**
+ * Walk an array of outcome-spec entries and append findings for non-UUID refs.
+ */
+export function auditOutcomeArray(
+  record: { model: string; id: string },
+  items: unknown[],
+  fieldPath: string,
+  out: AuditFinding[],
+): void {
+  items.forEach((item, idx) =>
+    auditOutcomeEntry(record, item, `${fieldPath}[${idx}]`, out),
+  );
+}
+
+/**
+ * Walk a tiered object `{ [tierKey]: { rewards: [] } }` and collect findings.
+ */
+export function auditTieredObject(
+  record: { model: string; id: string },
+  tiered: Record<string, unknown>,
+  fieldPath: string,
+  out: AuditFinding[],
+): void {
+  for (const [tierKey, tier] of Object.entries(tiered)) {
+    if (tier && typeof tier === 'object' && !Array.isArray(tier) && Array.isArray((tier as any).rewards)) {
+      auditOutcomeArray(record, (tier as any).rewards, `${fieldPath}.${tierKey}.rewards`, out);
+    }
+  }
+}
+
+/**
+ * Walk a phases array and collect findings from tiers and success/failure blocks.
+ */
+export function auditPhasesArray(
+  record: { model: string; id: string },
+  phases: unknown[],
+  fieldPath: string,
+  out: AuditFinding[],
+): void {
+  phases.forEach((phase, idx) => {
+    if (!phase || typeof phase !== 'object' || Array.isArray(phase)) return;
+    const p = phase as any;
+    const pPath = `${fieldPath}[${idx}]`;
+
+    if (p.tiers && typeof p.tiers === 'object' && !Array.isArray(p.tiers)) {
+      auditTieredObject(record, p.tiers, `${pPath}.tiers`, out);
+    }
+
+    for (const subKey of ['success', 'failure'] as const) {
+      if (p[subKey] && typeof p[subKey] === 'object' && Array.isArray(p[subKey].rewards)) {
+        auditOutcomeArray(record, p[subKey].rewards, `${pPath}.${subKey}.rewards`, out);
+      }
+    }
+  });
+}
+
+/**
+ * Walk a checkInDef rewards array `[{ gift: { giftDefId } }]` and collect findings.
+ */
+export function auditCheckInRewards(
+  record: { model: string; id: string },
+  rewards: unknown[],
+  fieldPath: string,
+  out: AuditFinding[],
+): void {
+  rewards.forEach((day, idx) => {
+    if (!day || typeof day !== 'object' || Array.isArray(day)) return;
+    const d = day as any;
+    if (
+      d.gift &&
+      typeof d.gift.giftDefId === 'string' && d.gift.giftDefId &&
+      !UUID_RE.test(d.gift.giftDefId)
+    ) {
+      out.push({
+        model: record.model,
+        recordId: record.id,
+        fieldPath: `${fieldPath}[${idx}].gift.giftDefId`,
+        value: d.gift.giftDefId,
+      });
+    }
+  });
 }

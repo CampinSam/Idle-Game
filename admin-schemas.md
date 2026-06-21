@@ -2306,6 +2306,67 @@ Within each outcome entry:
 }
 ```
 
+---
+
+### `GET /api/admin/audit/def-blob-uuids`
+
+Read-only verification pass over the same models and fields as the backfill above. Reports every non-UUID `key`, `bundleDefId`, or `giftDefId` that remains in the database so you can identify stragglers and decide whether the `OR:[id, key]` fallback lookup in `game-rules.service.ts` can be safely removed.
+
+**Auth:** Admin  
+**Method:** GET (no side effects, safe to run at any time)
+
+**What it scans:**
+
+Same models and field paths as `POST backfill/def-blob-uuids` — see table above.
+
+**Response:**
+
+```json
+{
+  "totalFindings": 2,
+  "safeToRemoveFallback": false,
+  "summary": {
+    "missionDef": { "total": 12, "clean": 11, "hasFinding": 1 },
+    "lootboxDef": { "total": 5,  "clean": 4,  "hasFinding": 1 },
+    "bundleDef":  { "total": 8,  "clean": 8,  "hasFinding": 0 },
+    "giftDef":    { "total": 10, "clean": 10, "hasFinding": 0 },
+    "questDef":   { "total": 4,  "clean": 4,  "hasFinding": 0 },
+    "recipeDef":  { "total": 6,  "clean": 6,  "hasFinding": 0 },
+    "checkInDef": { "total": 2,  "clean": 2,  "hasFinding": 0 }
+  },
+  "findings": [
+    {
+      "model": "missionDef",
+      "recordId": "550e8400-e29b-41d4-a716-446655440000",
+      "fieldPath": "tiers.tier1.rewards[0].key",
+      "value": "gold_coin"
+    },
+    {
+      "model": "lootboxDef",
+      "recordId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "fieldPath": "outcomes[2].bundleDefId",
+      "value": "starter_bundle"
+    }
+  ]
+}
+```
+
+**Fields:**
+
+| Field | Description |
+|---|---|
+| `totalFindings` | Total count of non-UUID refs found across all models |
+| `safeToRemoveFallback` | `true` when `totalFindings === 0` — the OR:[id, key] fallback in game-rules.service.ts can be dropped |
+| `summary` | Per-model counts: `total` rows inspected, `clean` rows with all-UUID refs, `hasFinding` rows with at least one straggler |
+| `findings[]` | Full list of stragglers. Each entry: `model`, `recordId` (UUID PK), `fieldPath` (dot/bracket path), `value` (the raw non-UUID string) |
+
+**Operational workflow:**
+
+1. Run `POST /admin/backfill/def-blob-uuids` to migrate known refs.
+2. Run `GET /admin/audit/def-blob-uuids` to verify.
+3. If `safeToRemoveFallback: true` → the OR fallback in `game-rules.service.ts` can be deleted.
+4. If findings remain → inspect each `recordId` + `fieldPath`, fix manually or re-run the backfill after confirming the referenced definition exists.
+
 | Field | Description |
 |---|---|
 | `totalUpdated` | Total rows written across all models |

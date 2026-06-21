@@ -34,6 +34,11 @@ import {
   resolveTieredObjectUuids,
   resolvePhasesArrayUuids,
   resolveCheckInRewardsUuids,
+  auditOutcomeArray,
+  auditTieredObject,
+  auditPhasesArray,
+  auditCheckInRewards,
+  type AuditFinding,
 } from '../../utils/resolve-def-id.util';
 import {
   PatchBuilder,
@@ -2067,6 +2072,158 @@ export class AdminService {
     const totalUpdated = Object.values(models).reduce((sum, m) => sum + m.updated, 0);
     this.logger.log(`backfillDefBlobUuids complete: totalUpdated=${totalUpdated}`);
     return { models, totalUpdated };
+  }
+
+  /**
+   * Read-only audit: scans the same models and fields as backfillDefBlobUuids and
+   * reports any non-UUID key / bundleDefId / giftDefId references that the backfill
+   * did not (or could not) resolve. Use this after running the backfill to confirm
+   * it is safe to drop the OR:[id, key] fallback from outcome resolvers.
+   */
+  async auditDefBlobUuids(): Promise<{
+    findings: AuditFinding[];
+    summary: Record<string, { total: number; clean: number; hasFinding: number }>;
+    totalFindings: number;
+    safeToRemoveFallback: boolean;
+  }> {
+    const findings: AuditFinding[] = [];
+    type ModelSummary = { total: number; clean: number; hasFinding: number };
+    const summary: Record<string, ModelSummary> = {};
+
+    const track = (modelName: string, recordId: string, before: number): void => {
+      const s = summary[modelName] ??= { total: 0, clean: 0, hasFinding: 0 };
+      s.total++;
+      if (findings.length > before) s.hasFinding++;
+      else s.clean++;
+    };
+
+    // ── missionDef ───────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).missionDef.findMany({
+        select: { id: true, tiers: true, cost: true, phases: true },
+      });
+      for (const row of rows) {
+        const before = findings.length;
+        const rec = { model: 'missionDef', id: row.id };
+
+        if (row.tiers && typeof row.tiers === 'object' && !Array.isArray(row.tiers)) {
+          auditTieredObject(rec, row.tiers, 'tiers', findings);
+        }
+        if (Array.isArray(row.cost)) {
+          auditOutcomeArray(rec, row.cost, 'cost', findings);
+        }
+        if (Array.isArray(row.phases)) {
+          auditPhasesArray(rec, row.phases, 'phases', findings);
+        }
+        track('missionDef', row.id, before);
+      }
+    }
+
+    // ── lootboxDef ───────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).lootboxDef.findMany({
+        select: { id: true, outcomes: true },
+      });
+      for (const row of rows) {
+        const before = findings.length;
+        const rec = { model: 'lootboxDef', id: row.id };
+        if (Array.isArray(row.outcomes)) {
+          auditOutcomeArray(rec, row.outcomes, 'outcomes', findings);
+        }
+        track('lootboxDef', row.id, before);
+      }
+    }
+
+    // ── bundleDef ────────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).bundleDef.findMany({
+        select: { id: true, bundle: true },
+      });
+      for (const row of rows) {
+        const before = findings.length;
+        const rec = { model: 'bundleDef', id: row.id };
+        if (Array.isArray(row.bundle)) {
+          auditOutcomeArray(rec, row.bundle, 'bundle', findings);
+        }
+        track('bundleDef', row.id, before);
+      }
+    }
+
+    // ── giftDef ──────────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).giftDef.findMany({
+        select: { id: true, rewardSpec: true },
+      });
+      for (const row of rows) {
+        const before = findings.length;
+        const rec = { model: 'giftDef', id: row.id };
+        if (Array.isArray(row.rewardSpec)) {
+          auditOutcomeArray(rec, row.rewardSpec, 'rewardSpec', findings);
+        }
+        track('giftDef', row.id, before);
+      }
+    }
+
+    // ── questDef ─────────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).questDef.findMany({
+        select: { id: true, rewardSpec: true },
+      });
+      for (const row of rows) {
+        const before = findings.length;
+        const rec = { model: 'questDef', id: row.id };
+        const spec = row.rewardSpec;
+        if (Array.isArray(spec)) {
+          auditOutcomeArray(rec, spec, 'rewardSpec', findings);
+        } else if (spec && typeof spec === 'object' && Array.isArray(spec.rewards)) {
+          auditOutcomeArray(rec, spec.rewards, 'rewardSpec.rewards', findings);
+        }
+        track('questDef', row.id, before);
+      }
+    }
+
+    // ── recipeDef ────────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).recipeDef.findMany({
+        select: { id: true, tiers: true },
+      });
+      for (const row of rows) {
+        const before = findings.length;
+        const rec = { model: 'recipeDef', id: row.id };
+        if (row.tiers && typeof row.tiers === 'object' && !Array.isArray(row.tiers)) {
+          auditTieredObject(rec, row.tiers, 'tiers', findings);
+        }
+        track('recipeDef', row.id, before);
+      }
+    }
+
+    // ── checkInDef ───────────────────────────────────────────────────────────
+    {
+      const rows = await (this.prisma as any).checkInDef.findMany({
+        select: { id: true, rewards: true },
+      });
+      for (const row of rows) {
+        const before = findings.length;
+        const rec = { model: 'checkInDef', id: row.id };
+        if (Array.isArray(row.rewards)) {
+          auditCheckInRewards(rec, row.rewards, 'rewards', findings);
+        }
+        track('checkInDef', row.id, before);
+      }
+    }
+
+    const totalFindings = findings.length;
+    this.logger.log(`auditDefBlobUuids complete: totalFindings=${totalFindings}`);
+    if (totalFindings > 0) {
+      this.logger.warn(
+        `auditDefBlobUuids: ${totalFindings} non-UUID ref(s) remain — run POST /admin/backfill/def-blob-uuids again or fix manually`,
+      );
+      for (const f of findings) {
+        this.logger.warn(`  [${f.model}] id=${f.recordId} path=${f.fieldPath} value="${f.value}"`);
+      }
+    }
+
+    return { findings, summary, totalFindings, safeToRemoveFallback: totalFindings === 0 };
   }
 
   async getAdminGemPack(packId: string): Promise<any> {
