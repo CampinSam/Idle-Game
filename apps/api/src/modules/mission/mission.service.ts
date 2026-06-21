@@ -21,7 +21,7 @@ import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, emptyResolvedModifier, type TraitPrimitive } from '@derp/shared';
-import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks, rollQualityFromCl, QUALITY_TIERS } from '@derp/math';
+import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, calculateEffectiveTeamSPD, calculateSpdTimerMultiplier, SeededRng, durationSecondsToTicks, rollQualityFromCl, QUALITY_TIERS } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
@@ -437,6 +437,14 @@ export class MissionService {
       }
     }
 
+    // Apply SPD timer reduction — fast outliers shorten the mission via Pythagorean aggregation.
+    // Only entities with SPD > μ + σ of the team distribution contribute; when σ = 0 none qualify.
+    const effectiveSPD = calculateEffectiveTeamSPD(team);
+    const spdTimerMultiplier = calculateSpdTimerMultiplier(effectiveSPD);
+    if (spdTimerMultiplier < 1) {
+      durationTicks = Math.max(1, Math.floor(durationTicks * spdTimerMultiplier));
+    }
+
     const seed = randomUUID();
 
     const job = await (db as any).job.create({
@@ -451,6 +459,7 @@ export class MissionService {
           difficulty: dbDef.difficulty,
           seed,
           synergy: synergySnapshot,
+          spdTimerMultiplier,
           ...(isMultiPhase ? { isMultiPhase: true } : {}),
         },
         readyAtTick: Math.floor(currentTick) + durationTicks,
@@ -1349,7 +1358,15 @@ export class MissionService {
     const timer = def?.timer as any;
     const boostable = timer?.boostable ?? true;
     const rawDuration = typeof nextPhase.duration === 'number' ? nextPhase.duration : (timer?.duration ?? 0);
-    const durationTicks = boostable ? durationSecondsToTicks(rawDuration) : rawDuration;
+    let durationTicks = boostable ? durationSecondsToTicks(rawDuration) : rawDuration;
+
+    // Reuse the SPD timer multiplier captured at mission start so phase timers
+    // are consistent without re-fetching entity stats. Default to 1.0 for jobs
+    // started before this mechanic was introduced.
+    const spdTimerMultiplier: number = (job.data as any)?.spdTimerMultiplier ?? 1.0;
+    if (spdTimerMultiplier < 1) {
+      durationTicks = Math.max(1, Math.floor(durationTicks * spdTimerMultiplier));
+    }
 
     const accumulated: any = (job.accumulatedState as any) ?? {};
     // Consume session-effect charges for the upcoming phase attempt (attempt start)
