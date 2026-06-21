@@ -90,6 +90,11 @@ This document is the single reference for everyone who authors or edits game con
 - [TagDef](#tagdef) — content classification tag
 - [GameConstant](#gameconstant) — server-side tuning constant
 
+### Worked Examples
+- [Example 1 — Multi-Phase Expedition Mission with Tiered Rewards](#example-1--multi-phase-expedition-mission-with-tiered-rewards)
+- [Example 2 — Consumable Item that Applies an XP Boost](#example-2--consumable-item-that-applies-an-xp-boost)
+- [Example 3 — 7-Day Check-In Track with Inline Gifts](#example-3--7-day-check-in-track-with-inline-gifts)
+
 ---
 
 ## EntityDefinition
@@ -1803,3 +1808,554 @@ GameConstant rows are **server-side tuning knobs** — named numbers or strings 
 ---
 
 *This guide covers all game definition types as of the current codebase. Cross-references link to the relevant sections. For UI block vocabulary (modal body blocks, screen composition blocks), see `render-blocks.md`.*
+
+---
+
+## Worked Examples
+
+The following end-to-end examples show how multiple definition types fit together for common content scenarios. Each example lists every definition you need to create or edit, explains why each field is set the way it is, and calls out the cross-references that wire things together.
+
+---
+
+## Example 1 — Multi-Phase Expedition Mission with Tiered Rewards
+
+**Scenario:** A three-phase expedition called "Ruins of Vaelthorn" where teams push deeper into a dungeon. Each phase is progressively harder. Rewards scale with the team's Mission Power, using the Gaussian tier system. Players can choose to press on or retreat after each phase.
+
+### What you will create
+
+| # | Definition type | ID |
+|---|----------------|----|
+| 1 | `MissionDef` | `expedition_vaelthorn` |
+| 2 | `ModalDef` (lead-in) | `modal_vaelthorn_intro` |
+| 3 | `ModalDef` (phase decision) | `modal_vaelthorn_phase_decision` |
+| 4 | `BundleDef` (consolation loot) | `bundle_vaelthorn_consolation` |
+
+---
+
+### Step 1 — Create the consolation BundleDef
+
+Any team that is force-abandoned after too many failures gets this small consolation prize. Defining it as a reusable `BundleDef` lets you reference it from the mission's `failure` block without duplicating the entry list.
+
+**Admin table:** `bundleDef`
+
+```json
+{
+  "id": "bundle_vaelthorn_consolation",
+  "name": "Vaelthorn Consolation Loot",
+  "bundle": [
+    { "type": "currency", "key": "soft_arcanium", "min": 50, "max": 100 },
+    { "type": "entity_xp", "min": 200, "max": 400 },
+    { "type": "keeper_xp", "min": 100, "max": 100 }
+  ]
+}
+```
+
+**Why:** `soft_arcanium` is your SOFT currency. `entity_xp` is split across all entities on the team; `keeper_xp` goes to the player account. Both are included because even failed runs should feel rewarding to some extent.
+
+---
+
+### Step 2 — Create the lead-in ModalDef
+
+This modal opens once per session when the player taps the mission card, before they select a team. It sets the narrative scene.
+
+**Admin table:** `modalDef`
+
+```json
+{
+  "id": "modal_vaelthorn_intro",
+  "name": "Vaelthorn — Intro Narrative",
+  "spec": {
+    "version": 1,
+    "id": "modal_vaelthorn_intro",
+    "kind": "narrative",
+    "dismiss": { "backdrop": true, "x": true, "escape": true },
+    "header": {
+      "title": "Ruins of Vaelthorn",
+      "subtitle": "A darkness stirs beneath the stone."
+    },
+    "buttons": [
+      { "id": "btn_close", "label": "Understood", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+    ],
+    "pages": [
+      {
+        "body": [
+          {
+            "type": "richText",
+            "doc": [
+              { "t": "p", "c": [{ "t": "text", "v": "Ancient catacombs stretch for miles beneath Vaelthorn Keep. Three teams have entered. None returned. Your scouts believe the source of corruption lies in the deepest chamber — but to reach it you must first break through the outer ward, traverse the flooded halls, and face whatever guards the inner sanctum." }] }
+            ]
+          },
+          {
+            "type": "richText",
+            "doc": [
+              { "t": "p", "c": [{ "t": "strong", "c": [{ "t": "text", "v": "This is a multi-phase expedition." }] }, { "t": "text", "v": " After each phase completes you may choose to press deeper or withdraw with what you've earned." }] }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Why:** `kind: "narrative"` is informational — it has no mechanical effect, but it helps admin editors identify modal purpose at a glance. `dismiss.backdrop: true` lets casual players skip past it immediately.
+
+---
+
+### Step 3 — Create the phase-decision ModalDef
+
+This modal opens at each `phase_ready` decision point — after a phase completes successfully and `continueRules.onSuccess` is `"wait"`. The player sees their partial rewards so far and chooses to continue or withdraw.
+
+**Admin table:** `modalDef`
+
+```json
+{
+  "id": "modal_vaelthorn_phase_decision",
+  "name": "Vaelthorn — Phase Decision",
+  "spec": {
+    "version": 1,
+    "id": "modal_vaelthorn_phase_decision",
+    "kind": "mission_phase_decision",
+    "dismiss": { "backdrop": false, "x": false, "escape": false },
+    "header": {
+      "title": "Phase Complete",
+      "subtitle": "Press deeper, or withdraw?"
+    },
+    "buttons": [
+      {
+        "id": "btn_continue",
+        "label": "Press Deeper",
+        "variant": "primary",
+        "action": { "type": "EXECUTE_COMMAND", "command": "ContinueMission", "payload": { "jobId": "${job.id}" } }
+      },
+      {
+        "id": "btn_abandon",
+        "label": "Withdraw",
+        "variant": "secondary",
+        "action": {
+          "type": "EXECUTE_COMMAND",
+          "command": "AbandonMission",
+          "payload": { "jobId": "${job.id}" }
+        },
+        "requiresConfirm": {
+          "title": "Withdraw from Vaelthorn?",
+          "body": [{ "t": "p", "c": [{ "t": "text", "v": "You will collect rewards earned so far, but cannot return to this run." }] }],
+          "confirmLabel": "Yes, Withdraw",
+          "cancelLabel": "Stay"
+        }
+      }
+    ],
+    "pages": [
+      {
+        "body": [
+          {
+            "type": "richText",
+            "doc": [{ "t": "p", "c": [{ "t": "text", "v": "Your team has cleared this phase. The next is more dangerous." }] }]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Why:** `dismiss` is entirely locked (`false` on all three flags) because we must force the player to make an explicit choice — an accidental close would leave the job stuck in `phase_ready`. The "Withdraw" button uses `requiresConfirm` as an additional safety net against fat-finger abandons.
+
+---
+
+### Step 4 — Create the MissionDef
+
+**Admin table:** `missionDef`
+
+```json
+{
+  "id": "expedition_vaelthorn",
+  "name": "Ruins of Vaelthorn",
+  "description": "A three-phase expedition into the cursed catacombs beneath Vaelthorn Keep. Deeper phases reward greater loot — but injuries accumulate.",
+  "missionType": "expedition",
+  "regionId": "region_darklands",
+  "difficulty": 80,
+  "minSuccessChance": 10,
+  "duration": 3600,
+  "teamMin": 2,
+  "teamMax": 4,
+  "mode": "multi_phase",
+  "rewardsMode": "per_phase",
+  "maxFailures": 2,
+  "leadInModalDefId": "modal_vaelthorn_intro",
+  "phaseDecisionModalDefId": "modal_vaelthorn_phase_decision",
+  "failure": {
+    "rewards": [
+      { "type": "bundle_ref", "bundleDefId": "bundle_vaelthorn_consolation" }
+    ]
+  },
+  "phases": [
+    {
+      "name": "Outer Ward",
+      "description": "Break through the crumbling outer fortifications.",
+      "duration": 1800,
+      "difficulty": 50,
+      "injuryRate": 0.10,
+      "injuryPenalty": 0.9,
+      "count": 1,
+      "tiers": {
+        "sigma": 25,
+        "common":   { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 80,  "max": 120 }, { "type": "entity_xp", "min": 300, "max": 500 }] },
+        "uncommon": { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 120, "max": 180 }, { "type": "entity_xp", "min": 500, "max": 700 }] },
+        "rare":     { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 200, "max": 280 }, { "type": "item",      "key": "mat_dungeon_stone", "min": 1, "max": 2 }, { "type": "entity_xp", "min": 700, "max": 900 }] },
+        "epic":     { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 300, "max": 400 }, { "type": "item",      "key": "mat_dungeon_stone", "min": 2, "max": 4 }, { "type": "entity_xp", "min": 900, "max": 1200 }] },
+        "failure":  { "rewards": [{ "type": "bundle_ref", "bundleDefId": "bundle_vaelthorn_consolation" }] }
+      },
+      "continueRules": {
+        "onSuccess": "wait",
+        "onFailure": "next_phase"
+      }
+    },
+    {
+      "name": "Flooded Halls",
+      "description": "Wade through the submerged lower passages. Injuries are more likely here.",
+      "duration": 2700,
+      "difficulty": 80,
+      "injuryRate": 0.25,
+      "injuryPenalty": 0.75,
+      "count": 1,
+      "tiers": {
+        "sigma": 22,
+        "uncommon": { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 150, "max": 250 }, { "type": "entity_xp", "min": 600,  "max": 900 }] },
+        "rare":     { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 280, "max": 380 }, { "type": "item",      "key": "mat_deep_crystal", "min": 1, "max": 2 }, { "type": "entity_xp", "min": 900,  "max": 1300 }] },
+        "epic":     { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 400, "max": 550 }, { "type": "item",      "key": "mat_deep_crystal", "min": 2, "max": 3 }, { "type": "entity_xp", "min": 1300, "max": 1700 }] },
+        "mythic":   { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 600, "max": 800 }, { "type": "item",      "key": "mat_deep_crystal", "min": 3, "max": 5 }, { "type": "entity_xp", "min": 1700, "max": 2200 }] },
+        "failure":  { "rewards": [{ "type": "bundle_ref", "bundleDefId": "bundle_vaelthorn_consolation" }] }
+      },
+      "continueRules": {
+        "onSuccess": "wait",
+        "onFailure": "next_phase"
+      }
+    },
+    {
+      "name": "Inner Sanctum",
+      "description": "Face the corruption at its source. Only the strongest teams survive.",
+      "duration": 3600,
+      "difficulty": 130,
+      "injuryRate": 0.40,
+      "injuryPenalty": 0.60,
+      "count": 1,
+      "tiers": {
+        "sigma": 20,
+        "rare":      { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 500,  "max": 700  }, { "type": "item", "key": "mat_vaelthorn_essence", "min": 1, "max": 1 }, { "type": "entity_xp", "min": 2000, "max": 2500 }] },
+        "epic":      { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 800,  "max": 1000 }, { "type": "item", "key": "mat_vaelthorn_essence", "min": 1, "max": 2 }, { "type": "entity_xp", "min": 2500, "max": 3200 }] },
+        "mythic":    { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 1200, "max": 1600 }, { "type": "item", "key": "mat_vaelthorn_essence", "min": 2, "max": 3 }, { "type": "entity_xp", "min": 3200, "max": 4000 }] },
+        "legendary": { "rewards": [{ "type": "currency", "key": "soft_arcanium", "min": 2000, "max": 2500 }, { "type": "item", "key": "mat_vaelthorn_essence", "min": 3, "max": 5 }, { "type": "entity_xp", "min": 4000, "max": 5000 }, { "type": "keeper_xp", "min": 500, "max": 500 }] },
+        "failure":   { "rewards": [{ "type": "bundle_ref", "bundleDefId": "bundle_vaelthorn_consolation" }] }
+      },
+      "continueRules": {
+        "onSuccess": "complete",
+        "onFailure": "end_job"
+      }
+    }
+  ],
+  "tags": ["expedition", "dungeon", "darklands"],
+  "sortOrder": 10,
+  "enabled": true
+}
+```
+
+**Key decisions explained:**
+
+| Decision | Why |
+|----------|-----|
+| `rewardsMode: "per_phase"` | Each phase rolls its own `tiers`, so players who withdraw early still collect loot. A `"final_bundle"` run would give nothing to players who retreat. |
+| `maxFailures: 2` | Two phase failures force-abandon the expedition. This prevents teams from grinding indefinitely through cheap failures to reach phase 3. |
+| `continueRules.onSuccess: "wait"` on phases 1 & 2 | Opens the phase-decision modal so the player actively chooses to continue. Without `"wait"`, the game auto-advances immediately. |
+| `continueRules.onFailure: "next_phase"` on phases 1 & 2 | A phase failure still advances — the team limps forward. The `maxFailures` cap is what eventually ends the run. |
+| `continueRules.onSuccess: "complete"` and `onFailure: "end_job"` on phase 3 | Final phase: success completes the expedition; failure ends it immediately with no final bundle (consolation is handled inside the `failure` tier). |
+| `injuryRate` / `injuryPenalty` escalating per phase | Makes deeper phases genuinely risky. A high-VIT team will absorb more punishment; a low-VIT team feels the snowballing penalty. |
+| `sigma` tightening (25 → 22 → 20) | Inner phases are more decisive — the team's actual power level is a stronger predictor of outcome the deeper they go. |
+
+---
+
+## Example 2 — Consumable Item that Applies an XP Boost
+
+**Scenario:** A consumable called "Scholar's Elixir" that, when used on an entity, grants that entity a 50 % XP multiplier for the next 30 minutes.
+
+### What you will create
+
+| # | Definition type | ID |
+|---|----------------|----|
+| 1 | `EffectDef` | `effect_entity_xp_boost_50pct` |
+| 2 | `ItemDefinition` (consumable) | `consumable_scholars_elixir` |
+
+---
+
+### Step 1 — Create the EffectDef
+
+The EffectDef is the mechanical blueprint for the boost. The item will reference it by ID.
+
+**Admin table:** `effectDef`
+
+```json
+{
+  "id": "effect_entity_xp_boost_50pct",
+  "name": "Entity XP Boost +50%",
+  "description": "Multiplies XP earned by the target entity by 1.5x for a fixed duration. Applied by Scholar's Elixir.",
+  "category": "xp_multiplier",
+  "valueMode": "percent_add",
+  "durationModel": "timed",
+  "stackingRule": "refresh",
+  "targetType": "entity",
+  "value": 50,
+  "durationSec": 1800,
+  "iconKey": "effect_xp_star",
+  "enabled": true
+}
+```
+
+**Field-by-field reasoning:**
+
+| Field | Value | Why |
+|-------|-------|-----|
+| `category` | `xp_multiplier` | This affects entity XP only, not keeper XP or any other system. |
+| `valueMode` | `percent_add` | `percent_add` with `value: 50` means `base × (1 + 50/100)` = ×1.5. Using `multiplier` with `value: 1.5` would also work but `percent_add` is more intuitive for content creators to reason about ("+50%"). |
+| `durationModel` | `timed` | The boost is time-limited in real seconds. `durationSec: 1800` = 30 minutes. |
+| `stackingRule` | `refresh` | If the player uses a second elixir while one is active, the timer resets to 30 minutes rather than adding another stack. This prevents the boost from becoming permanent through repeated use. |
+| `targetType` | `entity` | The boost applies to the specific entity the player uses the item on, not to all entities or the player account. |
+
+---
+
+### Step 2 — Create the ItemDefinition
+
+**Admin table:** `itemDefinition`
+
+```json
+{
+  "id": "consumable_scholars_elixir",
+  "name": "Scholar's Elixir",
+  "description": "A shimmering draught said to sharpen the mind and accelerate growth. Grants the imbiber +50% XP for 30 minutes.",
+  "type": "CONSUMABLE",
+  "rarity": "uncommon",
+  "maxStack": 99,
+  "iconKey": "item_elixir_blue",
+  "consumableData": {
+    "effects": [
+      {
+        "effectDefId": "effect_entity_xp_boost_50pct",
+        "targetType": "entity"
+      }
+    ]
+  },
+  "dustingData": {
+    "tiers": {
+      "common": {
+        "rewards": [
+          { "type": "currency", "key": "soft_arcanium", "min": 10, "max": 20 }
+        ]
+      }
+    }
+  },
+  "enabled": true
+}
+```
+
+**Key decisions explained:**
+
+| Decision | Why |
+|----------|-----|
+| `type: "CONSUMABLE"` | Required for the `consumableData` block to be read by the engine. |
+| `effects[].targetType: "entity"` | Tells the UI to prompt the player to pick a specific entity before using the item. The value must match the `targetType` on the referenced `EffectDef`. |
+| No `effectOverrides` on the entry | The item uses the EffectDef's default values (50%, 30 min). If you wanted a premium version with 100% for 1 hour, you would add `"effectOverrides": { "value": 100, "durationSec": 3600 }` to the same entry instead of creating a second EffectDef. |
+| `maxStack: 99` | Consumables typically stack. Leaving this at `null` (unlimited) is also fine; `99` is a common cap that prevents inventory clutter. |
+| `dustingData` | Optional but recommended — gives players a recourse if they have too many. Yields a small currency return on breakdown. |
+
+#### Variant: extending to equipment passive
+
+If you later want a piece of gear that permanently applies a weaker version of the same bonus while equipped, add a `passiveEffects` block to the gear item. Unlike consumables, `passiveEffects` entries are **inline effect objects** — they do not reference an `EffectDef` row and do not create `ActiveEffect` records. They are resolved on the fly while the item is equipped.
+
+```json
+"passiveEffects": [
+  { "category": "xp_multiplier", "valueMode": "percent_add", "value": 20 }
+]
+```
+
+> **Note:** Passive equipment effects are always `until_removed` — they are active as long as the item is equipped and removed the moment it is unequipped. There is no `durationModel` or stacking configuration in `passiveEffects` entries.
+
+---
+
+## Example 3 — 7-Day Check-In Track with Inline Gifts
+
+**Scenario:** A rolling daily check-in track called "Arcane Attendance". Players earn escalating rewards over 7 consecutive login days, with a special bonus pack on the 7th claim. Missing any day resets progress back to day 0 (slot 0). After the full 7-day cycle is claimed the streak wraps and restarts from day 1.
+
+### What you will create
+
+| # | Definition type | ID |
+|---|----------------|----|
+| 1 | `GiftDef` (day-7 grand prize) | `gift_arcane_attendance_grand` |
+| 2 | `CheckInDef` | `checkin_arcane_attendance` |
+
+Days 1–6 use inline gifts (no database row needed). Day 7 uses a `GiftDef` row so the same grand prize can be referenced from future events without duplication.
+
+---
+
+### Step 1 — Create the day-7 GiftDef
+
+**Admin table:** `giftDef`
+
+```json
+{
+  "id": "gift_arcane_attendance_grand",
+  "name": "Arcane Attendance — Grand Prize",
+  "presentation": {
+    "title": "Full Attendance Bonus!",
+    "subtitle": "You checked in every day this week.",
+    "iconKey": "gift_chest_gold",
+    "accentColor": "#FFD700"
+  },
+  "claimRules": {
+    "expiresInSeconds": 172800
+  },
+  "rewardSpec": [
+    { "type": "currency", "key": "soft_arcanium", "min": 1000, "max": 1000 },
+    { "type": "item",     "key": "consumable_scholars_elixir", "min": 3, "max": 3 },
+    { "type": "keeper_xp", "min": 500, "max": 500 },
+    {
+      "bundle": [
+        { "type": "item", "key": "mat_vaelthorn_essence", "min": 1, "max": 1, "odds": 20 },
+        { "type": "nothing", "odds": 80 }
+      ],
+      "pickMin": 1,
+      "pickMax": 1
+    }
+  ],
+  "instant": true,
+  "enabled": true
+}
+```
+
+**Key decisions explained:**
+
+| Decision | Why |
+|----------|-----|
+| `claimRules.expiresInSeconds: 172800` | The grand prize expires 48 hours after it is issued. This prevents players from stockpiling unclaimed gifts across multiple weeks. |
+| `instant: true` | Rewards are applied immediately on claim rather than becoming a GIFT_PACKAGE item in inventory. Keeps the flow snappy for a daily reward. |
+| Inline pick-mode bundle for `mat_vaelthorn_essence` | A 20% chance of a rare material adds lottery excitement to the day-7 reward without guaranteeing it. Using an inline `bundle` array with `pickMin/pickMax` keeps it self-contained — no need for a separate `BundleDef` for a one-off use. |
+| `consumable_scholars_elixir` in the rewards | Referencing the item from Example 2 directly — a real-world cross-example dependency that mirrors how the content library grows over time. |
+
+---
+
+### Step 2 — Create the CheckInDef
+
+**Admin table:** `checkInDef`
+
+```json
+{
+  "id": "checkin_arcane_attendance",
+  "name": "Arcane Attendance",
+  "description": "7-day weekly streak track. Resets each Monday. Consecutive daily claims unlock escalating rewards with a grand prize on day 7.",
+  "enabled": true,
+  "frequency": { "type": "daily" },
+  "cycleLength": 7,
+  "requireStreak": true,
+  "allowReclaim": false,
+  "rewards": [
+    {
+      "day": 0,
+      "gift": {
+        "name": "Day 1 — Arcanium Stipend",
+        "presentation": { "title": "Day 1 Bonus", "iconKey": "gift_coin" },
+        "rewardSpec": [
+          { "type": "currency", "key": "soft_arcanium", "min": 100, "max": 100 }
+        ],
+        "instant": true
+      }
+    },
+    {
+      "day": 1,
+      "gift": {
+        "name": "Day 2 — Keeper XP",
+        "presentation": { "title": "Day 2 Bonus", "iconKey": "gift_scroll" },
+        "rewardSpec": [
+          { "type": "currency", "key": "soft_arcanium", "min": 150, "max": 150 },
+          { "type": "keeper_xp", "min": 100, "max": 100 }
+        ],
+        "instant": true
+      }
+    },
+    {
+      "day": 2,
+      "gift": {
+        "name": "Day 3 — Entity XP Surge",
+        "presentation": { "title": "Day 3 Bonus", "iconKey": "gift_orb" },
+        "rewardSpec": [
+          { "type": "currency", "key": "soft_arcanium", "min": 200, "max": 200 },
+          { "type": "entity_xp", "min": 300, "max": 500 }
+        ],
+        "instant": true
+      }
+    },
+    {
+      "day": 3,
+      "gift": {
+        "name": "Day 4 — Material Cache",
+        "presentation": { "title": "Day 4 Bonus", "iconKey": "gift_sack" },
+        "rewardSpec": [
+          { "type": "currency", "key": "soft_arcanium", "min": 250, "max": 250 },
+          { "type": "item", "key": "mat_dungeon_stone", "min": 2, "max": 4 }
+        ],
+        "instant": true
+      }
+    },
+    {
+      "day": 4,
+      "gift": {
+        "name": "Day 5 — Keeper & Entity Boost",
+        "presentation": { "title": "Day 5 Bonus", "iconKey": "gift_flask" },
+        "rewardSpec": [
+          { "type": "currency", "key": "soft_arcanium", "min": 300, "max": 300 },
+          { "type": "keeper_xp", "min": 200, "max": 200 },
+          { "type": "entity_xp", "min": 500, "max": 700 }
+        ],
+        "instant": true
+      }
+    },
+    {
+      "day": 5,
+      "gift": {
+        "name": "Day 6 — Scholar's Elixir",
+        "presentation": { "title": "Day 6 Bonus", "iconKey": "gift_elixir" },
+        "rewardSpec": [
+          { "type": "currency", "key": "soft_arcanium", "min": 350, "max": 350 },
+          { "type": "item", "key": "consumable_scholars_elixir", "min": 1, "max": 1 }
+        ],
+        "instant": true
+      }
+    },
+    {
+      "day": 6,
+      "gift": { "giftDefId": "gift_arcane_attendance_grand" }
+    }
+  ]
+}
+```
+
+**Key decisions explained:**
+
+| Decision | Why |
+|----------|-----|
+| `frequency.type: "daily"` | Each individual claim window resets at UTC midnight. The player must log in and claim on each of the 7 calendar days. |
+| `cycleLength: 7` | After 7 claims the streak wraps — day 8 starts back at day 0 (Day 1 reward). This is the loop for an ongoing weekly track. |
+| `requireStreak: true` | Missing a day resets the player to slot 0. This is the key mechanic that makes the track a "streak" rather than a free-roam collection. |
+| `allowReclaim: false` | After a streak break the player cannot double-claim day 0 on the same day they reset. They must wait for the next window. Set to `true` if you want to be more forgiving. |
+| Days 0–5 use inline gifts | These gifts are unique to this track and will not be reused elsewhere, so there is no benefit to creating `GiftDef` rows for them. Inline keeps everything in one place. |
+| Day 6 references `gift_arcane_attendance_grand` by ID | The grand prize is reused in seasonal events and future tracks, so it lives as a `GiftDef` row. The check-in slot just holds `{ "giftDefId": "..." }`. |
+| `day` indices are 0-based | `day: 0` = first claim, `day: 6` = seventh claim. Make sure the number of `rewards` entries equals `cycleLength`. The resolver uses `playerStreak % cycleLength` to pick the slot. |
+
+---
+
+### How the three examples connect
+
+The examples above are deliberately cross-referenced to mirror real production content authoring:
+
+- **Example 3** (the check-in track) rewards `consumable_scholars_elixir` on day 6 — the item created in **Example 2**.
+- **Example 3**'s day-7 `GiftDef` includes a chance at `mat_vaelthorn_essence` — the rare material dropped in **Example 1**'s inner-sanctum phase.
+- **Example 1**'s consolation bundle references `soft_arcanium` — the same currency used throughout both other examples.
+
+This is the normal shape of a game's content graph: items flow from hard content (expeditions) through player progression (level-ups, check-ins) into craft inputs (recipes). Build new content by first identifying where it fits in this graph, then creating definitions from the leaves inward (EffectDefs and BundleDefs first, then Items, then Missions or CheckInDefs that reference them).
