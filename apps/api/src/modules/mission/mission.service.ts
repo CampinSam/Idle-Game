@@ -1135,37 +1135,39 @@ export class MissionService {
       // Single-phase: roll for injuries on failure
       const injuryRate = (def.injuryRate as number | null) ?? 0;
       if (injuryRate > 0 && injuryRecoveryTicksBase > 0) {
-        const injuryChance = calculateInjuryChance(difficulty, teamMP, injuryRate);
-        if (injuryChance > 0) {
-          for (const entity of entities) {
-            if (rng.chance(injuryChance)) {
-              const vit = (entity.stats as any)?.VIT ?? 0;
-              let recoveryTicks = calculateInjuryRecoveryTicks(injuryRecoveryTicksBase, vit);
-              const entityTraits = (entity.traits as any) || {};
-              const injuryContext: EffectTargetContext = {
-                level: (entity.progression as any)?.level ?? undefined,
-                archetype: entity.speciesId ?? entity.definitionId ?? undefined,
-                rarity: entityTraits.rarity ?? undefined,
-                traits: Object.keys(entityTraits).filter((k) => k !== 'rarity'),
-              };
-              const injuryMod = await this.effectService.resolveForTarget(
-                userId, EffectTargetType.PLAYER, userId, EffectCategory.INJURY_RECOVERY_SPEED, db, injuryContext,
-              );
-              if (injuryMod.flatAdd !== 0 || injuryMod.percentAdd !== 0 || injuryMod.multiplier !== 1) {
-                recoveryTicks = Math.max(1, Math.floor(applyModifier(recoveryTicks, injuryMod)));
-              }
-              const untilTick = currentTick + recoveryTicks;
-              injuredEntityUntilTick.set(entity.id, untilTick);
-              const existing = entityResultsMap.get(entity.id);
-              if (existing) {
-                existing.injured = true;
-              } else {
-                entityResultsMap.set(entity.id, {
-                  id: entity.id,
-                  name: (entity as any).name || 'Entity',
-                  oldLevel: 0, newLevel: 0, xpGained: 0, leveledUp: false, injured: true,
-                });
-              }
+        for (let i = 0; i < entities.length; i++) {
+          const entity = entities[i];
+          // Use boosted stats for DEF mitigation (consistent with teamMP calculation)
+          const boostedEntityStats = teamForMP[i]?.stats ?? (entity.stats as any);
+          const def_stat: number = (boostedEntityStats as any)?.DEF ?? 0;
+          const injuryChance = calculateInjuryChance(difficulty, teamMP, injuryRate, def_stat);
+          if (injuryChance > 0 && rng.chance(injuryChance)) {
+            const vit = (entity.stats as any)?.VIT ?? 0;
+            let recoveryTicks = calculateInjuryRecoveryTicks(injuryRecoveryTicksBase, vit);
+            const entityTraits = (entity.traits as any) || {};
+            const injuryContext: EffectTargetContext = {
+              level: (entity.progression as any)?.level ?? undefined,
+              archetype: entity.speciesId ?? entity.definitionId ?? undefined,
+              rarity: entityTraits.rarity ?? undefined,
+              traits: Object.keys(entityTraits).filter((k) => k !== 'rarity'),
+            };
+            const injuryMod = await this.effectService.resolveForTarget(
+              userId, EffectTargetType.PLAYER, userId, EffectCategory.INJURY_RECOVERY_SPEED, db, injuryContext,
+            );
+            if (injuryMod.flatAdd !== 0 || injuryMod.percentAdd !== 0 || injuryMod.multiplier !== 1) {
+              recoveryTicks = Math.max(1, Math.floor(applyModifier(recoveryTicks, injuryMod)));
+            }
+            const untilTick = currentTick + recoveryTicks;
+            injuredEntityUntilTick.set(entity.id, untilTick);
+            const existing = entityResultsMap.get(entity.id);
+            if (existing) {
+              existing.injured = true;
+            } else {
+              entityResultsMap.set(entity.id, {
+                id: entity.id,
+                name: (entity as any).name || 'Entity',
+                oldLevel: 0, newLevel: 0, xpGained: 0, leveledUp: false, injured: true,
+              });
             }
           }
         }

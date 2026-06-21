@@ -31,17 +31,39 @@ export const calculateTeamMP = (entities: EntityForMP[]): number => {
 };
 
 /**
+ * DEF mitigation scale constant for per-entity injury chance.
+ * At DEF = DEF_INJURY_SCALE the base injury chance is halved.
+ * Higher values make DEF weaker; lower values make it stronger.
+ */
+export const DEF_INJURY_SCALE = 200;
+
+/**
  * Calculate the per-entity injury chance on mission failure.
- * Formula: D / (TMP + D) * IR
+ *
+ * Base formula:  D / (TMP + D) * IR
+ * DEF mitigation: mitigation = 1 - DEF / (DEF + DEF_INJURY_SCALE)
+ * Full formula:  (D / (TMP + D)) * IR * mitigation
+ *
+ * The mitigation uses an asymptotic curve identical to the VIT functions:
+ *   DEF =   0 → mitigation = 1.00 (no reduction)
+ *   DEF = 200 → mitigation = 0.50 (50 % reduction)
+ *   DEF = ∞   → mitigation → 0.00 (near-zero chance)
+ *
+ * `def` defaults to 0 so callers that do not pass it (e.g. preview endpoints)
+ * are unaffected and continue using the base formula.
+ *
  * Returns a float 0–1 for use with rng.chance().
  */
 export const calculateInjuryChance = (
   difficulty: number,
   totalTeamMP: number,
   injuryRate: number,
+  def: number = 0,
 ): number => {
   if (injuryRate <= 0 || totalTeamMP + difficulty <= 0) return 0;
-  return (difficulty / (totalTeamMP + difficulty)) * injuryRate;
+  const baseProbability = (difficulty / (totalTeamMP + difficulty)) * injuryRate;
+  const mitigation = 1 - def / (def + DEF_INJURY_SCALE);
+  return baseProbability * mitigation;
 };
 
 /**

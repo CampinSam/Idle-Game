@@ -549,18 +549,17 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
     // injury time, using the same curve as single-phase recovery: higher VIT → shorter, weaker injury.
     const injuryRate: number = phase.injuryRate ?? def.injuryRate ?? 0;
     if (!success && injuryRate > 0 && entities.length > 0) {
-      const injuryChance = calculateInjuryChance(difficulty, teamMP, injuryRate);
-      if (injuryChance > 0) {
-        for (const entity of entities) {
-          if (rng.chance(injuryChance)) {
-            const vit: number = (entity.stats as any)?.VIT ?? 0;
+      for (const entity of entities) {
+        const def_stat: number = (entity.stats as any)?.DEF ?? 0;
+        const injuryChance = calculateInjuryChance(difficulty, teamMP, injuryRate, def_stat);
+        if (injuryChance > 0 && rng.chance(injuryChance)) {
+          const vit: number = (entity.stats as any)?.VIT ?? 0;
             const penalty = computeInjuryPenaltyForEntity(phase, vit);
             const remainingPenaltyTicks = computeInitialPenaltyTicks(phase, def, vit);
             newAccumulated.injuries = [
               ...(newAccumulated.injuries ?? []),
               { entityId: entity.id, penalty, remainingPenaltyTicks },
             ];
-          }
         }
       }
     }
