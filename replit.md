@@ -63,6 +63,27 @@ A season-based idle strategy RPG offering strategic gameplay in a persistent wor
 - Always use the sever for data authority while the frontend simply displays data or does very minor calculations. All formulaic updates should only exist server side
 - Always remove legacy code instead of creating fallbacks. When you do this, make sure to implement proper error handling
 
+## Content Docs Sync Checklist
+
+`content-creator-guide.md` is the single reference for content authors. It must stay in sync with the codebase. When you make any of the changes below, update the guide **in the same commit**:
+
+| Change made | What to update in the guide |
+|-------------|----------------------------|
+| New definition type (new admin table) | Add a new `## <DefTypeName>` section documenting every field |
+| New field on an existing definition | Add a row to that definition's field table |
+| New enum value (EffectCategory, EffectValueMode, EffectDurationModel, EffectStackingRule, EffectTargetType, powerType, stackMode, etc.) | Add a row to the relevant enum table |
+| Renamed or removed field / enum value | Update or remove the corresponding row |
+| New modal action type | Add a row to the "Modal action types" table |
+| New RichSelection scope, operator, or aggregate | Add a row to the relevant table in the RichSelection section |
+
+After updating the guide, run the sync check script to catch any remaining gaps:
+
+```bash
+bash scripts/check-content-guide.sh
+```
+
+The script verifies that every enum value and definition type documented in `admin-schemas.md` appears in `content-creator-guide.md`. Exit code 0 = clean. Non-zero = divergences to fix.
+
 ## Frontend styling convention
 - **Tailwind-first:** New `apps/web` UI is built with Tailwind utility classes; plain `.css` files for new pages are discouraged. Tailwind preflight is enabled, with `@tailwind base/components/utilities` directives at the top of `apps/web/src/index.css`.
 - **Theme tokens:** All design tokens (`--derp-blue`, `--bg-card`, `--text-primary`, `--page-top-gap`, etc.) remain CSS variables in `apps/web/src/index.css` and are mirrored into `tailwind.config.js` so utilities like `bg-bg-card`, `text-text-secondary`, and `pt-page-top` map to the variables. Update both places when adding a token.

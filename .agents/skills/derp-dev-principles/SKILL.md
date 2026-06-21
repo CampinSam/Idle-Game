@@ -59,7 +59,7 @@ Missing a patch = silent client drift. If a command touches currencies, items, p
 
 ## 5. Admin Schema Fidelity (Critical)
 
-Two files must always stay in sync with the Prisma schema:
+Three files must always stay in sync with the Prisma schema and each other:
 
 ### `packages/shared/src/schemas/definition-schemas.json`
 Drives validation and documents data structures for content editors. Update it whenever a model field is added, removed, or renamed.
@@ -74,6 +74,14 @@ Drives the Smart Editor UI. **Field names must exactly match Prisma column names
 
 ### `packages/shared/src/schemas/admin-schemas.md`
 Human-readable documentation for admins. Update it when adding or significantly changing any definition table.
+
+### `content-creator-guide.md`
+The single reference for content authors. Update it **in the same commit** whenever you:
+- Add a new definition type (new admin table) → add a `## <DefTypeName>` section
+- Add or rename a field on an existing definition → update that definition's field table
+- Add, rename, or remove an enum value (EffectCategory, EffectValueMode, EffectDurationModel, EffectStackingRule, EffectTargetType, powerType, stackMode, modal action types, RichSelection scopes/operators/aggregates) → update the relevant enum table
+
+After updating, run `bash scripts/check-content-guide.sh` to verify every enum value and definition type in `admin-schemas.md` appears in the guide.
 
 ---
 
