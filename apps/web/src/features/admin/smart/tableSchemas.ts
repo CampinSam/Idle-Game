@@ -32,6 +32,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   GemPackDef: 'gemPacks',
   GameDefinition: 'game-definitions',
   CryptoRateConfig: 'cryptoRateConfig',
+  GameConstant: 'gameConstant',
   PowerDef: 'powerDef',
 };
 
@@ -730,6 +731,15 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       enabled:                { type: 'boolean', default: true,   description: 'Disable to pause oracle polling without removing config.' },
     },
   },
+  GameConstant: {
+    color: '#607D8B',
+    group: 'System',
+    fields: {
+      key:         { type: 'string', required: true,  description: 'Unique slug identifying this constant (e.g. spd_timer_scale). Acts as the primary key.' },
+      value:       { type: 'number', required: true,  description: 'The numeric value of the constant. Takes effect within 60 seconds (cache TTL) without a redeploy.' },
+      description: { type: 'string',                  description: 'Human-readable explanation of what this constant controls and sensible tuning range.' },
+    },
+  },
 };
 
 export const TABLE_GROUPS: Record<string, string[]> = {
@@ -745,7 +755,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   Effects: ['EffectDef', 'PowerDef'],
   Synergy: ['SynergyRule'],
   Rules: ['SelectionRuleDef'],
-  System: ['EventDefinition', 'SystemIconDef'],
+  System: ['EventDefinition', 'SystemIconDef', 'GameConstant'],
   Telemetry: ['TelemetryDef'],
   Screens: ['GameDefinition'],
   Payments: ['CryptoRateConfig'],
@@ -786,6 +796,7 @@ export const TABLE_LABELS: Record<string, string> = {
   TelemetryDef: 'Telemetry',
   GameDefinition: 'Game Defs',
   CryptoRateConfig: 'Crypto Rates',
+  GameConstant: 'Game Constants',
 };
 
 export interface ContentTableSub {

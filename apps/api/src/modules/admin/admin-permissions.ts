@@ -58,6 +58,7 @@ export const TABLE_KEY_TO_GROUP: Record<string, string> = {
   telemetryDef: 'Telemetry',
   'game-definitions': 'Screens',
   cryptoRateConfig: 'Payments',
+  gameConstant: 'System',
 };
 
 function requireRole(user: AdminAccountUser, role: string): PermissionCheckResult {

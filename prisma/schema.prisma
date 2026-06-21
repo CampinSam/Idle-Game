@@ -1688,3 +1688,14 @@ enum ContentDraftStatus {
   approved
   rejected
 }
+
+/// Tunable game-wide numeric constants editable by admins without redeploying.
+/// Each row stores a single float value keyed by a human-readable slug.
+model GameConstant {
+  key         String   @id
+  value       Float
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("game_constants")
+}

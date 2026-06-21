@@ -13,6 +13,7 @@ import { MissionModule } from '../mission/mission.module';
 import { CraftingModule } from '../crafting/crafting.module';
 import { LocationModule } from '../location/location.module';
 import { DustingModule } from '../dusting/dusting.module';
+import { GameConstantsModule } from '../game-constants/game-constants.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { DustingModule } from '../dusting/dusting.module';
     CraftingModule,
     LocationModule,
     DustingModule,
+    GameConstantsModule,
   ],
   controllers: [JobController],
   providers: [JobService, JobPreviewService],

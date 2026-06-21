@@ -11,8 +11,9 @@ import { EventModule } from '../event/event.module';
 import { TelemetryModule } from '../telemetry/telemetry.module';
 import { SynergyModule } from '../synergy/synergy.module';
 import { UiModule } from '../ui/ui.module';
+import { GameConstantsModule } from '../game-constants/game-constants.module';
 @Module({
-  imports: [EntityModule, CurrencyModule, PlayerModule, TickModule, InventoryModule, NotificationModule, EventModule, TelemetryModule, SynergyModule, UiModule],
+  imports: [EntityModule, CurrencyModule, PlayerModule, TickModule, InventoryModule, NotificationModule, EventModule, TelemetryModule, SynergyModule, UiModule, GameConstantsModule],
   providers: [MissionService],
   controllers: [MissionController],
   exports: [MissionService],

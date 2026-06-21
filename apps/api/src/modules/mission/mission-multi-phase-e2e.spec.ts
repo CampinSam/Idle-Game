@@ -297,6 +297,8 @@ function buildMissionService(db: any): MissionService {
   };
   const telemetryContextBuilder: any = { buildContext: jest.fn(async () => ({})) };
 
+  const gameConstants: any = { get: jest.fn(async () => 300) };
+
   return new MissionService(
     db,
     entityService,
@@ -311,6 +313,7 @@ function buildMissionService(db: any): MissionService {
     effectService,
     synergyResolver,
     telemetryContextBuilder,
+    gameConstants,
   );
 }
 

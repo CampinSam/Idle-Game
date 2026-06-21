@@ -204,6 +204,7 @@ export class AdminController {
       { key: 'gemPacks',          name: 'Gem Pack Display',           table: 'stripe.products',      group: 'Store' },
       { key: 'game-definitions',  name: 'Game Definitions',           table: 'game_definitions',     group: 'Screens' },
       { key: 'cryptoRateConfig',  name: 'Crypto Rate Config',         table: 'crypto_rate_configs',  group: 'Payments' },
+      { key: 'gameConstant',      name: 'Game Constants',             table: 'game_constants',       group: 'System' },
     ];
 
     if (!canRead) return [];

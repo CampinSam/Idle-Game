@@ -22,6 +22,7 @@ import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, emptyResolvedModifier, type TraitPrimitive } from '@derp/shared';
 import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, calculateEffectiveTeamSPD, calculateSpdTimerMultiplier, SeededRng, durationSecondsToTicks, rollQualityFromCl, QUALITY_TIERS } from '@derp/math';
+import { GameConstantsService, GAME_CONSTANT_KEYS } from '../game-constants/game-constants.service';
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
@@ -87,6 +88,7 @@ export class MissionService {
     private effectService: EffectService,
     private synergyResolver: SynergyResolverService,
     private telemetryContextBuilder: TelemetryContextBuilderService,
+    private gameConstants: GameConstantsService,
   ) {}
 
   private async isCategoryChainEnabled(categoryId: string, db?: any): Promise<boolean> {
@@ -440,7 +442,8 @@ export class MissionService {
     // Apply SPD timer reduction — fast outliers shorten the mission via Pythagorean aggregation.
     // Only entities with SPD > μ + σ of the team distribution contribute; when σ = 0 none qualify.
     const effectiveSPD = calculateEffectiveTeamSPD(team);
-    const spdTimerMultiplier = calculateSpdTimerMultiplier(effectiveSPD);
+    const spdTimerScaleValue = await this.gameConstants.get(GAME_CONSTANT_KEYS.SPD_TIMER_SCALE);
+    const spdTimerMultiplier = calculateSpdTimerMultiplier(effectiveSPD, spdTimerScaleValue);
     if (spdTimerMultiplier < 1) {
       durationTicks = Math.max(1, Math.floor(durationTicks * spdTimerMultiplier));
     }

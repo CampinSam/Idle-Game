@@ -5,6 +5,7 @@ import { evaluateTopLevelRules } from '../game-rules/evaluate-top-level-rules.ut
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
 import { EffectService } from '../effect/effect.service';
 import { CurrencyService } from '../currency/currency.service';
+import { GameConstantsService, GAME_CONSTANT_KEYS } from '../game-constants/game-constants.service';
 import { computeEquippedStats } from '../entity/entity-stats.util';
 import {
   ANTI_WHALE_CAPS,
@@ -63,6 +64,7 @@ export class JobPreviewService {
     private synergyResolver: SynergyResolverService,
     private effectService: EffectService,
     private currencyService: CurrencyService,
+    private gameConstants: GameConstantsService,
   ) {}
 
   async getPreview(userId: string, dto: JobPreviewDto): Promise<any> {
@@ -230,7 +232,8 @@ export class JobPreviewService {
       }
 
       const effectiveSPD = calculateEffectiveTeamSPD(teamForMP);
-      spdTimerMultiplier = calculateSpdTimerMultiplier(effectiveSPD);
+      const spdTimerScaleValue = await this.gameConstants.get(GAME_CONSTANT_KEYS.SPD_TIMER_SCALE);
+      spdTimerMultiplier = calculateSpdTimerMultiplier(effectiveSPD, spdTimerScaleValue);
     }
 
     return {

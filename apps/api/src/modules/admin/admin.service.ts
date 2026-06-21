@@ -1324,6 +1324,7 @@ export class AdminService {
       gameDefinition: (this.prisma as any).gameDefinition,
       cryptoRateConfig: (this.prisma as any).cryptoRateConfig,
       powerDef: (this.prisma as any).powerDef,
+      gameConstant: (this.prisma as any).gameConstant,
     };
 
     if (!models[table]) {

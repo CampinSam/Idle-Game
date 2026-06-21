@@ -131,18 +131,21 @@ export const calculateEffectiveTeamSPD = (entities: Array<{ stats?: Record<strin
 /**
  * Convert an effective team SPD into a timer duration multiplier.
  *
- * Formula: 1 - effectiveSPD / (effectiveSPD + SPD_TIMER_SCALE)
+ * Formula: 1 - effectiveSPD / (effectiveSPD + spdTimerScale)
  * Returns a value in [0, 1) representing the fraction of the original
  * duration to *keep*. Multiply `durationTicks` by this value to shorten it.
  *
- * Examples (SPD_TIMER_SCALE = 300):
+ * `spdTimerScale` defaults to `SPD_TIMER_SCALE` (300). Pass an override to
+ * use a value loaded from the game-constants table at runtime.
+ *
+ * Examples (spdTimerScale = 300):
  *   effectiveSPD =   0 → multiplier = 1.00  (no reduction)
  *   effectiveSPD = 150 → multiplier ≈ 0.67  (~33 % faster)
  *   effectiveSPD = 300 → multiplier = 0.50  (50 % faster)
  *   effectiveSPD = 600 → multiplier ≈ 0.33  (~67 % faster)
  *   effectiveSPD → ∞   → multiplier → 0.00  (asymptotic limit)
  */
-export const calculateSpdTimerMultiplier = (effectiveSPD: number): number => {
+export const calculateSpdTimerMultiplier = (effectiveSPD: number, spdTimerScale: number = SPD_TIMER_SCALE): number => {
   if (effectiveSPD <= 0) return 1;
-  return 1 - effectiveSPD / (effectiveSPD + SPD_TIMER_SCALE);
+  return 1 - effectiveSPD / (effectiveSPD + spdTimerScale);
 };

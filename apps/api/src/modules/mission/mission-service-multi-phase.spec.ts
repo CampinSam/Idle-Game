@@ -255,6 +255,7 @@ function makeDeps(dbOverrides: any = {}) {
 }
 
 function buildService(deps: ReturnType<typeof makeDeps>): MissionService {
+  const gameConstants: any = { get: jest.fn(async () => 300) };
   return new MissionService(
     deps.prisma as any,
     deps.entityService as any,
@@ -269,6 +270,7 @@ function buildService(deps: ReturnType<typeof makeDeps>): MissionService {
     deps.effectService as any,
     deps.synergyResolver as any,
     deps.telemetryContextBuilder as any,
+    gameConstants,
   );
 }
 
