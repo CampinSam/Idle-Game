@@ -57,6 +57,10 @@ function extractConflictingCreations(sql) {
   const tables = [];
   const columns = [];
   const constraints = [];
+  // Columns added with IF NOT EXISTS are idempotent DDL, but they still represent
+  // schema state that must exist before we can safely baseline a migration.
+  // Track them separately so the baseline check can confirm they are present.
+  const softColumns = [];
 
   const typeRe = /CREATE\s+TYPE\s+(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"/gi;
   let m;
@@ -71,7 +75,11 @@ function extractConflictingCreations(sql) {
 
   const colRe = /ALTER\s+TABLE\s+"([^"]+)"\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"/gi;
   while ((m = colRe.exec(stripped)) !== null) {
-    if (!/IF\s+NOT\s+EXISTS/i.test(m[0])) columns.push({ table: m[1], column: m[2] });
+    if (/IF\s+NOT\s+EXISTS/i.test(m[0])) {
+      softColumns.push({ table: m[1], column: m[2] });
+    } else {
+      columns.push({ table: m[1], column: m[2] });
+    }
   }
 
   // ALTER TABLE ... ADD CONSTRAINT has no IF NOT EXISTS guard in PostgreSQL —
@@ -81,10 +89,10 @@ function extractConflictingCreations(sql) {
     constraints.push(m[1]);
   }
 
-  if (types.length === 0 && tables.length === 0 && columns.length === 0 && constraints.length === 0) {
+  if (types.length === 0 && tables.length === 0 && columns.length === 0 && constraints.length === 0 && softColumns.length === 0) {
     return null;
   }
-  return { types, tables, columns, constraints };
+  return { types, tables, columns, constraints, softColumns };
 }
 
 async function ensureMigrationsTable(client) {
@@ -164,6 +172,14 @@ async function allCreationsConflict(client, creations) {
   for (const c of creations.constraints) {
     if (!(await constraintExists(client, c))) return false;
   }
+  // Also require any IF NOT EXISTS columns to already be present.
+  // Without this check, a migration whose only non-idempotent statements are
+  // ADD CONSTRAINT can be falsely baselined when the constraint name pre-existed
+  // (e.g. a table's original PK), even though the IF NOT EXISTS columns it adds
+  // are genuinely missing from the database.
+  for (const c of (creations.softColumns || [])) {
+    if (!(await columnExists(client, c.table, c.column))) return false;
+  }
   return true;
 }
 
@@ -179,6 +195,9 @@ async function anyCreationsConflict(client, creations) {
   }
   for (const c of creations.constraints) {
     if (await constraintExists(client, c)) return true;
+  }
+  for (const c of (creations.softColumns || [])) {
+    if (await columnExists(client, c.table, c.column)) return true;
   }
   return false;
 }

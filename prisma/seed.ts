@@ -73,6 +73,10 @@ const TABLE_TRANSFORMS: Partial<Record<SeedTableName, RecordTransform>> = {
 };
 
 const TABLE_WHERE: Partial<Record<SeedTableName, (r: any) => any>> = {
+  currency: (r) => ({ key: r.key }),
+  lootboxDef: (r) => ({ key: r.key }),
+  bundleDef: (r) => ({ key: r.key }),
+  itemDefinition: (r) => ({ key: r.key }),
   soundDef: (r) => ({ key: r.key }),
   tagDef: (r) => ({ key: r.key }),
   visualEffectDef: (r) => ({ key: r.key }),
