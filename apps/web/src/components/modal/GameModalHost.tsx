@@ -229,8 +229,9 @@ export default function GameModalHost() {
           if (targetType === 'job') {
             try {
               await api.skipJob(targetId);
-              const replaced = await tryFetchFollowUp({ jobId: targetId });
-              if (!replaced) dismissModal();
+              // Skip auto-completes the job server-side and pushes an SSE delta.
+              // Dismiss the modal immediately — the delta updates entity/job state.
+              dismissModal();
             } catch (err: any) {
               audioEngine.play('ui.error');
               const msg = err?.message || 'Skip failed. Please try again.';
