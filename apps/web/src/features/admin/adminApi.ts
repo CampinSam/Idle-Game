@@ -659,6 +659,23 @@ export const adminApi = {
       { method: 'POST', body: JSON.stringify({}) },
     ),
 
+  // ─── Seed Management ──────────────────────────────────────────────────────
+
+  getSeedTables: () =>
+    adminRequest<{ tables: string[] }>('/seed/tables'),
+
+  runSeed: (tables?: string[]) =>
+    adminRequest<{ tables: string | string[]; results: Record<string, { upserted: number; skipped: number; errors: number }> }>(
+      '/seed/run',
+      { method: 'POST', body: JSON.stringify({ tables: tables ?? [] }) },
+    ),
+
+  createSeedSnapshot: () =>
+    adminRequest<Record<string, { uploaded: boolean; count: number; error?: string }>>(
+      '/seed/snapshot',
+      { method: 'POST', body: JSON.stringify({}) },
+    ),
+
   uploadMedia: (file: File, targetDir?: string) => {
     const formData = new FormData();
     formData.append('file', file);

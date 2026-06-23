@@ -9,10 +9,11 @@ import ModalEditorPage from '../../admin/modal-editor/ModalEditorPage';
 import PlayerEventsAdminPage from '../../admin/player-events/PlayerEventsAdminPage';
 import NftCollectionsPage from '../../admin/nft/NftCollectionsPage';
 import EntityCollectionsPage from '../../admin/EntityCollectionsPage';
+import SeedManagementPage from '../../admin/seed/SeedManagementPage';
 import AdminV2PlayersSection from './AdminV2PlayersSection';
 import type { AdminMe } from '../../admin/adminApi';
 
-export type SystemTool = 'icons' | 'audio' | 'tags' | 'telemetry' | 'god-mode' | 'selection-tester' | 'crypto' | 'screens' | 'modal-editor' | 'player-events' | 'nft-collections' | 'entity-collections';
+export type SystemTool = 'icons' | 'audio' | 'tags' | 'telemetry' | 'god-mode' | 'selection-tester' | 'crypto' | 'screens' | 'modal-editor' | 'player-events' | 'nft-collections' | 'entity-collections' | 'seed';
 
 export const SYSTEM_TOOLS: { key: SystemTool; label: string }[] = [
   { key: 'nft-collections', label: 'NFT Collections' },
@@ -27,6 +28,7 @@ export const SYSTEM_TOOLS: { key: SystemTool; label: string }[] = [
   { key: 'screens', label: 'Screen Composer' },
   { key: 'modal-editor', label: 'Modal Editor' },
   { key: 'player-events', label: 'Player Events' },
+  { key: 'seed', label: 'Seed Sync' },
 ];
 
 interface Props {
@@ -112,6 +114,11 @@ export default function AdminV2SystemSection({ me, activeTool, onToolChange }: P
         {activeTool === 'entity-collections' && (
           <div className="min-h-full" style={{ height: '100%', overflow: 'auto' }}>
             <EntityCollectionsPage isSuperAdmin={me.role.slug === 'super_admin'} />
+          </div>
+        )}
+        {activeTool === 'seed' && (
+          <div className="min-h-full" style={{ height: '100%', overflow: 'auto' }}>
+            <SeedManagementPage />
           </div>
         )}
       </div>
