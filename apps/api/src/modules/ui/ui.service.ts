@@ -841,6 +841,7 @@ export class UiService {
       case 'ready_notified': return 'ready';
       case 'phase_ready': return 'phase_ready';
       case 'completed': return 'completed';
+      case 'skipped': return 'completed';
       case 'failed': return 'failed';
       case 'abandoned': return 'failed';
       default: return (status as string) === 'collected' ? 'completed' : null;

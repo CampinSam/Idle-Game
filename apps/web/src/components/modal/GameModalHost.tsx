@@ -231,12 +231,17 @@ export default function GameModalHost() {
           if (targetType === 'job') {
             try {
               const result = await api.skipJob(targetId);
-              // Apply the skipped-status job patch immediately so the mission
-              // bar disappears without waiting for the SSE delta.
+              // Apply the job patch immediately (status: completed or skipped)
+              // so the mission bar disappears without waiting for the SSE delta.
               if (result?.job) {
                 dispatch(applyPatches({ patches: [{ op: 'upsert', entity: 'job', id: result.job.id, data: result.job }] }));
               }
-              dismissModal();
+              // Show outcome modal (rewards, completion state) if one is configured —
+              // same as useCollectJob does after a normal collection. The job is
+              // already completed server-side by the time we reach here, so
+              // getModalSpec will return the completed-state modal.
+              const showed = await tryFetchFollowUp({ jobId: targetId });
+              if (!showed) dismissModal();
             } catch (err: any) {
               audioEngine.play('ui.error');
               const msg = err?.message || 'Skip failed. Please try again.';
