@@ -516,6 +516,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
       const s = search.toLowerCase();
       return (r.id || '').toLowerCase().includes(s)
         || (r.name || '').toLowerCase().includes(s)
+        || (r.displayName || '').toLowerCase().includes(s)
         || (r.key || '').toLowerCase().includes(s);
     });
     return [...ghostCreateDrafts, ...filtered];
@@ -709,8 +710,9 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
                 {filteredRecords.map(r => {
                   const rowBadge = !r._ghostDraft ? (schema?.getRowBadge?.(r) ?? null) : null;
                   const hasPendingDraft = !r._ghostDraft && !!pendingDrafts[r.id];
-                  const primaryLabel = r.name || r.id;
-                  const secondaryLabel = r.name ? (r.key || r.id) : (r.key || null);
+                  const humanName = r.name || r.displayName;
+                  const primaryLabel = humanName || r.key || r.id;
+                  const secondaryLabel = humanName ? (r.key || null) : null;
                   return (
                     <div
                       key={r.id}
@@ -814,11 +816,14 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
               <option value="">
                 {!activeTable ? '— select a table first —' : recordsLoading ? 'Loading...' : filteredRecords.length === 0 ? '— no records —' : '— select record —'}
               </option>
-              {filteredRecords.map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.name || r.id}{r.key ? ` (${r.key})` : ''}
-                </option>
-              ))}
+              {filteredRecords.map(r => {
+                const mobileHumanName = r.name || r.displayName;
+                return (
+                  <option key={r.id} value={r.id}>
+                    {mobileHumanName || r.key || r.id}{mobileHumanName && r.key ? ` (${r.key})` : ''}
+                  </option>
+                );
+              })}
             </select>
             {!schema?.editOnly && (
               <button
