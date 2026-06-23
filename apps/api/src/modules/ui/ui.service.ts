@@ -821,6 +821,9 @@ export class UiService {
       if (skipBtn) {
         skipBtn.skipMeta = skipMeta;
         skipBtn.disabled = !canAfford;
+        // Always stamp the canonical action so the frontend handler can route
+        // the click regardless of whether targetType/targetId were in the DB spec.
+        skipBtn.action = { type: 'SKIP', targetType: 'job', targetId: job.id };
       } else {
         // Skip button not in spec — add it dynamically.
         modal.buttons.push({
