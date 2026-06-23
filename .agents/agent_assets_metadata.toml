@@ -41,3 +41,9 @@ id = "BJGuzLXQq9qw-FZnxrrk0"
 uri = "file://prod-export.json"
 type = "unspecified"
 title = "Production definition data export"
+
+[[outputs]]
+id = "u15WECdgGFN0aHJAGR_2x"
+uri = "file://content-creator-guide.txt"
+type = "text"
+title = "Content Creator Guide (plain text)"
