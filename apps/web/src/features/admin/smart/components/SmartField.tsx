@@ -281,6 +281,30 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
   const [uploaderOpen, setUploaderOpen] = useState(false);
   const touch = useCallback(() => setTouched(true), []);
 
+  if (fieldDef.readonly) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <label style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>{fieldName}</label>
+          <span style={{ fontSize: 11, color: '#4b5563' }}>— {fieldDef.description}</span>
+        </div>
+        <div style={{
+          padding: '6px 10px',
+          background: '#0f0f1a',
+          border: '1px solid #1f1f3a',
+          borderRadius: 6,
+          color: '#6b7280',
+          fontSize: 12,
+          fontFamily: "'ui-monospace', 'SFMono-Regular', 'Fira Code', monospace",
+          wordBreak: 'break-all',
+          userSelect: 'text',
+        }}>
+          {value != null && value !== '' ? String(value) : <span style={{ fontStyle: 'italic', color: '#4b5563' }}>auto-generated on save</span>}
+        </div>
+      </div>
+    );
+  }
+
   const isRequired = fieldDef.required;
   const error = touched && isRequired && (value === undefined || value === null || value === '')
     ? `${fieldName} is required`

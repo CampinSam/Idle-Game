@@ -69,6 +69,7 @@ function buildNewRecord(tableName: string): Record<string, any> {
   if (!schema) return {};
   const rec: Record<string, any> = {};
   Object.entries(schema.fields).forEach(([key, def]) => {
+    if (def.readonly) return;
     if (def.default !== undefined) rec[key] = def.default;
   });
   return rec;
