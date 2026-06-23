@@ -34,6 +34,9 @@ export const TABLE_API_KEYS: Record<string, string> = {
   CryptoRateConfig: 'cryptoRateConfig',
   GameConstant: 'gameConstant',
   PowerDef: 'powerDef',
+  TagDef: 'tagDef',
+  VisualEffectDef: 'visualEffectDef',
+  Season: 'season',
 };
 
 export interface FieldDef {
@@ -751,6 +754,55 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       description: { type: 'string',                  description: 'Human-readable explanation of what this constant controls and sensible tuning range.' },
     },
   },
+  VisualEffectDef: {
+    color: '#EC4899',
+    group: 'Effects',
+    fields: {
+      id:           { type: 'string', readonly: true, description: 'UUID (auto-generated, read-only)' },
+      key:          { type: 'string', required: true, description: 'Unique slug key (e.g. glow_blue). Referenced by TagDef.effectKey.' },
+      name:         { type: 'string', required: true, description: 'Display name for the effect' },
+      description:  { type: 'string', description: 'Optional description of what the effect looks like' },
+      cssAnimation: { type: 'string', required: true, description: 'CSS animation shorthand applied to the element (e.g. "pulse 1.5s ease-in-out infinite")' },
+      durationMs:   { type: 'number', default: 1500, description: 'Animation duration in milliseconds' },
+      easing:       { type: 'string', default: 'ease-in-out', description: 'CSS easing function for the animation' },
+      params:       { type: 'json', default: {}, description: 'Additional animation parameters (free-form JSON)' },
+      enabled:      { type: 'boolean', default: true, description: 'Disabled effects are excluded from all tag renders' },
+      sortOrder:    { type: 'number', default: 0, description: 'Sort order in the effect picker (lower = first)' },
+    },
+  },
+  TagDef: {
+    color: '#14B8A6',
+    group: 'Tags',
+    fields: {
+      id:              { type: 'string', readonly: true, description: 'UUID (auto-generated, read-only)' },
+      key:             { type: 'string', required: true, description: 'Unique slug key (e.g. rare, legendary). Used to attach tags to entities.' },
+      label:           { type: 'string', required: true, description: 'Display text shown on the tag chip' },
+      category:        { type: 'string', default: 'system', description: 'Grouping category for the tag (e.g. system, rarity, faction)' },
+      color:           { type: 'color', default: '#ffffff', description: 'Foreground / text color of the tag chip' },
+      backgroundColor: { type: 'color', default: '#2a2a3a', description: 'Background color of the tag chip' },
+      borderColor:     { type: 'color', default: '#3a3a4a', description: 'Border color of the tag chip' },
+      opacity:         { type: 'number', default: 1.0, description: 'Chip opacity (0–1)' },
+      fontSize:        { type: 'string', description: 'Optional CSS font-size override (e.g. "11px")' },
+      effectKey:       { type: 'ref', refTable: 'VisualEffectDef', description: 'Optional visual effect applied when this tag is displayed (references VisualEffectDef.key)' },
+      effectKeys:      { type: 'json', default: [], description: 'Additional effect keys (array of VisualEffectDef keys) applied in sequence' },
+      enabled:         { type: 'boolean', default: true, description: 'Disabled tags are hidden from all players' },
+      sortOrder:       { type: 'number', default: 0, description: 'Sort order in tag pickers (lower = first)' },
+    },
+  },
+  Season: {
+    color: '#F59E0B',
+    group: 'Seasons',
+    fields: {
+      id:          { type: 'string', readonly: true, description: 'UUID (auto-generated, read-only)' },
+      key:         { type: 'string', required: true, description: 'Unique slug key for this season (e.g. season_1_frost). Used in banner and quest references.' },
+      name:        { type: 'string', required: true, description: 'Display name shown to players (e.g. "Season 1: Frost")' },
+      ecosystemId: { type: 'string', description: 'Optional ecosystem / realm this season belongs to' },
+      startsAt:    { type: 'string', required: true, description: 'ISO datetime when the season begins' },
+      endsAt:      { type: 'string', required: true, description: 'ISO datetime when the season ends' },
+      status:      { type: 'options', options: ['scheduled', 'active', 'ended'], default: 'scheduled', description: 'Lifecycle state of the season' },
+      config:      { type: 'json', default: {}, description: 'Freeform season configuration (rewards, rules, etc.)' },
+    },
+  },
 };
 
 export const TABLE_GROUPS: Record<string, string[]> = {
@@ -763,10 +815,12 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   Store: ['ShopHeroDef', 'ShopTabDef', 'ShopSectionDef', 'ShopItemDef', 'GemPackDef'],
   NFT: ['NftCollectionDef'],
   Entities: ['EntityDefinition'],
-  Effects: ['EffectDef', 'PowerDef'],
+  Effects: ['EffectDef', 'PowerDef', 'VisualEffectDef'],
+  Tags: ['TagDef'],
   Synergy: ['SynergyRule'],
   Rules: ['SelectionRuleDef'],
   System: ['EventDefinition', 'SystemIconDef', 'GameConstant'],
+  Seasons: ['Season'],
   Telemetry: ['TelemetryDef'],
   Screens: ['GameDefinition'],
   Payments: ['CryptoRateConfig'],
@@ -808,6 +862,9 @@ export const TABLE_LABELS: Record<string, string> = {
   GameDefinition: 'Game Defs',
   CryptoRateConfig: 'Crypto Rates',
   GameConstant: 'Game Constants',
+  VisualEffectDef: 'Visual Effects',
+  TagDef: 'Tags',
+  Season: 'Seasons',
 };
 
 export interface ContentTableSub {
