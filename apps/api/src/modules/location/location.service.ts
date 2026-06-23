@@ -827,7 +827,7 @@ export class LocationService {
         where: {
           userId,
           type: "BuildingJob",
-          status: { in: ["active", "ready_notified"] },
+          status: { in: ["active", "ready_notified", "skipped"] },
           data: { path: ["buildingId"], equals: buildingId },
         },
       });
@@ -877,7 +877,7 @@ export class LocationService {
       where: {
         userId,
         type: "BuildingJob",
-        status: { in: ["active", "ready_notified"] },
+        status: { in: ["active", "ready_notified", "skipped"] },
         data: { path: ["buildingId"], equals: buildingId },
       },
     });

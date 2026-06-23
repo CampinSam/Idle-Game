@@ -5,7 +5,8 @@ import { useModal } from '../../context/ModalContext';
 import ModalRefreshContext from '../../context/ModalRefreshContext';
 import { api } from '../../services/api';
 import { useCommand } from '../../hooks/useCommand';
-import { useAppSelector } from '../../store';
+import { useAppSelector, useAppDispatch } from '../../store';
+import { applyPatches } from '../../store/syncSlice';
 import { audioEngine } from '../../services/AudioEngine';
 import GameModal from './GameModal';
 
@@ -13,6 +14,7 @@ export default function GameModalHost() {
   const { currentModal, dismissModal, replaceModal } = useModal();
   const navigate = useNavigate();
   const { execute } = useCommand();
+  const dispatch = useAppDispatch();
   const jobs = useAppSelector((s) => s.sync.jobs);
 
   const handleNavigate = useCallback(
@@ -228,9 +230,12 @@ export default function GameModalHost() {
           const { targetType, targetId } = action;
           if (targetType === 'job') {
             try {
-              await api.skipJob(targetId);
-              // Skip auto-completes the job server-side and pushes an SSE delta.
-              // Dismiss the modal immediately — the delta updates entity/job state.
+              const result = await api.skipJob(targetId);
+              // Apply the skipped-status job patch immediately so the mission
+              // bar disappears without waiting for the SSE delta.
+              if (result?.job) {
+                dispatch(applyPatches({ patches: [{ op: 'upsert', entity: 'job', id: result.job.id, data: result.job }] }));
+              }
               dismissModal();
             } catch (err: any) {
               audioEngine.play('ui.error');

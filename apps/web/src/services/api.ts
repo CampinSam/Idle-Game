@@ -369,7 +369,7 @@ class ApiClient {
   }
 
   skipJob(jobId: string, idempotencyKey?: string) {
-    return this.request<{ skipped: boolean; costs: Record<string, number> }>(`/jobs/${jobId}/skip`, {
+    return this.request<{ skipped: boolean; costs: Record<string, number>; job?: any }>(`/jobs/${jobId}/skip`, {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`job-skip-${jobId}`) },
     });

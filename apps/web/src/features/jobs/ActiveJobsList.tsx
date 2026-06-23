@@ -6,7 +6,6 @@ import { useModal } from '../../context/ModalContext';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { applyPatches } from '../../store/syncSlice';
 import { api } from '../../services/api';
-import type { DeltaResponse } from '../../services/api';
 import { EmptyState } from '../../components/ui';
 import ItemQty from '../../components/ItemQty';
 import JobProgressBar from '../../components/JobProgressBar';
@@ -313,7 +312,6 @@ export function ActiveJobsList({
   const allActiveJobs = useAllActiveJobs();
   const currentTick = useCurrentTick();
   const tickRate = useTickRate();
-  const cursor = useAppSelector((s) => s.sync.cursor);
   const { collectJob } = useCollectJob();
 
   const [skipInfoMap, setSkipInfoMap] = useState<Map<string, SkipInfo>>(new Map());
@@ -419,19 +417,12 @@ export function ActiveJobsList({
     setSkipExecuting(true);
     setSkipError(null);
     try {
-      await api.skipJob(confirmSkip.jobId);
+      const result = await api.skipJob(confirmSkip.jobId);
       setConfirmSkip(null);
-      // Fetch the latest delta so the job list reflects the skipped state immediately
-      // without waiting for the next SSE tick.
-      if (cursor) {
-        try {
-          const delta = await api.fetchDelta(cursor);
-          if ('patches' in delta) {
-            dispatch(applyPatches({ patches: (delta as DeltaResponse).patches, cursor: (delta as DeltaResponse).to }));
-          }
-        } catch {
-          // SSE will catch up if delta fetch fails.
-        }
+      // Apply the skipped-status job patch immediately so the bar disappears
+      // without waiting for the SSE delta.
+      if (result?.job) {
+        dispatch(applyPatches({ patches: [{ op: 'upsert', entity: 'job', id: result.job.id, data: result.job }] }));
       }
     } catch (err: any) {
       const msg = err?.message ?? 'Could not skip. Please try again.';
@@ -439,7 +430,7 @@ export function ActiveJobsList({
     } finally {
       setSkipExecuting(false);
     }
-  }, [confirmSkip, cursor, dispatch]);
+  }, [confirmSkip, dispatch]);
 
   const handleCancelSkip = useCallback(() => {
     setConfirmSkip(null);

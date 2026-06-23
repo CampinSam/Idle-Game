@@ -552,7 +552,7 @@ export class CraftingService {
 
   async collectCrafting(userId: string, jobId: string, externalTx?: any) {
     const job = await (this.prisma as any).job.findFirst({
-      where: { id: jobId, userId, type: 'CraftingJob', status: { in: ['active', 'ready_notified'] } },
+      where: { id: jobId, userId, type: 'CraftingJob', status: { in: ['active', 'ready_notified', 'skipped'] } },
     });
     if (!job) throw new NotFoundException('Crafting job not found');
 

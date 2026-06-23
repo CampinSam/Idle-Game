@@ -693,7 +693,7 @@ export class MissionService {
     const db = externalTx;
     this.logger.log(`completeMission called: userId=${userId.slice(0,8)}, missionId=${missionId.slice(0,8)}`);
     const mission = await (db as any).job.findFirst({
-      where: { id: missionId, userId, type: 'MissionJob', status: { in: ['active', 'ready_notified', 'phase_ready'] } },
+      where: { id: missionId, userId, type: 'MissionJob', status: { in: ['active', 'ready_notified', 'phase_ready', 'skipped'] } },
     });
     if (!mission) {
       this.logger.warn(`completeMission: no active mission found for id=${missionId.slice(0,8)}, userId=${userId.slice(0,8)}`);

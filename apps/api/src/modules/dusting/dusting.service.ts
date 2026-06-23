@@ -217,7 +217,7 @@ export class DustingService {
     const { jobId } = payload;
 
     const job = await (this.prisma as any).job.findFirst({
-      where: { id: jobId, userId, type: 'DustingJob', status: { in: ['active', 'ready_notified'] } },
+      where: { id: jobId, userId, type: 'DustingJob', status: { in: ['active', 'ready_notified', 'skipped'] } },
     });
     if (!job) throw new NotFoundException('Dusting job not found');
 

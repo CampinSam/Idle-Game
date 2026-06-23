@@ -193,6 +193,7 @@ export class JobController {
         data: {
           timer: { startTick, durationTicks: Math.max(0, currentTick - startTick) },
           readyAtTick: currentTick,
+          status: 'skipped',
         },
       });
     }, { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' });
@@ -205,14 +206,19 @@ export class JobController {
       await this._autoCompleteAfterSkip(user.id, job);
     } catch (err) {
       // Skip cost was already spent; log the failure but don't surface it
-      // to the player. The job will remain in ready_notified state and they
+      // to the player. The job will remain in skipped state and they
       // can complete it manually.
       this.logger.warn(`Skip auto-complete failed for job ${id}: ${err}`);
     }
 
+    // Return the updated job so the client can apply the patch immediately
+    // without waiting for the SSE delta.
+    const updatedJob = await (this.prisma as any).job.findUnique({ where: { id: job.id } });
+
     return {
       skipped: true,
       costs: finalCosts,
+      job: updatedJob,
     };
   }
 
