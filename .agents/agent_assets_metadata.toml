@@ -47,3 +47,9 @@ id = "u15WECdgGFN0aHJAGR_2x"
 uri = "file://content-creator-guide.txt"
 type = "text"
 title = "Content Creator Guide (plain text)"
+
+[[outputs]]
+id = "9COqON3dbsHjs068hNW6a"
+uri = "file://content-creator-guide.pdf"
+type = "pdf"
+title = "Content Creator Guide (PDF)"
