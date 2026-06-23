@@ -431,7 +431,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
     color: '#F97316',
     group: 'Store',
     fields: {
-      id:           { type: 'string', required: true, description: 'Unique identifier (e.g. gems_100)' },
+      id:           { type: 'string', readonly: true, description: 'CUID (auto-generated, read-only)' },
       name:         { type: 'string', required: true, description: 'Display name' },
       description:  { type: 'string', default: '', description: 'Short description shown on the card' },
       tab:          { type: 'ref', refTable: 'ShopTabDef', default: 'featured', description: 'Store tab this item belongs to (references ShopTabDef.id)' },
@@ -479,7 +479,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
     color: '#A78BFA',
     group: 'Store',
     fields: {
-      id:        { type: 'string', required: true, description: 'Unique identifier (e.g. section_limited_time)' },
+      id:        { type: 'string', readonly: true, description: 'CUID (auto-generated, read-only)' },
       tabId:     { type: 'ref', refTable: 'ShopTabDef', required: true, description: 'Tab this section belongs to' },
       label:     { type: 'string', required: true, description: 'Section heading shown above the item group' },
       subtitle:  { type: 'string', description: 'Optional subtitle / description shown under the section heading' },
