@@ -233,7 +233,9 @@ export default function GameModalHost() {
               if (!replaced) dismissModal();
             } catch (err: any) {
               audioEngine.play('ui.error');
-              console.warn('[GameModalHost] SKIP job failed:', err?.message);
+              const msg = err?.message || 'Skip failed. Please try again.';
+              console.warn('[GameModalHost] SKIP job failed:', msg);
+              alert(msg);
             }
           } else {
             console.warn(`[GameModalHost] SKIP: unhandled targetType "${targetType}"`);

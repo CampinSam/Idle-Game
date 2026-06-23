@@ -567,6 +567,7 @@ export class UiService {
       body.push({
         type: 'timer',
         endsAt: ctx.timerInfo.endsAt,
+        wallClock: true,
         label: `Phase ${ctx.currentPhase + 1} of ${ctx.phases.length}`,
       });
     }
