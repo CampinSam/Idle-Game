@@ -437,7 +437,7 @@ export class AdminService {
 
   async createRecord(table: string, data: any) {
     const model = this.getModel(table);
-    delete data.id;
+    if (!data.id) delete data.id;
     delete data.createdAt;
     delete data.updatedAt;
     this.convertBigIntFields(table, data);
