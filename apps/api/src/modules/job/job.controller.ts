@@ -10,6 +10,7 @@ import { IdempotencyService } from '../infrastructure/idempotency.service';
 import { JobService } from './job.service';
 import { JobPreviewService, JobPreviewDto } from './job-preview.service';
 import { JOB_TYPE_CONFIG } from './job.constants';
+import { fetchCurrencyMap } from '../commands/patch-builder';
 import { MissionService } from '../mission/mission.service';
 import { CraftingService } from '../crafting/crafting.service';
 import { LocationService } from '../location/location.service';
@@ -249,11 +250,15 @@ export class JobController {
         this.logger.warn(`_autoCompleteAfterSkip: unhandled job type "${job.type}" for job ${job.id}`);
     }
 
-    // Push a lightweight delta so SSE subscribers see the updated job state
-    // immediately (entities freed, rewards applied, etc.) without waiting for
-    // the next tick-sync or manual refresh.
+    // Push a delta so SSE subscribers see the updated job state, freed entities,
+    // and updated currency balances immediately without waiting for the next tick-sync.
     try {
-      const updatedJob = await (this.prisma as any).job.findUnique({ where: { id: job.id } });
+      const [updatedJob, currencyMap, updatedPlayer] = await Promise.all([
+        (this.prisma as any).job.findUnique({ where: { id: job.id } }),
+        fetchCurrencyMap(this.prisma, userId),
+        (this.prisma as any).user.findUnique({ where: { id: userId } }),
+      ]);
+
       const patches: any[] = [];
       if (updatedJob) {
         patches.push({ op: 'upsert', entity: 'job', id: updatedJob.id, data: updatedJob });
@@ -272,12 +277,16 @@ export class JobController {
         }
       }
 
-      if (patches.length > 0) {
-        const delta = await (this.prisma as any).playerDelta.create({
-          data: { userId, patches: patches as any, ui: [] as any },
-        });
-        this.pubsub.publish(`player:${userId}`, { userId, deltaId: delta.id.toString() });
+      // Always push currency + player so the UI reflects the skip cost and rewards.
+      patches.push({ op: 'upsert', entity: 'currencyBalance', id: '_', data: currencyMap });
+      if (updatedPlayer) {
+        patches.push({ op: 'upsert', entity: 'player', id: updatedPlayer.id, data: updatedPlayer });
       }
+
+      const delta = await (this.prisma as any).playerDelta.create({
+        data: { userId, patches: patches as any, ui: [] as any },
+      });
+      this.pubsub.publish(`player:${userId}`, { userId, deltaId: delta.id.toString() });
     } catch (err) {
       this.logger.warn(`Failed to push post-skip delta for user ${userId}: ${err}`);
     }
