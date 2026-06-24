@@ -53,3 +53,9 @@ id = "9COqON3dbsHjs068hNW6a"
 uri = "file://content-creator-guide.pdf"
 type = "pdf"
 title = "Content Creator Guide (PDF)"
+
+[[outputs]]
+id = "ok0YiMfFTLSbentdT3Rkq"
+uri = "file://derp-universe-onboarding.pdf"
+type = "pdf"
+title = "Derp Universe — Player Onboarding Guide"
