@@ -249,6 +249,33 @@ async function seedDefinitions() {
     }
   }
 
+  // Pre-build the full remap from the production DB before any upserts.
+  // This ensures FK references in every table are resolved correctly
+  // regardless of seed order (e.g. powerDef before effectDef).
+  for (const modelName of SEED_TABLE_ORDER) {
+    if (!TABLE_WHERE[modelName] || modelName === 'gameDefinition') continue;
+    const snapshotRecords: any[] | undefined = data[modelName];
+    if (!snapshotRecords || snapshotRecords.length === 0) continue;
+    const model = (prisma as any)[modelName];
+    if (!model) continue;
+    for (const raw of snapshotRecords) {
+      const snapshotId: string = raw.id;
+      const key: string = raw.key ?? raw.id; // withKey fallback
+      if (!snapshotId || !UUID_RE.test(snapshotId) || !key) continue;
+      try {
+        const actual = await model.findUnique({ where: { key }, select: { id: true } });
+        if (actual && actual.id !== snapshotId) {
+          idRemap.set(snapshotId, actual.id);
+        }
+      } catch {
+        // Record not yet in DB — will be created during upsert; no remap needed
+      }
+    }
+  }
+  if (idRemap.size > 0) {
+    console.log(`  ↺ Pre-built ID remap: ${idRemap.size} divergent entries`);
+  }
+
   for (const modelName of SEED_TABLE_ORDER) {
     const records: any[] | undefined = data[modelName];
     if (!records || records.length === 0) {
