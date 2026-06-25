@@ -208,6 +208,47 @@ async function seedDefinitions() {
   const data = await getSeedData();
   console.log(`Seeding definitions (v${data._meta?.version ?? '?'})…`);
 
+  // Global map: snapshot UUID → actual production DB UUID.
+  // Populated incrementally as each parent table is seeded so that FK
+  // reference fields in child tables are remapped to the IDs that are
+  // actually present in the production DB (which may differ from the dev
+  // DB IDs stored in the snapshot).
+  const idRemap = new Map<string, string>();
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  // Replace any UUID-valued field (except the record's own 'id') that
+  // appears in the remap table with the production DB's actual UUID.
+  function applyRemap(record: any): any {
+    if (idRemap.size === 0) return record;
+    const out: any = {};
+    for (const [k, v] of Object.entries(record)) {
+      if (k !== 'id' && typeof v === 'string' && UUID_RE.test(v) && idRemap.has(v)) {
+        out[k] = idRemap.get(v)!;
+      } else {
+        out[k] = v;
+      }
+    }
+    return out;
+  }
+
+  // After upserting a table, query back each record's actual DB id by key
+  // and register any snapshot-id → actual-id divergences in idRemap.
+  async function buildRemap(modelName: SeedTableName, processedRecords: any[], model: any): Promise<void> {
+    if (!TABLE_WHERE[modelName] || modelName === 'gameDefinition') return;
+    for (const record of processedRecords) {
+      const snapshotId: string = record.id;
+      if (!snapshotId || !UUID_RE.test(snapshotId)) continue;
+      try {
+        const actual = await model.findUnique({ where: { key: record.key }, select: { id: true } });
+        if (actual && actual.id !== snapshotId) {
+          idRemap.set(snapshotId, actual.id);
+        }
+      } catch {
+        // If lookup fails, skip — safer than crashing the whole seed
+      }
+    }
+  }
+
   for (const modelName of SEED_TABLE_ORDER) {
     const records: any[] | undefined = data[modelName];
     if (!records || records.length === 0) {
@@ -239,29 +280,36 @@ async function seedDefinitions() {
       const parents = records.filter((r) => !r.parentId);
       const children = records.filter((r) => r.parentId);
       let count = 0;
+      const processedRecords: any[] = [];
       for (const batch of [parents, children]) {
         for (const raw of batch) {
           const base = transform ? transform(raw) : raw;
-          const record = withKey(normalizeDates(base));
+          const record = applyRemap(withKey(normalizeDates(base)));
           const where = buildWhere(record);
           const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
           await model.upsert({ where, update: rest, create: record });
+          processedRecords.push(record);
           count++;
         }
+        // Build remap after parents so children's parentId references resolve correctly
+        await buildRemap(modelName, processedRecords, model);
       }
       console.log(`  ✓ ${modelName}: ${count} records`);
       continue;
     }
 
+    const processedRecords: any[] = [];
     let count = 0;
     for (const raw of records) {
       const base = transform ? transform(raw) : raw;
-      const record = withKey(normalizeDates(base));
+      const record = applyRemap(withKey(normalizeDates(base)));
       const where = buildWhere(record);
       const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
       await model.upsert({ where, update: rest, create: record });
+      processedRecords.push(record);
       count++;
     }
+    await buildRemap(modelName, processedRecords, model);
     console.log(`  ✓ ${modelName}: ${count} records`);
   }
 }
