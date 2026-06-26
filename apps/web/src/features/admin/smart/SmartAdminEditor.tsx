@@ -2,10 +2,10 @@ import React, { useState, useEffect, useReducer, useCallback, useMemo } from 're
 import { adminApi } from '../adminApi';
 import { TABLE_SCHEMAS, TABLE_API_KEYS, TABLE_GROUPS, TableSchema } from './tableSchemas';
 import SmartField from './components/SmartField';
-import { invalidateRefCache } from './components/RefSelect';
+import { invalidateRefCache, ensureRefCache } from './components/RefSelect';
 import { structuredFieldErrorCount, structuredFieldMessages } from './components/structured/validation';
 import { migrateMissionOutcomes, needsMissionMigration } from './migrateMissionOutcomes';
-import { detectBadRichSelectionFields, BadRichSelectionField } from './legacyRichSelectionCheck';
+import { detectBadRichSelectionFields, BadRichSelectionField, detectBrokenRuleRefFields, BrokenRuleRefField } from './legacyRichSelectionCheck';
 import TelemetryCardPreviewPanel from '../telemetry/TelemetryCardPreviewPanel';
 import MissionOutcomesSectionEditor from './components/structured/MissionOutcomesSectionEditor';
 
@@ -88,6 +88,7 @@ function SectionedFormBody({
   activeSectionId,
   setActiveSectionId,
   customSectionContent,
+  extraErrorsBySection,
 }: {
   schema: TableSchema;
   record: Record<string, any>;
@@ -96,6 +97,7 @@ function SectionedFormBody({
   activeSectionId: string | null;
   setActiveSectionId: (id: string) => void;
   customSectionContent?: Record<string, React.ReactNode>;
+  extraErrorsBySection?: Record<string, number>;
 }) {
   const sections = schema.sections!;
   const firstId = sections[0].id;
@@ -122,6 +124,7 @@ function SectionedFormBody({
         if (v === undefined || v === null || v === '') n++;
       }
     });
+    n += extraErrorsBySection?.[s.id] ?? 0;
     errorCountBySection[s.id] = n;
   });
 
@@ -235,6 +238,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [needsMigration, setNeedsMigration] = useState(false);
   const [badRichSelFields, setBadRichSelFields] = useState<BadRichSelectionField[]>([]);
+  const [brokenRuleRefFields, setBrokenRuleRefFields] = useState<BrokenRuleRefField[]>([]);
   const [seeDataField, setSeeDataField] = useState<string | null>(null);
 
   useEffect(() => {
@@ -323,6 +327,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
     setActiveSectionId(null);
     setNeedsMigration(false);
     setBadRichSelFields([]);
+    setBrokenRuleRefFields([]);
     setSeeDataField(null);
     dispatch({ type: 'CLEAR' });
     loadRecords(key);
@@ -357,6 +362,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
           : rec;
       setNeedsMigration(false);
       setBadRichSelFields([]);
+      setBrokenRuleRefFields([]);
       setSeeDataField(null);
       dispatch({ type: 'LOAD_AS_DRAFT', record: draftPayload as Record<string, any>, draftId: pendingDraft.id, operation: pendingDraft.operation });
     } else if (activeTable === TABLE_API_KEYS.MissionDef) {
@@ -365,11 +371,29 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
       setBadRichSelFields(schema ? detectBadRichSelectionFields(rec, schema, getSchemaName()) : []);
       setSeeDataField(null);
       dispatch({ type: 'LOAD', record: rec });
+      if (schema) {
+        const _sch = schema, _name = getSchemaName();
+        ensureRefCache('selectionRuleDef').then((ruleDefs: any[]) => {
+          const knownIds = new Set<string>(ruleDefs.flatMap((r: any) => [r.id, r.key].filter(Boolean)));
+          setBrokenRuleRefFields(detectBrokenRuleRefFields(rec, _sch, _name, knownIds));
+        }).catch(() => setBrokenRuleRefFields([]));
+      } else {
+        setBrokenRuleRefFields([]);
+      }
     } else {
       setNeedsMigration(false);
       setBadRichSelFields(schema ? detectBadRichSelectionFields(rec, schema, getSchemaName()) : []);
       setSeeDataField(null);
       dispatch({ type: 'LOAD', record: rec });
+      if (schema) {
+        const _sch = schema, _name = getSchemaName();
+        ensureRefCache('selectionRuleDef').then((ruleDefs: any[]) => {
+          const knownIds = new Set<string>(ruleDefs.flatMap((r: any) => [r.id, r.key].filter(Boolean)));
+          setBrokenRuleRefFields(detectBrokenRuleRefFields(rec, _sch, _name, knownIds));
+        }).catch(() => setBrokenRuleRefFields([]));
+      } else {
+        setBrokenRuleRefFields([]);
+      }
     }
   };
 
@@ -383,6 +407,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
     setDeleteConfirm(false);
     setNeedsMigration(false);
     setBadRichSelFields([]);
+    setBrokenRuleRefFields([]);
     setSeeDataField(null);
     dispatch({ type: 'LOAD', record: blank });
   };
@@ -402,6 +427,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
     setDeleteConfirm(false);
     setNeedsMigration(false);
     setBadRichSelFields([]);
+    setBrokenRuleRefFields([]);
     setSeeDataField(null);
     dispatch({ type: 'LOAD_DIRTY', record: duplicated });
   };
@@ -424,8 +450,10 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
       const effectiveType = fdef.typeResolver ? fdef.typeResolver(editorState.record!) : fdef.type;
       msgs.push(...structuredFieldMessages(effectiveType, fname, editorState.record![fname]));
     });
+    badRichSelFields.forEach(b => msgs.push(`${b.field}: contains bad data (non-RichSelection shape) — remove before saving`));
+    brokenRuleRefFields.forEach(b => msgs.push(`${b.field}: unresolved rule_ref "${b.refId}" — remove before saving`));
     return msgs;
-  }, [schema, editorState.record]);
+  }, [schema, editorState.record, badRichSelFields, brokenRuleRefFields]);
 
   const structuredErrorCount = useMemo(() => {
     if (!schema || !editorState.record) return 0;
@@ -435,8 +463,25 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
       const effectiveType = fdef.typeResolver ? fdef.typeResolver(editorState.record!) : fdef.type;
       n += structuredFieldErrorCount(effectiveType, editorState.record![fname]);
     });
+    n += badRichSelFields.length + brokenRuleRefFields.length;
     return n;
-  }, [schema, editorState.record]);
+  }, [schema, editorState.record, badRichSelFields, brokenRuleRefFields]);
+
+  const extraErrorsBySection = useMemo(() => {
+    if (!schema) return {} as Record<string, number>;
+    const result: Record<string, number> = {};
+    const firstSection = schema.sections?.[0]?.id ?? '';
+    const allExtraFields = [
+      ...badRichSelFields.map(b => b.field),
+      ...brokenRuleRefFields.map(b => b.field),
+    ];
+    for (const field of allExtraFields) {
+      const fdef = schema.fields[field];
+      const sid = (fdef as any)?.section ?? firstSection;
+      result[sid] = (result[sid] ?? 0) + 1;
+    }
+    return result;
+  }, [schema, badRichSelFields, brokenRuleRefFields]);
 
   const handleSave = async () => {
     if (!editorState.record) return;
@@ -935,7 +980,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
                 </div>
               )}
               {/* BAD RICHSELECTION DATA banners — per-field warning for non-RichSelection values */}
-              {badRichSelFields.length > 0 && !editorState.isDraftMode && badRichSelFields.map(bad => (
+              {badRichSelFields.length > 0 && badRichSelFields.map(bad => (
                 <div key={bad.field} style={{
                   padding: '8px 20px',
                   background: 'rgba(120, 20, 20, 0.4)',
@@ -1015,6 +1060,52 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
                       </pre>
                     </div>
                   )}
+                </div>
+              ))}
+              {/* BROKEN RULE REF banners — per-field warning for unresolvable rule_ref nodes */}
+              {brokenRuleRefFields.length > 0 && brokenRuleRefFields.map(broken => (
+                <div key={`${broken.field}::${broken.refId}`} style={{
+                  padding: '8px 20px',
+                  background: 'rgba(120, 20, 20, 0.4)',
+                  borderBottom: '1px solid rgba(252, 165, 165, 0.3)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  flexShrink: 0,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: '#fca5a5', textTransform: 'uppercase', flexShrink: 0 }}>
+                      ⚠ Broken Ref
+                    </span>
+                    <span style={{ fontSize: 11, color: '#fecaca', flex: 1 }}>
+                      Field <code style={{ background: 'rgba(252,165,165,0.1)', borderRadius: 3, padding: '0 3px' }}>{broken.field}</code> references rule{' '}
+                      <code style={{ background: 'rgba(252,165,165,0.1)', borderRadius: 3, padding: '0 3px' }}>{broken.refId}</code> which does not exist. Remove it before saving.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBrokenRuleRefFields(prev => prev.filter(b => !(b.field === broken.field && b.refId === broken.refId)));
+                      }}
+                      style={{
+                        padding: '5px 12px',
+                        background: 'rgba(252, 165, 165, 0.15)',
+                        border: '1px solid rgba(252, 165, 165, 0.4)',
+                        borderRadius: 6,
+                        color: '#fca5a5',
+                        cursor: 'pointer',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        flexShrink: 0,
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(252,165,165,0.28)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(252,165,165,0.15)'; }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'rgba(252,165,165,0.6)', fontFamily: 'monospace' }}>
+                    {broken.path}
+                  </div>
                 </div>
               ))}
               {/* REJECTED DRAFT banner — show when the current record has a rejected draft from this author */}
@@ -1200,6 +1291,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
                   onSetField={(field, value) => dispatch({ type: 'SET_FIELD', field, value })}
                   activeSectionId={activeSectionId}
                   setActiveSectionId={setActiveSectionId}
+                  extraErrorsBySection={extraErrorsBySection}
                   customSectionContent={
                     getSchemaName() === 'TelemetryDef'
                       ? { preview: <TelemetryCardPreviewPanel record={editorState.record!} /> }

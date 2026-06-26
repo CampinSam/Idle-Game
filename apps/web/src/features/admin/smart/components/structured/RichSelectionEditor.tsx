@@ -288,6 +288,7 @@ function RuleRefEditor({ node, onChange, onRemove, onMoveUp, onMoveDown, isFirst
   }, []);
 
   const selected = options.find(o => o.id === node.id || o.key === node.id);
+  const isBroken = !loading && !!node.id && !selected;
 
   const rowStyle: CSSProperties = {
     display: 'flex',
@@ -300,24 +301,100 @@ function RuleRefEditor({ node, onChange, onRemove, onMoveUp, onMoveDown, isFirst
     border: '1px solid #1e2e3e',
   };
 
+  const reorderButtons = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 6 }}>
+      <button
+        type="button"
+        onClick={onMoveUp}
+        disabled={isFirst}
+        style={isFirst ? reorderBtnDisabled : reorderBtnBase}
+        title="Move up"
+      >↑</button>
+      <button
+        type="button"
+        onClick={onMoveDown}
+        disabled={isLast}
+        style={isLast ? reorderBtnDisabled : reorderBtnBase}
+        title="Move down"
+      >↓</button>
+    </div>
+  );
+
+  if (isBroken) {
+    return (
+      <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+        {reorderButtons}
+        <div style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          padding: '8px 10px',
+          background: '#1f0a0a',
+          borderRadius: 4,
+          border: '1px solid #ef4444',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.07em',
+              color: '#fca5a5',
+              background: '#450a0a',
+              padding: '2px 6px',
+              borderRadius: 3,
+              border: '1px solid #ef444440',
+              flexShrink: 0,
+            }}>
+              BROKEN REF
+            </span>
+            <code style={{
+              fontSize: 11,
+              color: '#fecaca',
+              background: 'rgba(239,68,68,0.1)',
+              padding: '1px 5px',
+              borderRadius: 3,
+              fontFamily: 'monospace',
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {node.id}
+            </code>
+            <button
+              type="button"
+              onClick={onRemove}
+              style={{
+                padding: '4px 12px',
+                background: 'rgba(239,68,68,0.15)',
+                border: '1px solid rgba(239,68,68,0.5)',
+                borderRadius: 5,
+                color: '#fca5a5',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.28)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; }}
+            >
+              Remove
+            </button>
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(252,165,165,0.7)', fontStyle: 'italic' }}>
+            This rule definition could not be found. It may have been deleted or not yet created.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 6 }}>
-        <button
-          type="button"
-          onClick={onMoveUp}
-          disabled={isFirst}
-          style={isFirst ? reorderBtnDisabled : reorderBtnBase}
-          title="Move up"
-        >↑</button>
-        <button
-          type="button"
-          onClick={onMoveDown}
-          disabled={isLast}
-          style={isLast ? reorderBtnDisabled : reorderBtnBase}
-          title="Move down"
-        >↓</button>
-      </div>
+      {reorderButtons}
 
       <div style={{ ...rowStyle, flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
