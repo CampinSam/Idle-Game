@@ -260,6 +260,34 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTable, tables]);
 
+  useEffect(() => {
+    if (!editorState.record || !activeTable) {
+      setBrokenRuleRefFields([]);
+      return;
+    }
+    const entry = Object.entries(TABLE_API_KEYS).find(([, v]) => v === activeTable);
+    const sn = entry ? entry[0] : '';
+    const sch = sn ? TABLE_SCHEMAS[sn] : null;
+    if (!sch) {
+      setBrokenRuleRefFields([]);
+      return;
+    }
+    const rec = editorState.record;
+    const hasRichSel = Object.values(sch.fields).some(f => {
+      const t = f.typeResolver ? f.typeResolver(rec) : f.type;
+      return t === 'richSelection';
+    });
+    if (!hasRichSel) {
+      setBrokenRuleRefFields([]);
+      return;
+    }
+    ensureRefCache('selectionRuleDef').then((ruleDefs: any[]) => {
+      const knownIds = new Set<string>(ruleDefs.flatMap((r: any) => [r.id, r.key].filter(Boolean)));
+      setBrokenRuleRefFields(detectBrokenRuleRefFields(rec, sch, activeTable, knownIds));
+    }).catch(() => setBrokenRuleRefFields([]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTable, editorState.record]);
+
   const loadPendingDrafts = useCallback(async (tableKey: string, myId?: string) => {
     if (!tableKey) { setPendingDrafts({}); return; }
     try {
@@ -371,29 +399,11 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
       setBadRichSelFields(schema ? detectBadRichSelectionFields(rec, schema, getSchemaName()) : []);
       setSeeDataField(null);
       dispatch({ type: 'LOAD', record: rec });
-      if (schema) {
-        const _sch = schema, _name = getSchemaName();
-        ensureRefCache('selectionRuleDef').then((ruleDefs: any[]) => {
-          const knownIds = new Set<string>(ruleDefs.flatMap((r: any) => [r.id, r.key].filter(Boolean)));
-          setBrokenRuleRefFields(detectBrokenRuleRefFields(rec, _sch, _name, knownIds));
-        }).catch(() => setBrokenRuleRefFields([]));
-      } else {
-        setBrokenRuleRefFields([]);
-      }
     } else {
       setNeedsMigration(false);
       setBadRichSelFields(schema ? detectBadRichSelectionFields(rec, schema, getSchemaName()) : []);
       setSeeDataField(null);
       dispatch({ type: 'LOAD', record: rec });
-      if (schema) {
-        const _sch = schema, _name = getSchemaName();
-        ensureRefCache('selectionRuleDef').then((ruleDefs: any[]) => {
-          const knownIds = new Set<string>(ruleDefs.flatMap((r: any) => [r.id, r.key].filter(Boolean)));
-          setBrokenRuleRefFields(detectBrokenRuleRefFields(rec, _sch, _name, knownIds));
-        }).catch(() => setBrokenRuleRefFields([]));
-      } else {
-        setBrokenRuleRefFields([]);
-      }
     }
   };
 
@@ -1079,29 +1089,8 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
                     </span>
                     <span style={{ fontSize: 11, color: '#fecaca', flex: 1 }}>
                       Field <code style={{ background: 'rgba(252,165,165,0.1)', borderRadius: 3, padding: '0 3px' }}>{broken.field}</code> references rule{' '}
-                      <code style={{ background: 'rgba(252,165,165,0.1)', borderRadius: 3, padding: '0 3px' }}>{broken.refId}</code> which does not exist. Remove it before saving.
+                      <code style={{ background: 'rgba(252,165,165,0.1)', borderRadius: 3, padding: '0 3px' }}>{broken.refId}</code> which does not exist — use the editor below to remove it.
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBrokenRuleRefFields(prev => prev.filter(b => !(b.field === broken.field && b.refId === broken.refId)));
-                      }}
-                      style={{
-                        padding: '5px 12px',
-                        background: 'rgba(252, 165, 165, 0.15)',
-                        border: '1px solid rgba(252, 165, 165, 0.4)',
-                        borderRadius: 6,
-                        color: '#fca5a5',
-                        cursor: 'pointer',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        flexShrink: 0,
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(252,165,165,0.28)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(252,165,165,0.15)'; }}
-                    >
-                      Dismiss
-                    </button>
                   </div>
                   <div style={{ fontSize: 11, color: 'rgba(252,165,165,0.6)', fontFamily: 'monospace' }}>
                     {broken.path}

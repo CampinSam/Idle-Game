@@ -30,6 +30,9 @@ const OBJECT_CONTAINER_TYPES = new Set([
   'statMap', 'slotStatsMap', 'slotArchetypesMap', 'equipmentSlotsMap',
   'traits', 'giftPresentation', 'giftClaimRules', 'itemEquipData',
   'homeBannerConfig', 'eventSecurity',
+  'rulesWithUniques', 'outcomeSpec', 'timerSpec', 'progression',
+  'init', 'ascension', 'mastery', 'buildingLevelRules', 'roomLevelRules',
+  'locationLevelRules', 'productionProfile', 'contentDocumentData',
 ]);
 
 export function detectBadStructuredFields(
