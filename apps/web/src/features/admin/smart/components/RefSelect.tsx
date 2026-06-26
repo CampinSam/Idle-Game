@@ -40,9 +40,11 @@ export function invalidateRefCache(apiKeyOrTable?: string) {
 }
 
 function optionLabel(o: any): string {
-  const name = o.name ?? o.id;
-  const key = o.key;
-  return key ? `${name} (${key})` : name;
+  return o.key ?? o.name ?? o.id;
+}
+
+function optionValue(o: any): string {
+  return o.id ?? o.key;
 }
 
 interface Props {
@@ -61,7 +63,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
   const [inputText, setInputText] = useState(() => {
     if (!value) return '';
     const cached = refCache.get(apiKey) || [];
-    const found = cached.find((o: any) => o.id === value);
+    const found = cached.find((o: any) => o.id === value || o.key === value);
     return found ? optionLabel(found) : value;
   });
   const [open, setOpen] = useState(false);
@@ -75,7 +77,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       const cached = refCache.get(apiKey)!;
       setOptions(cached);
       if (value) {
-        const found = cached.find((o: any) => o.id === value);
+        const found = cached.find((o: any) => o.id === value || o.key === value);
         setInputText(found ? optionLabel(found) : value);
       }
       return;
@@ -85,7 +87,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       refCache.set(apiKey, data);
       setOptions(data);
       if (value) {
-        const found = data.find((o: any) => o.id === value);
+        const found = data.find((o: any) => o.id === value || o.key === value);
         if (found) setInputText(optionLabel(found));
       }
     }).catch(() => {
@@ -98,23 +100,22 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       setInputText('');
       return;
     }
-    const found = options.find((o: any) => o.id === value);
+    const found = options.find((o: any) => o.id === value || o.key === value);
     setInputText(found ? optionLabel(found) : value);
   }, [value, options]);
 
   const filtered = options.filter(o => {
-    const label = optionLabel(o).toLowerCase();
     const text = inputText.toLowerCase();
-    return label.includes(text)
-      || (o.id || '').toLowerCase().includes(text)
-      || (o.key || '').toLowerCase().includes(text);
+    return (o.key || '').toLowerCase().includes(text)
+      || (o.name || '').toLowerCase().includes(text)
+      || (o.id || '').toLowerCase().includes(text);
   });
 
   const allItems = [null, ...filtered];
 
   const revertToValue = useCallback(() => {
     if (value) {
-      const found = options.find((o: any) => o.id === value);
+      const found = options.find((o: any) => o.id === value || o.key === value);
       setInputText(found ? optionLabel(found) : value);
     } else {
       setInputText('');
@@ -127,12 +128,11 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       onChange(null);
       setInputText('');
     } else {
-      const match = options.find(o => {
-        const label = optionLabel(o);
-        return label === trimmed || label.trim() === trimmed || o.id === trimmed || o.key === trimmed;
-      });
+      const match = options.find(o =>
+        o.key === trimmed || o.id === trimmed || (o.name || '').trim() === trimmed
+      );
       if (match) {
-        onChange(match.id);
+        onChange(optionValue(match));
         setInputText(optionLabel(match));
       } else if (allowRaw) {
         onChange(trimmed);
@@ -176,7 +176,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
           onChange(null);
           setInputText('');
         } else {
-          onChange(item.id);
+          onChange(optionValue(item));
           setInputText(optionLabel(item));
         }
       } else {
@@ -186,12 +186,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       onBlur?.();
     } else if (e.key === 'Escape') {
       setOpen(false);
-      if (value) {
-        const found = options.find(o => o.id === value);
-        setInputText(found ? optionLabel(found) : value);
-      } else {
-        setInputText('');
-      }
+      revertToValue();
     }
   };
 
@@ -209,7 +204,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       onChange(null);
       setInputText('');
     } else {
-      onChange(item.id);
+      onChange(optionValue(item));
       setInputText(optionLabel(item));
     }
     setOpen(false);
@@ -244,6 +239,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
             borderRadius: 6,
             color: inputText ? '#e0e0ff' : '#666',
             fontSize: 13,
+            fontFamily: 'monospace',
             boxSizing: 'border-box',
             cursor: loading ? 'not-allowed' : 'text',
             outline: 'none',
@@ -295,10 +291,10 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
             {filtered.map((opt, idx) => {
               const listIdx = idx + 1;
               const isHighlighted = highlightedIndex === listIdx;
-              const isSelected = opt.id === value;
+              const isSelected = opt.id === value || opt.key === value;
               return (
                 <div
-                  key={opt.id}
+                  key={opt.id ?? opt.key}
                   onMouseDown={e => { e.preventDefault(); handleOptionClick(opt); }}
                   style={{
                     padding: '8px 12px',
@@ -307,18 +303,15 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
                     color: isSelected ? '#a78bfa' : '#e0e0ff',
                     background: isHighlighted ? '#1a1a3e' : (isSelected ? 'rgba(167,139,250,0.1)' : 'transparent'),
                     borderBottom: '1px solid #1a1a2e',
+                    fontFamily: 'monospace',
                   }}
                   onMouseEnter={() => setHighlightedIndex(listIdx)}
                   onMouseLeave={() => setHighlightedIndex(-1)}
                 >
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 600 }}>{opt.name ?? opt.id}</span>
-                    {opt.key && <span style={{ color: '#888', fontSize: 11, fontFamily: 'monospace' }}>{opt.key}</span>}
-                    {!opt.key && opt.name && opt.id !== opt.name && (
-                      <span style={{ color: '#666', fontSize: 11, fontFamily: 'monospace' }}>{opt.id}</span>
-                    )}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600 }}>{opt.key ?? opt.id}</span>
                     {refTable === 'BundleDef' && Array.isArray(opt.bundle) && (
-                      <span style={{ color: '#a78bfa', fontSize: 11 }}>
+                      <span style={{ color: '#a78bfa', fontSize: 11, fontFamily: 'sans-serif' }}>
                         · {opt.bundle.length} {opt.bundle.length === 1 ? 'entry' : 'entries'}
                         {(opt.pickMin != null || opt.pickMax != null) && (
                           <> · pick {opt.pickMin ?? 1}–{opt.pickMax ?? opt.pickMin ?? 1}</>
