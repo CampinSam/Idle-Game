@@ -262,6 +262,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
 
   useEffect(() => {
     if (!editorState.record || !activeTable) {
+      setBadRichSelFields([]);
       setBrokenRuleRefFields([]);
       return;
     }
@@ -269,10 +270,12 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
     const sn = entry ? entry[0] : '';
     const sch = sn ? TABLE_SCHEMAS[sn] : null;
     if (!sch) {
+      setBadRichSelFields([]);
       setBrokenRuleRefFields([]);
       return;
     }
     const rec = editorState.record;
+    setBadRichSelFields(detectBadRichSelectionFields(rec, sch, activeTable));
     const hasRichSel = Object.values(sch.fields).some(f => {
       const t = f.typeResolver ? f.typeResolver(rec) : f.type;
       return t === 'richSelection';
@@ -396,12 +399,10 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
     } else if (activeTable === TABLE_API_KEYS.MissionDef) {
       const hasMigration = needsMissionMigration(rec);
       setNeedsMigration(hasMigration);
-      setBadRichSelFields(schema ? detectBadRichSelectionFields(rec, schema, getSchemaName()) : []);
       setSeeDataField(null);
       dispatch({ type: 'LOAD', record: rec });
     } else {
       setNeedsMigration(false);
-      setBadRichSelFields(schema ? detectBadRichSelectionFields(rec, schema, getSchemaName()) : []);
       setSeeDataField(null);
       dispatch({ type: 'LOAD', record: rec });
     }
