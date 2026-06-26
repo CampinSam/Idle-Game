@@ -58,6 +58,7 @@ export class SelectionResolverService implements OnModuleInit {
       this._ruleDefCache.clear();
       for (const row of rows) {
         this._ruleDefCache.set(row.id, row);
+        if (row.key) this._ruleDefCache.set(row.key, row);
       }
       await this._loadTransitiveRefs();
       this.logger.log(`SelectionRuleDef cache loaded: ${this._ruleDefCache.size} rule(s)`);
@@ -83,10 +84,11 @@ export class SelectionResolverService implements OnModuleInit {
       if (toFetch.length === 0) break;
 
       const rows = await this.prisma.selectionRuleDef.findMany({
-        where: { id: { in: toFetch } },
+        where: { OR: [{ id: { in: toFetch } }, { key: { in: toFetch } }] },
       });
       for (const row of rows) {
         this._ruleDefCache.set(row.id, row);
+        if (row.key) this._ruleDefCache.set(row.key, row);
       }
       for (const id of toFetch) {
         if (!this._ruleDefCache.has(id)) {
