@@ -49,6 +49,23 @@ export class BootstrapService implements OnModuleInit {
     } catch (err: any) {
       this.logger.warn(`Auto-seed on startup failed (non-fatal): ${err?.message}`);
     }
+
+    // Always ensure built-in admin roles exist (idempotent upsert).
+    // Self-heals after accidental db-push truncation of admin_roles.
+    try {
+      await this.seedBuiltInRoles();
+    } catch (err: any) {
+      this.logger.warn(`seedBuiltInRoles failed (non-fatal): ${err?.message}`);
+    }
+
+    // Only seed the default dev admin account in non-production environments.
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        await this.seedDevAdmin();
+      } catch (err: any) {
+        this.logger.warn(`seedDevAdmin failed (non-fatal): ${err?.message}`);
+      }
+    }
   }
 
   private async backfillGlobalPowers() {
@@ -277,12 +294,9 @@ export class BootstrapService implements OnModuleInit {
     }
   }
 
-  private async seedDevAdmin() {
-    const DEV_USERNAME = 'superadmin';
-    const DEV_PASSWORD = 'admin';
+  private async seedBuiltInRoles(): Promise<void> {
     const SUPER_ADMIN_ROLE_ID = 'role_super_admin';
-
-    const superAdminRole = await this.prisma.adminRole.upsert({
+    await this.prisma.adminRole.upsert({
       where: { key: SUPER_ADMIN_ROLE_ID },
       update: {},
       create: {
@@ -293,6 +307,19 @@ export class BootstrapService implements OnModuleInit {
         isBuiltIn: true,
       },
     });
+    this.logger.log('Built-in admin roles verified.');
+  }
+
+  private async seedDevAdmin(): Promise<void> {
+    const SUPER_ADMIN_ROLE_ID = 'role_super_admin';
+    const DEV_USERNAME = 'superadmin';
+    const DEV_PASSWORD = 'admin';
+
+    const superAdminRole = await this.prisma.adminRole.findUnique({ where: { key: SUPER_ADMIN_ROLE_ID } });
+    if (!superAdminRole) {
+      this.logger.warn('seedDevAdmin: super_admin role not found — seedBuiltInRoles must run first.');
+      return;
+    }
 
     const existing = await this.prisma.adminAccount.findUnique({ where: { username: DEV_USERNAME } });
     if (existing) return;

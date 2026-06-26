@@ -633,6 +633,38 @@ async function seedTestPowers() {
   console.log('  ✓ Power seed verification passed');
 }
 
+/**
+ * Re-exports the current production DB state back to Object Storage so the
+ * runtime SeedSyncService always has correct production UUIDs. This fixes
+ * FK remap errors that occur when the snapshot was originally exported from
+ * a dev environment with different UUIDs.
+ */
+async function syncBackToStorage(): Promise<void> {
+  const bucketName = getBucketName();
+  if (!bucketName) {
+    console.log('Object Storage not configured — skipping post-seed sync-back.');
+    return;
+  }
+
+  console.log('Re-syncing production definitions to Object Storage…');
+  const fresh: Record<string, any> = {
+    _meta: { version: Date.now(), exportedAt: new Date().toISOString() },
+  };
+
+  for (const tableName of SEED_TABLE_ORDER) {
+    const model = (prisma as any)[tableName];
+    if (!model?.findMany) continue;
+    try {
+      fresh[tableName] = await model.findMany();
+    } catch (err: any) {
+      console.warn(`  ! Could not export ${tableName}: ${err?.message}`);
+    }
+  }
+
+  await tryUploadToStorage(fresh, bucketName);
+  console.log(`✓ Object Storage snapshot updated (v${fresh._meta.version})`);
+}
+
 async function main() {
   const isProduction = process.env.NODE_ENV === 'production';
   await seedDefinitions();
@@ -643,6 +675,10 @@ async function main() {
   } else {
     console.log('Production environment — skipping test account seed.');
   }
+
+  // Always re-sync the production snapshot to Object Storage after seeding.
+  // Ensures SeedSyncService has correct production UUIDs on next startup.
+  await syncBackToStorage();
 }
 
 main()

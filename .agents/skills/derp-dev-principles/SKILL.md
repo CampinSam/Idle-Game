@@ -159,11 +159,17 @@ Always throw typed NestJS exceptions. Never use `throw new Error(...)` or return
 
 ---
 
-## 12. Seed Data Location
+## 12. Seed Data Location — Object Storage is the Single Source of Truth
 
-- Definition content belongs in `apps/api/src/seeds/data/*.json` and is upserted on startup (idempotent, never destructive).
-- Do not manually insert seed records through the admin panel as a substitute — they will be lost if the DB is reset.
-- After adding entries to a seed file, confirm the relevant `seedDefinitions` call in `definitions.seed.ts` covers the new table.
+All game definition seed data lives in **Object Storage** at the key `seed/seed-data.json`. This file is the canonical, authoritative source for every definition table. No parallel seed files, no `apps/api/src/seeds/data/*.json`, no local JSON files for definitions.
+
+### Rules
+
+- **Never create additional seed files or seed scripts.** The Object Storage snapshot is the only source of game definition content. If you need a new definition, add it via the admin panel and then run `pnpm export-seed` (or the equivalent Object Storage export in `SeedSyncService.syncAll()`) to capture it.
+- **The build-time seed (`prisma/seed.ts`) reads from Object Storage, upserts all 30 definition tables, then re-syncs the production snapshot back to Object Storage.** This keeps the snapshot's UUIDs aligned with production after every deployment, so the runtime SeedSyncService never hits FK remap errors.
+- **The runtime seed (`SeedSyncService.runSeed()`) applies the Object Storage snapshot on every API startup** — idempotent, never destructive. It upserts definitions; it never deletes rows.
+- **Do not manually insert definition records through the admin panel as a substitute.** Admin-panel insertions that aren't in the Object Storage snapshot will be overwritten on the next deployment.
+- **`db push` is forbidden.** See Principle #19. The specific failure mode: `db push --accept-data-loss` truncates tables that need a new NOT NULL column (historically: `admin_roles.key`), silently destroying seeded data. Only `prisma migrate dev` + `prisma migrate deploy` are allowed.
 
 ---
 

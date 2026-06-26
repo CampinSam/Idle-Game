@@ -5,3 +5,4 @@
 - [NFT sweep architecture](nft-sweep-architecture.md) — entity-centric sweep replaces per-user sweep; login uses DB-only claimFromCachedOwnership; syncUserCollections uses strict RPC methods.
 - [UUID PK migration pattern](uuid-pk-migration-pattern.md) — economy tables (Currency, ItemDefinition, LootboxDef, BundleDef) migrated to UUID PKs with key slug alias; service lookup rules and seed-sync wiring.
 - [World cluster UUID lookup patterns](world-cluster-uuid-lookups.md) — slug-based game rules (buildingDefId, roomDefId) must look up by `key`; entity/location def lookups from commands use OR dual; createStarterOutpost resolves slug by key before FK insert.
+- [Admin roles self-heal pattern](admin-roles-self-heal.md) — db push --accept-data-loss truncated admin_roles; BootstrapService.seedBuiltInRoles() upserts on every startup; seed.ts syncs snapshot back to Object Storage post-deploy.
