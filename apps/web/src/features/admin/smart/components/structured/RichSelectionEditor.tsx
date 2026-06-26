@@ -287,7 +287,7 @@ function RuleRefEditor({ node, onChange, onRemove, onMoveUp, onMoveDown, isFirst
     }).catch(() => setLoading(false));
   }, []);
 
-  const selected = options.find(o => o.id === node.id);
+  const selected = options.find(o => o.id === node.id || o.key === node.id);
 
   const rowStyle: CSSProperties = {
     display: 'flex',
@@ -350,7 +350,7 @@ function RuleRefEditor({ node, onChange, onRemove, onMoveUp, onMoveDown, isFirst
             />
           ) : (
             <select
-              value={node.id}
+              value={selected?.id ?? node.id}
               onChange={e => onChange({ ...node, id: e.target.value })}
               style={{
                 ...selectStyle,

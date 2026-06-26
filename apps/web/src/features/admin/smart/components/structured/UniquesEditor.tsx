@@ -280,7 +280,7 @@ function PowerRefEditor({
   const [showOverrides, setShowOverrides] = useState(false);
 
   const selectedDef = mode === 'def'
-    ? powerDefs.find(d => d.id === power.powerDefId)
+    ? powerDefs.find(d => d.id === power.powerDefId || d.key === power.powerDefId)
     : null;
 
   const switchMode = (m: PowerMode) => {
@@ -357,7 +357,7 @@ function PowerRefEditor({
                 options={powerDefs.map(d => ({ value: d.id, label: `${d.name} — ${d.id}` }))}
                 value={power.powerDefId ?? ''}
                 onChange={defId => {
-                  const def = powerDefs.find(d => d.id === defId);
+                  const def = powerDefs.find(d => d.id === defId || d.key === defId);
                   onChange({ ...power, powerDefId: defId, name: def?.name ?? power.name });
                 }}
                 placeholder="— search PowerDefs —"

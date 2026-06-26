@@ -9,7 +9,7 @@ export function getCachedRefRow(refTable: string, id: string): any | undefined {
   const apiKey = TABLE_API_KEYS[refTable] ?? refTable;
   const rows = refCache.get(apiKey);
   if (!rows) return undefined;
-  return rows.find((r: any) => r.id === id);
+  return rows.find((r: any) => r.id === id || r.key === id);
 }
 
 export function ensureRefCache(refTable: string): Promise<any[]> {
