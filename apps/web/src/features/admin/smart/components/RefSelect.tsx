@@ -112,7 +112,16 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
 
   const allItems = [null, ...filtered];
 
-  const commit = useCallback((text: string) => {
+  const revertToValue = useCallback(() => {
+    if (value) {
+      const found = options.find((o: any) => o.id === value);
+      setInputText(found ? optionLabel(found) : value);
+    } else {
+      setInputText('');
+    }
+  }, [value, options]);
+
+  const commit = useCallback((text: string, allowRaw = false) => {
     const trimmed = text.trim();
     if (!trimmed) {
       onChange(null);
@@ -120,17 +129,19 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
     } else {
       const match = options.find(o => {
         const label = optionLabel(o);
-        return label === trimmed || o.id === trimmed || o.key === trimmed;
+        return label === trimmed || label.trim() === trimmed || o.id === trimmed || o.key === trimmed;
       });
       if (match) {
         onChange(match.id);
         setInputText(optionLabel(match));
-      } else {
+      } else if (allowRaw) {
         onChange(trimmed);
         setInputText(trimmed);
+      } else {
+        revertToValue();
       }
     }
-  }, [options, onChange]);
+  }, [options, onChange, revertToValue]);
 
   const handleFocus = () => {
     setOpen(true);
@@ -169,7 +180,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
           setInputText(optionLabel(item));
         }
       } else {
-        commit(inputText);
+        commit(inputText, true);
       }
       setOpen(false);
       onBlur?.();
