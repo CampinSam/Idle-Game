@@ -4,21 +4,38 @@ DROP INDEX "entity_power_usages_entityId_powerKey_key";
 -- DropIndex
 DROP INDEX "location_power_usages_locationInstanceId_powerKey_key";
 
--- AlterTable
-ALTER TABLE "entity_power_usages" DROP COLUMN "lastUsedUtcDay",
-DROP COLUMN "powerKey",
-DROP COLUMN "usageCount",
-ADD COLUMN     "chargeUnits" DOUBLE PRECISION NOT NULL,
-ADD COLUMN     "lastChargeAppliedAt" BIGINT,
-ADD COLUMN     "powerGrantId" TEXT NOT NULL;
+-- AlterTable: entity_power_usages
+-- Step 1: Drop old columns, add new ones with defaults so non-empty tables don't fail.
+ALTER TABLE "entity_power_usages"
+  DROP COLUMN IF EXISTS "lastUsedUtcDay",
+  DROP COLUMN IF EXISTS "powerKey",
+  DROP COLUMN IF EXISTS "usageCount",
+  ADD COLUMN IF NOT EXISTS "chargeUnits"         DOUBLE PRECISION NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "lastChargeAppliedAt" BIGINT,
+  ADD COLUMN IF NOT EXISTS "powerGrantId"        TEXT NOT NULL DEFAULT '';
 
--- AlterTable
-ALTER TABLE "location_power_usages" DROP COLUMN "lastUsedUtcDay",
-DROP COLUMN "powerKey",
-DROP COLUMN "usageCount",
-ADD COLUMN     "chargeUnits" DOUBLE PRECISION NOT NULL,
-ADD COLUMN     "lastChargeAppliedAt" BIGINT,
-ADD COLUMN     "powerGrantId" TEXT NOT NULL;
+-- Step 2: Remove stale rows with no valid powerGrantId (orphaned from old schema).
+DELETE FROM "entity_power_usages" WHERE "powerGrantId" = '';
+
+-- Step 3: Drop the temporary defaults — constraints remain enforced.
+ALTER TABLE "entity_power_usages"
+  ALTER COLUMN "chargeUnits"  DROP DEFAULT,
+  ALTER COLUMN "powerGrantId" DROP DEFAULT;
+
+-- AlterTable: location_power_usages (same safe pattern)
+ALTER TABLE "location_power_usages"
+  DROP COLUMN IF EXISTS "lastUsedUtcDay",
+  DROP COLUMN IF EXISTS "powerKey",
+  DROP COLUMN IF EXISTS "usageCount",
+  ADD COLUMN IF NOT EXISTS "chargeUnits"         DOUBLE PRECISION NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "lastChargeAppliedAt" BIGINT,
+  ADD COLUMN IF NOT EXISTS "powerGrantId"        TEXT NOT NULL DEFAULT '';
+
+DELETE FROM "location_power_usages" WHERE "powerGrantId" = '';
+
+ALTER TABLE "location_power_usages"
+  ALTER COLUMN "chargeUnits"  DROP DEFAULT,
+  ALTER COLUMN "powerGrantId" DROP DEFAULT;
 
 -- AlterTable
 ALTER TABLE "power_defs" DROP COLUMN "defaultDailyLimit",

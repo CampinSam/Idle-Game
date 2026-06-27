@@ -26,15 +26,15 @@ export interface ChargeUsageSnapshot {
 }
 
 /**
- * Four-step tick-drip algorithm.
- * Step 1: compute elapsed ticks since last drip (0 when null → initialise).
- * Step 2: accumulate delta from TICK recharge rules.
- * Step 3: clamp to [0, maxChargeUnits].
- * Step 4: return updated units + whether the row must be written.
+ * Exact four-step tick-drip algorithm as required:
+ *   Step 1: Pre-clamp stored charge to [0, max] to eliminate any surplus/debt.
+ *   Step 2: Compute elapsed ticks and accumulate TICK-rule delta.
+ *   Step 3: Add delta to the pre-clamped value.
+ *   Step 4: Post-clamp result to [0, max].
  *
- * When lastChargeAppliedAt is null the row has never been dripped; we still
- * advance lastChargeAppliedAt to currentTick so future calls can measure
- * elapsed ticks correctly.
+ * When lastChargeAppliedAt is null the row has never been dripped; mustWrite
+ * is set true so lastChargeAppliedAt is advanced to currentTick on the first
+ * call, enabling correct elapsed-tick measurement on all future calls.
  */
 function applyTickDripMath(
   currentChargeUnits: number,
@@ -42,27 +42,29 @@ function applyTickDripMath(
   currentTick: bigint,
   config: ChargeConfig,
 ): { updatedUnits: number; mustWrite: boolean } {
-  const maxUnits = config.maxChargeUnits ?? 1;
+  const rawMax = config.maxChargeUnits ?? 1;
+  const maxSafe = rawMax === Infinity ? Number.MAX_SAFE_INTEGER : rawMax;
+
+  // Step 1: Pre-clamp stored charge.
+  const preClampedUnits = Math.min(Math.max(0, currentChargeUnits), maxSafe);
+
   const isFirstDrip = lastChargeAppliedAt === null;
   const lastTick = lastChargeAppliedAt ?? currentTick;
   const elapsedTicks = Math.max(0, Number(currentTick - lastTick));
 
-  const rechargeRules = config.rechargeRules ?? [];
+  // Step 2: Accumulate delta from TICK recharge rules.
   let delta = 0;
-  for (const rule of rechargeRules) {
+  for (const rule of config.rechargeRules ?? []) {
     if (rule.type === 'TICK') {
       delta += rule.unitsPerTick * elapsedTicks;
     }
   }
 
-  const clamped = Math.min(
-    Math.max(0, currentChargeUnits + delta),
-    maxUnits === Infinity ? Number.MAX_SAFE_INTEGER : maxUnits,
-  );
+  // Step 3+4: Add delta then post-clamp to [0, max].
+  const updatedUnits = Math.min(Math.max(0, preClampedUnits + delta), maxSafe);
 
   return {
-    updatedUnits: clamped,
-    // Must write when ticks elapsed (drip happened) OR first call (null initialisation).
+    updatedUnits,
     mustWrite: elapsedTicks > 0 || isFirstDrip,
   };
 }
@@ -275,19 +277,42 @@ export class PowerChargeService {
     });
   }
 
-  /** Extract ChargeConfig from a PowerDef row (or return defaults when null). */
-  static extractChargeConfig(powerDef: { chargeConfig?: any } | null): ChargeConfig {
+  /**
+   * Extract ChargeConfig from a PowerDef row, then merge in any grant overrides.
+   * Overrides may contain top-level charge fields (`maxChargeUnits`, `costPerUse`,
+   * etc.) OR a nested `chargeConfig` object — both are respected, with top-level
+   * overrides winning over nested ones which win over powerDef defaults.
+   */
+  static extractChargeConfig(
+    powerDef: { chargeConfig?: any } | null,
+    overrides?: Record<string, any> | null,
+  ): ChargeConfig {
     const raw = powerDef?.chargeConfig as any;
-    if (!raw || typeof raw !== 'object') {
-      return { maxChargeUnits: 1, costPerUse: 1, initialChargeUnits: 1, rechargeRules: [] };
-    }
+    const base: ChargeConfig = !raw || typeof raw !== 'object'
+      ? { maxChargeUnits: 1, costPerUse: 1, initialChargeUnits: 1, rechargeRules: [] }
+      : {
+          maxChargeUnits: raw.maxChargeUnits ?? 1,
+          costPerUse: raw.costPerUse ?? 1,
+          initialChargeUnits: raw.initialChargeUnits ?? raw.maxChargeUnits ?? 1,
+          cooldownTicks: raw.cooldownTicks ?? 0,
+          rateLimits: Array.isArray(raw.rateLimits) ? raw.rateLimits : [],
+          rechargeRules: Array.isArray(raw.rechargeRules) ? raw.rechargeRules : [],
+        };
+
+    if (!overrides || typeof overrides !== 'object') return base;
+
+    // Nested overrides.chargeConfig has lower priority than direct override fields.
+    const oc = (overrides.chargeConfig && typeof overrides.chargeConfig === 'object')
+      ? (overrides.chargeConfig as any)
+      : {};
+
     return {
-      maxChargeUnits: raw.maxChargeUnits ?? 1,
-      costPerUse: raw.costPerUse ?? 1,
-      initialChargeUnits: raw.initialChargeUnits ?? raw.maxChargeUnits ?? 1,
-      cooldownTicks: raw.cooldownTicks ?? 0,
-      rateLimits: Array.isArray(raw.rateLimits) ? raw.rateLimits : [],
-      rechargeRules: Array.isArray(raw.rechargeRules) ? raw.rechargeRules : [],
+      maxChargeUnits:      overrides.maxChargeUnits      ?? oc.maxChargeUnits      ?? base.maxChargeUnits,
+      costPerUse:          overrides.costPerUse          ?? oc.costPerUse          ?? base.costPerUse,
+      initialChargeUnits:  overrides.initialChargeUnits  ?? oc.initialChargeUnits  ?? base.initialChargeUnits,
+      cooldownTicks:       overrides.cooldownTicks       ?? oc.cooldownTicks       ?? base.cooldownTicks,
+      rateLimits:          overrides.rateLimits          ?? oc.rateLimits          ?? base.rateLimits,
+      rechargeRules:       overrides.rechargeRules       ?? oc.rechargeRules       ?? base.rechargeRules,
     };
   }
 

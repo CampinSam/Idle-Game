@@ -27,7 +27,7 @@ export class RechargeLocationPowerHandler implements CommandHandler {
 
     const location = await (ctx.tx as any).locationInstance.findUnique({
       where: { id: locationId },
-      include: { definition: true },
+      select: { id: true, ownerUserId: true },
     });
     if (!location) {
       throw new NotFoundException('Location not found');
@@ -40,10 +40,6 @@ export class RechargeLocationPowerHandler implements CommandHandler {
     const isAdmin = user && typeof user.flags === 'object' && user.flags !== null
       && (user.flags as Record<string, unknown>).isAdmin === true;
 
-    if (!isAdmin && location.ownerUserId !== ctx.userId) {
-      throw new ForbiddenException('You do not own this location');
-    }
-
     const grant = await this.powerGrantService.findActiveGrant('location', locationId, powerKey, ctx.tx);
     if (!grant) {
       throw new NotFoundException(
@@ -51,7 +47,11 @@ export class RechargeLocationPowerHandler implements CommandHandler {
       );
     }
 
-    const chargeConfig = PowerChargeService.extractChargeConfig(grant.powerDef);
+    // Merge grant overrides into chargeConfig so overridden charge fields take effect.
+    const chargeConfig = PowerChargeService.extractChargeConfig(
+      grant.powerDef,
+      grant.overrides as Record<string, any> | null,
+    );
 
     const resourceRule = (chargeConfig.rechargeRules ?? []).find(
       (r): r is Extract<NonNullable<typeof chargeConfig.rechargeRules>[number], { type: 'RESOURCE_SPEND' }> =>
@@ -64,9 +64,11 @@ export class RechargeLocationPowerHandler implements CommandHandler {
       );
     }
 
+    // Gate check: 'owner' (default) requires the requester to own the location.
+    // 'everyone' allows any authenticated player to contribute.
     const gate = resourceRule.gate ?? 'owner';
     if (gate === 'owner' && !isAdmin && location.ownerUserId !== ctx.userId) {
-      throw new ForbiddenException('Only the owner may recharge this power');
+      throw new ForbiddenException('Only the location owner may recharge this power');
     }
 
     if (!Array.isArray(resourceRule.cost) || resourceRule.cost.length === 0) {
@@ -109,7 +111,8 @@ export class RechargeLocationPowerHandler implements CommandHandler {
       });
     }
 
-    const rechargedUnits = Math.min(currentUnits + resourceRule.units, maxChargeUnits);
+    // Add the recharge units, clamped to [0, max].
+    const rechargedUnits = Math.min(Math.max(0, currentUnits + resourceRule.units), maxChargeUnits);
     await (ctx.tx as any).locationPowerUsage.update({
       where: { id: usage.id },
       data: { chargeUnits: rechargedUnits },

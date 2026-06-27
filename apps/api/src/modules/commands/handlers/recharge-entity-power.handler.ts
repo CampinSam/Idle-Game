@@ -27,7 +27,7 @@ export class RechargeEntityPowerHandler implements CommandHandler {
 
     const entity = await (ctx.tx as any).entity.findUnique({
       where: { id: entityId },
-      select: { id: true, ownerUserId: true, display: true, speciesId: true },
+      select: { id: true, ownerUserId: true },
     });
     if (!entity) {
       throw new NotFoundException('Entity not found');
@@ -40,10 +40,6 @@ export class RechargeEntityPowerHandler implements CommandHandler {
     const isAdmin = user && typeof user.flags === 'object' && user.flags !== null
       && (user.flags as Record<string, unknown>).isAdmin === true;
 
-    if (!isAdmin && entity.ownerUserId !== ctx.userId) {
-      throw new ForbiddenException('You do not own this entity');
-    }
-
     const grant = await this.powerGrantService.findActiveGrant('entity', entityId, powerKey, ctx.tx);
     if (!grant) {
       throw new NotFoundException(
@@ -51,7 +47,11 @@ export class RechargeEntityPowerHandler implements CommandHandler {
       );
     }
 
-    const chargeConfig = PowerChargeService.extractChargeConfig(grant.powerDef);
+    // Merge grant overrides into chargeConfig so overridden charge fields take effect.
+    const chargeConfig = PowerChargeService.extractChargeConfig(
+      grant.powerDef,
+      grant.overrides as Record<string, any> | null,
+    );
 
     // Find the RESOURCE_SPEND recharge rule.
     const resourceRule = (chargeConfig.rechargeRules ?? []).find(
@@ -66,10 +66,10 @@ export class RechargeEntityPowerHandler implements CommandHandler {
     }
 
     // Gate check: 'owner' (default) requires the requester to own the entity.
-    // 'everyone' is already satisfied by reaching this point (anyone can request).
+    // 'everyone' allows any authenticated player to contribute.
     const gate = resourceRule.gate ?? 'owner';
     if (gate === 'owner' && !isAdmin && entity.ownerUserId !== ctx.userId) {
-      throw new ForbiddenException('Only the owner may recharge this power');
+      throw new ForbiddenException('Only the entity owner may recharge this power');
     }
 
     if (!Array.isArray(resourceRule.cost) || resourceRule.cost.length === 0) {
@@ -114,8 +114,8 @@ export class RechargeEntityPowerHandler implements CommandHandler {
       });
     }
 
-    // Add the recharge units, capped at max.
-    const rechargedUnits = Math.min(currentUnits + resourceRule.units, maxChargeUnits);
+    // Add the recharge units, clamped to [0, max].
+    const rechargedUnits = Math.min(Math.max(0, currentUnits + resourceRule.units), maxChargeUnits);
     await (ctx.tx as any).entityPowerUsage.update({
       where: { id: usage.id },
       data: { chargeUnits: rechargedUnits },

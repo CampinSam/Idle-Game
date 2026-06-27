@@ -62,7 +62,11 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     const currentTickNum = await this.tickService.getCurrentTick();
     const currentTick = BigInt(Math.floor(currentTickNum));
 
-    const chargeConfig = PowerChargeService.extractChargeConfig(grant.powerDef);
+    // Merge grant overrides so per-grant charge fields override the powerDef defaults.
+    const chargeConfig = PowerChargeService.extractChargeConfig(
+      grant.powerDef,
+      grant.overrides as Record<string, any> | null,
+    );
     const costPerUse = chargeConfig.costPerUse ?? 1;
 
     // ── 1. Cooldown check ─────────────────────────────────────────────────────
