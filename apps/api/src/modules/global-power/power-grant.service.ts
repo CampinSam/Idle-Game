@@ -44,7 +44,10 @@ export class PowerGrantService {
             ],
           },
           {
-            NOT: { remainingChargeUnits: 0 },
+            OR: [
+              { remainingChargeUnits: null },
+              { remainingChargeUnits: { gt: 0 } },
+            ],
           },
         ],
       },
