@@ -2,6 +2,7 @@ import { Patch } from './command.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { serializeLocation } from './location-serializer.util';
 import { serializeEntityFull } from '../entity/entity-stats.util';
+import { evaluateTopLevelRules } from '../game-rules/evaluate-top-level-rules.util';
 
 function serializeJob(job: any) {
   const timer = job.timer as any;
@@ -305,4 +306,49 @@ export async function fetchActiveEffects(tx: any, userId: string, currentTick?: 
 export async function buildActiveEffectPatches(pb: PatchBuilder, tx: any, userId: string, currentTick?: number) {
   const effects = await fetchActiveEffects(tx, userId, currentTick);
   for (const effect of effects) pb.upsertActiveEffect(effect);
+}
+
+/**
+ * Re-evaluates `requirementStatus` for every mission category def and mission
+ * def using the player's current flags (as visible inside `tx`). Emits
+ * `{ op:'upsert', entity:'categoryDef'|'missionDef' }` patches so the client
+ * can unlock gated categories/missions in the same render cycle that applies
+ * the mission-completion patches — no separate HTTP refetch needed.
+ *
+ * Call this only when flags were actually changed (e.g. resolvedFlagCount > 0)
+ * to keep the patch payload small.
+ */
+export async function buildMissionDefStatusPatches(
+  pb: PatchBuilder,
+  tx: any,
+  userId: string,
+  gameRules: any,
+): Promise<void> {
+  const user = await (tx as any).user.findUnique({ where: { id: userId } });
+  if (!user) return;
+
+  const reqContext = gameRules.buildRequirementContext(user);
+
+  const categories = await (tx as any).missionCategoryDef.findMany({
+    orderBy: { sortOrder: 'asc' },
+  });
+  for (const cat of categories) {
+    const requirementStatus = cat.requirements
+      ? evaluateTopLevelRules(cat.requirements, reqContext, gameRules)
+      : [];
+    pb.upsert('categoryDef', cat.id, { requirementStatus });
+  }
+
+  const missionDefs = await (tx as any).missionDef.findMany({
+    orderBy: { sortOrder: 'asc' },
+  });
+  for (const def of missionDefs) {
+    const requirementStatus = def.requirements
+      ? evaluateTopLevelRules(def.requirements, reqContext, gameRules)
+      : [];
+    const launchRequirementStatus = def.launchRequirements
+      ? evaluateTopLevelRules(def.launchRequirements, reqContext, gameRules)
+      : [];
+    pb.upsert('missionDef', def.id, { requirementStatus, launchRequirementStatus });
+  }
 }

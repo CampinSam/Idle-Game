@@ -1333,6 +1333,7 @@ export class MissionService {
         entityIds,
         rewards: grantedRewards,
         removedEffectIds: sessionEffects.map((e: any) => e.id),
+        resolvedFlagCount: resolvedFlags.length,
       },
     };
   }

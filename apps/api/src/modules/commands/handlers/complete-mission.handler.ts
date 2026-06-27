@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
-import { PatchBuilder, buildCurrencyPatches, buildItemPatches, buildPlayerPatch, buildEntityPatch } from '../patch-builder';
+import { PatchBuilder, buildCurrencyPatches, buildItemPatches, buildPlayerPatch, buildEntityPatch, buildMissionDefStatusPatches } from '../patch-builder';
 import { MissionService } from '../../mission/mission.service';
 import { NotificationService } from '../../notification/notification.service';
+import { GameRulesService } from '../../game-rules/game-rules.service';
 
 @Injectable()
 export class CompleteMissionHandler implements CommandHandler {
   constructor(
     private missionService: MissionService,
     private notificationService: NotificationService,
+    private gameRules: GameRulesService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -29,6 +31,13 @@ export class CompleteMissionHandler implements CommandHandler {
     await buildPlayerPatch(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
+
+    // If mission completion resolved any player flags, push updated requirement
+    // status for all category/mission defs so the client can unlock gated
+    // content in the same render cycle — no separate HTTP refetch needed.
+    if ((result.missionResult as any)?.resolvedFlagCount > 0) {
+      await buildMissionDefStatusPatches(pb, ctx.tx, ctx.userId, this.gameRules);
+    }
 
     const removedEffectIds: string[] = result.missionResult?.removedEffectIds || [];
     for (const effectId of removedEffectIds) {
