@@ -185,11 +185,26 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     const pb = new PatchBuilder();
     await buildEntityPatch(pb, ctx.tx, entityId);
 
+    const maxChargeUnits = chargeConfig.maxChargeUnits ?? 1;
+    const tickRule = (chargeConfig.rechargeRules ?? []).find(
+      (r: any) => r.type === 'TICK' && (r.unitsPerTick ?? 0) > 0,
+    ) as { type: string; unitsPerTick: number } | undefined;
+    let readyAtMs: number | null = null;
+    if (finalChargeUnits < costPerUse && tickRule) {
+      const deficit = costPerUse - finalChargeUnits;
+      const ticksNeeded = Math.ceil(deficit / tickRule.unitsPerTick);
+      const ticksPerSecond = await this.tickService.getCurrentRate();
+      const secondsNeeded = ticksNeeded / Math.max(0.001, ticksPerSecond);
+      readyAtMs = Date.now() + Math.round(secondsNeeded * 1000);
+    }
+
     pb.upsert('entityPowerUsage', entityId, {
       [grant.powerKey]: {
         grantId: grant.id,
         chargeUnits: finalChargeUnits,
-        maxChargeUnits: chargeConfig.maxChargeUnits ?? 1,
+        maxChargeUnits,
+        costPerUse,
+        readyAtMs,
       },
     });
 

@@ -662,8 +662,8 @@ export interface BootstrapResponse {
     activeEffects?: any;
     activeSeason?: { id: string; name?: string; [key: string]: unknown } | null;
     activePowers?: ActivePowerSummary[];
-    entityPowerUsages?: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
-    locationPowerUsages?: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
+    entityPowerUsages?: Record<string, Record<string, import('../store/syncSlice').PowerChargeStatus>>;
+    locationPowerUsages?: Record<string, Record<string, import('../store/syncSlice').PowerChargeStatus>>;
   };
   cursor: { delta: string };
   ui?: Array<{ type: string; spec: any }>;

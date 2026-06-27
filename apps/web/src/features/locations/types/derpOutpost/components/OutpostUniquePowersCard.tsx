@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { useNow } from '../../../../../hooks/useNow';
 import { useAppSelector } from '../../../../../store';
 import { useCommand } from '../../../../../hooks/useCommand';
@@ -6,11 +6,11 @@ import { useNotifications } from '../../../../../context/NotificationContext';
 import { Card } from '../../../../../components/ui';
 import { getUniqueEntry } from '../getUniqueEntry';
 import type { PowerRef } from '@derp/shared';
+import type { PowerChargeStatus } from '../../../../../store/syncSlice';
 
-import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown } from '../../../../../features/powers/powerUtils';
+import { formatCountdown } from '../../../../../features/powers/powerUtils';
 import { formatPowerValue } from '../../../../../utils/globalPowerUtils';
 
-/** Stable key for a PowerRef — prefers p.key, then p.powerType, then p.effectDefId (full legacy compat). */
 function powerKey(p: PowerRef): string {
   return p.key ?? p.powerType ?? p.effectDefId ?? 'unknown';
 }
@@ -22,18 +22,30 @@ function powerValueLabel(p: PowerRef): string {
 
 interface PowerRowProps {
   power: PowerRef;
-  usageCount: number;
-  isAtLimit: boolean;
+  charge: PowerChargeStatus | null;
   isBusy: boolean;
-  countdown: number;
+  now: number;
   onTrigger: (key: string) => void;
 }
 
-function PowerRow({ power, usageCount, isAtLimit, isBusy, countdown, onTrigger }: PowerRowProps) {
-  const limit = typeof power.dailyLimit === 'number' && power.dailyLimit > 0 ? power.dailyLimit : 1;
-  const remaining = Math.max(0, limit - usageCount);
+function PowerRow({ power, charge, isBusy, now, onTrigger }: PowerRowProps) {
+  const costPerUse = charge?.costPerUse ?? 1;
+  const maxChargeUnits = charge?.maxChargeUnits ?? costPerUse;
+  const chargeUnits = charge?.chargeUnits ?? 0;
+  // Also treat as activatable when readyAtMs has already elapsed — the store
+  // still holds stale chargeUnits until the next server patch arrives.
+  const canActivate = chargeUnits >= costPerUse || (charge?.readyAtMs != null && now >= charge.readyAtMs);
+
+  const usesRemaining = Math.floor(chargeUnits / costPerUse);
+  const usesMax = Math.floor(maxChargeUnits / costPerUse);
+
   const label = power.name || powerKey(power);
   const valueLabel = powerValueLabel(power);
+
+  let countdownSecs: number | null = null;
+  if (!canActivate && charge?.readyAtMs != null) {
+    countdownSecs = Math.max(0, Math.ceil((charge.readyAtMs - now) / 1000));
+  }
 
   return (
     <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/[0.03] border border-[rgba(139,92,246,0.12)]">
@@ -48,25 +60,27 @@ function PowerRow({ power, usageCount, isAtLimit, isBusy, countdown, onTrigger }
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
-          {Array.from({ length: limit }).map((_, i) => (
+          {Array.from({ length: Math.max(1, usesMax) }).map((_, i) => (
             <div
               key={i}
               className={[
                 'w-2 h-2 rounded-full border',
-                i < usageCount
-                  ? 'bg-[rgba(139,92,246,0.25)] border-[rgba(139,92,246,0.3)]'
-                  : 'bg-[#F59E0B]/70 border-[#F59E0B]/50',
+                i < usesRemaining
+                  ? 'bg-[#F59E0B]/70 border-[#F59E0B]/50'
+                  : 'bg-[rgba(139,92,246,0.25)] border-[rgba(139,92,246,0.3)]',
               ].join(' ')}
             />
           ))}
           <span className="text-[10px] text-white/50 ml-1">
-            {remaining} / {limit} remaining
+            {usesRemaining} / {usesMax} charges
           </span>
         </div>
 
-        {isAtLimit ? (
+        {!canActivate ? (
           <span className="text-[9px] font-mono text-white/35 flex-shrink-0">
-            Resets {formatCountdown(countdown)}
+            {countdownSecs != null
+              ? `Ready in ${formatCountdown(countdownSecs)}`
+              : 'No charges'}
           </span>
         ) : (
           <button
@@ -97,7 +111,6 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
   const storedUsages = useAppSelector((s) => s.sync.locationPowerUsages[outpost.id] ?? {});
   const [triggering, setTriggering] = useState<string | null>(null);
   const now = useNow(1000);
-  const countdown = getSecondsUntilUtcMidnight(now);
 
   const uniqueEntry = getUniqueEntry(
     { nftAssetId: outpost.nftAssetId },
@@ -105,18 +118,6 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
   );
 
   const powers: PowerRef[] = uniqueEntry?.powers ?? [];
-
-  const today = getUtcDay();
-
-  const usageByPower = useMemo<Record<string, number>>(() => {
-    const result: Record<string, number> = {};
-    for (const p of powers) {
-      const k = powerKey(p);
-      const entry = storedUsages[k];
-      result[k] = entry && entry.lastUsedUtcDay === today ? entry.usageCount : 0;
-    }
-    return result;
-  }, [storedUsages, powers, today]);
 
   const handleTrigger = useCallback(
     async (key: string) => {
@@ -126,9 +127,9 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
         await execute('TriggerLocationPower', { locationId: outpost.id, powerKey: key });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to activate power';
-        const isLimit = msg.includes('Daily limit') || msg.includes('limit reached');
+        const isCharge = msg.includes('Insufficient charges') || msg.includes('charge');
         addLocalToast({
-          title: isLimit ? 'Daily Limit Reached' : 'Power Failed',
+          title: isCharge ? 'Insufficient Charges' : 'Power Failed',
           body: msg,
           icon: '❌',
           accentColor: '#EF4444',
@@ -151,17 +152,14 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
       </div>
       {powers.map((p) => {
         const k = powerKey(p);
-        const usageCount = usageByPower[k] ?? 0;
-        const limit = typeof p.dailyLimit === 'number' && p.dailyLimit > 0 ? p.dailyLimit : 1;
-        const isAtLimit = usageCount >= limit;
+        const charge = storedUsages[k] ?? null;
         return (
           <PowerRow
             key={k}
             power={p}
-            usageCount={usageCount}
-            isAtLimit={isAtLimit}
+            charge={charge}
             isBusy={!!triggering}
-            countdown={countdown}
+            now={now}
             onTrigger={handleTrigger}
           />
         );

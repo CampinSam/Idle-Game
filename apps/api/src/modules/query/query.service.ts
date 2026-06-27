@@ -4,6 +4,7 @@ import { TickService } from '../tick/tick.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { HomeBannerService, HomeBannerSnapshot } from '../home-banner/home-banner.service';
 import { GlobalPowerService } from '../global-power/global-power.service';
+import { PowerChargeService } from '../global-power/power-charge.service';
 import { QuestService } from '../quest/quest.service';
 import { CheckInService } from '../checkin/checkin.service';
 import { Patch, UiIntent } from '../commands/command.types';
@@ -28,6 +29,16 @@ export interface ActiveGlobalPowerSummary {
   selection: Record<string, any> | null;
 }
 
+export interface PowerChargeStatus {
+  grantId: string;
+  chargeUnits: number;
+  maxChargeUnits: number;
+  costPerUse: number;
+  /** Absolute JS timestamp (ms) when chargeUnits will reach costPerUse via tick drip.
+   *  null when there are already enough charges or when there is no TICK recharge rule. */
+  readyAtMs: number | null;
+}
+
 export interface BootstrapResult {
   serverTime: number;
   tickAnchor: {
@@ -47,8 +58,8 @@ export interface BootstrapResult {
     homeBanners?: HomeBannerSnapshot[];
     activeSeason?: any;
     activePowers?: ActiveGlobalPowerSummary[];
-    entityPowerUsages?: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
-    locationPowerUsages?: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
+    entityPowerUsages?: Record<string, Record<string, PowerChargeStatus>>;
+    locationPowerUsages?: Record<string, Record<string, PowerChargeStatus>>;
   };
   cursor: { delta: string };
   ui?: UiIntent[];
@@ -157,6 +168,25 @@ export class QueryService {
     private questService: QuestService,
     private checkInService: CheckInService,
   ) {}
+
+  /**
+   * Compute the absolute timestamp (ms) when chargeUnits will reach costPerUse
+   * via TICK-based drip. Returns null if already sufficient or no TICK rule exists.
+   */
+  private computeReadyAtMs(
+    chargeUnits: number,
+    costPerUse: number,
+    rechargeRules: Array<{ type: string; unitsPerTick?: number }>,
+    ticksPerSecond: number,
+  ): number | null {
+    if (chargeUnits >= costPerUse) return null;
+    const tickRule = rechargeRules.find((r) => r.type === 'TICK' && (r.unitsPerTick ?? 0) > 0);
+    if (!tickRule || !tickRule.unitsPerTick) return null;
+    const deficit = costPerUse - chargeUnits;
+    const ticksNeeded = Math.ceil(deficit / tickRule.unitsPerTick);
+    const secondsNeeded = ticksNeeded / Math.max(0.001, ticksPerSecond);
+    return Date.now() + Math.round(secondsNeeded * 1000);
+  }
 
   async bootstrap(userId: string): Promise<BootstrapResult> {
     try {
@@ -348,41 +378,90 @@ export class QueryService {
       }),
       this.tickService.getTickInfo(),
       this.globalPowerService.getActivePowers(),
+      // EntityPowerUsage: joined with PowerGrant (for powerKey + chargeConfig) via powerGrantId.
       (this.prisma as any).entityPowerUsage.findMany({
-        where: {
-          entity: { ownerUserId: userId },
-          lastUsedUtcDay: new Date().toISOString().slice(0, 10),
+        where: { entity: { ownerUserId: userId } },
+        select: {
+          entityId: true,
+          chargeUnits: true,
+          lastChargeAppliedAt: true,
+          powerGrant: {
+            select: {
+              id: true,
+              powerKey: true,
+              overrides: true,
+              powerDef: { select: { chargeConfig: true } },
+            },
+          },
         },
-        select: { entityId: true, powerKey: true, usageCount: true, lastUsedUtcDay: true },
       }),
+      // LocationPowerUsage: joined with PowerGrant (for powerKey + chargeConfig) via powerGrantId.
       (this.prisma as any).locationPowerUsage.findMany({
-        where: {
-          locationInstance: { ownerUserId: userId },
-          lastUsedUtcDay: new Date().toISOString().slice(0, 10),
+        where: { locationInstance: { ownerUserId: userId } },
+        select: {
+          locationInstanceId: true,
+          chargeUnits: true,
+          lastChargeAppliedAt: true,
+          powerGrant: {
+            select: {
+              id: true,
+              powerKey: true,
+              overrides: true,
+              powerDef: { select: { chargeConfig: true } },
+            },
+          },
         },
-        select: { locationInstanceId: true, powerKey: true, usageCount: true, lastUsedUtcDay: true },
       }),
     ]);
 
     const cursorId = latestDelta?.id ?? BigInt(0);
     const currencyIds = new Set<string>(currencyDefs.map((c: any) => c.id));
 
-    const entityPowerUsages: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>> = {};
+    // ticksPerSecond used for readyAtMs calculations below.
+    const ticksPerSecond = tickInfo.currentRate;
+    // currentTick as BigInt for tick-drip projection.
+    const currentTickBig = BigInt(Math.floor(tickInfo.currentTick));
+
+    const entityPowerUsages: Record<string, Record<string, PowerChargeStatus>> = {};
     for (const row of entityPowerUsageRows as any[]) {
+      if (!row.powerGrant) continue;
+      const { id: grantId, powerKey, overrides, powerDef } = row.powerGrant;
+      const chargeConfig = PowerChargeService.extractChargeConfig(powerDef, overrides);
+      // Project effective charge units at bootstrap time by applying elapsed tick-drip.
+      const lastChargeAppliedAt = row.lastChargeAppliedAt != null ? BigInt(row.lastChargeAppliedAt) : null;
+      const chargeUnits = PowerChargeService.projectChargeUnits(
+        row.chargeUnits as number,
+        lastChargeAppliedAt,
+        currentTickBig,
+        chargeConfig,
+      );
+      const maxChargeUnits = chargeConfig.maxChargeUnits ?? 1;
+      const costPerUse = chargeConfig.costPerUse ?? 1;
+      const readyAtMs = this.computeReadyAtMs(chargeUnits, costPerUse, chargeConfig.rechargeRules ?? [], ticksPerSecond);
+
       if (!entityPowerUsages[row.entityId]) entityPowerUsages[row.entityId] = {};
-      entityPowerUsages[row.entityId][row.powerKey] = {
-        usageCount: row.usageCount,
-        lastUsedUtcDay: row.lastUsedUtcDay,
-      };
+      entityPowerUsages[row.entityId][powerKey] = { grantId, chargeUnits, maxChargeUnits, costPerUse, readyAtMs };
     }
 
-    const locationPowerUsages: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>> = {};
+    const locationPowerUsages: Record<string, Record<string, PowerChargeStatus>> = {};
     for (const row of locationPowerUsageRows as any[]) {
+      if (!row.powerGrant) continue;
+      const { id: grantId, powerKey, overrides, powerDef } = row.powerGrant;
+      const chargeConfig = PowerChargeService.extractChargeConfig(powerDef, overrides);
+      // Project effective charge units at bootstrap time by applying elapsed tick-drip.
+      const lastChargeAppliedAt = row.lastChargeAppliedAt != null ? BigInt(row.lastChargeAppliedAt) : null;
+      const chargeUnits = PowerChargeService.projectChargeUnits(
+        row.chargeUnits as number,
+        lastChargeAppliedAt,
+        currentTickBig,
+        chargeConfig,
+      );
+      const maxChargeUnits = chargeConfig.maxChargeUnits ?? 1;
+      const costPerUse = chargeConfig.costPerUse ?? 1;
+      const readyAtMs = this.computeReadyAtMs(chargeUnits, costPerUse, chargeConfig.rechargeRules ?? [], ticksPerSecond);
+
       if (!locationPowerUsages[row.locationInstanceId]) locationPowerUsages[row.locationInstanceId] = {};
-      locationPowerUsages[row.locationInstanceId][row.powerKey] = {
-        usageCount: row.usageCount,
-        lastUsedUtcDay: row.lastUsedUtcDay,
-      };
+      locationPowerUsages[row.locationInstanceId][powerKey] = { grantId, chargeUnits, maxChargeUnits, costPerUse, readyAtMs };
     }
 
     // Enrich each check-in def's rewards[] with the linked gift's iconKey so

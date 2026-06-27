@@ -278,6 +278,21 @@ export class PowerChargeService {
   }
 
   /**
+   * Compute the effective charge units at `currentTick` by applying the tick-drip
+   * algorithm to the stored `chargeUnits` and `lastChargeAppliedAt`.
+   * Mirrors the private `applyTickDripMath` used inside the instance methods so
+   * callers (e.g. QueryService bootstrap) can project current state without a DB write.
+   */
+  static projectChargeUnits(
+    storedChargeUnits: number,
+    lastChargeAppliedAt: bigint | null,
+    currentTick: bigint,
+    config: ChargeConfig,
+  ): number {
+    return applyTickDripMath(storedChargeUnits, lastChargeAppliedAt, currentTick, config).updatedUnits;
+  }
+
+  /**
    * Extract ChargeConfig from a PowerDef row, then merge in any grant overrides.
    * Overrides may contain top-level charge fields (`maxChargeUnits`, `costPerUse`,
    * etc.) OR a nested `chargeConfig` object — both are respected, with top-level

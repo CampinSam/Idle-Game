@@ -25,8 +25,9 @@ import { api } from '../../../../services/api';
 import { useAppSelector } from '../../../../store';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../../../tick';
 import { useNotifications } from '../../../../context/NotificationContext';
-import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown } from '../../../powers/powerUtils';
+import { formatCountdown } from '../../../powers/powerUtils';
 import { formatPowerValue } from '../../../../utils/globalPowerUtils';
+import type { PowerChargeStatus } from '../../../../store/syncSlice';
 
 const PROGRESSION_TABS = ['LEVEL', 'ASCENSION', 'MASTERY', 'RELICS', 'HISTORY', 'TRAITS'] as const;
 type ProgressionTab = typeof PROGRESSION_TABS[number];
@@ -579,20 +580,6 @@ function EntityUniquePowerPanel({
   const storedUsages = useAppSelector((s) => s.sync.entityPowerUsages[entityId] ?? {});
   const [triggering, setTriggering] = useState<string | null>(null);
   const now = useNow(1000);
-  const countdown = getSecondsUntilUtcMidnight(now);
-
-  const today = getUtcDay();
-  const usageState = useMemo<Record<string, { usageCount: number; dailyLimit: number }>>(() => {
-    const result: Record<string, { usageCount: number; dailyLimit: number }> = {};
-    for (const p of powers) {
-      const k = p.key ?? p.powerType ?? p.effectDefId ?? 'unknown';
-      const entry = storedUsages[k];
-      if (entry && entry.lastUsedUtcDay === today) {
-        result[k] = { usageCount: entry.usageCount, dailyLimit: p.dailyLimit ?? 1 };
-      }
-    }
-    return result;
-  }, [storedUsages, powers, today]);
 
   const handleTrigger = useCallback(
     async (key: string) => {
@@ -602,9 +589,9 @@ function EntityUniquePowerPanel({
         await execute('TriggerEntityPower', { entityId, powerKey: key });
       } catch (err: any) {
         const msg = err?.message || 'Failed to trigger power';
-        const isLimit = msg.includes('Daily limit') || msg.includes('limit reached');
+        const isCharge = msg.includes('Insufficient charges') || msg.includes('charge');
         addLocalToast({
-          title: isLimit ? 'Daily Limit Reached' : 'Power Failed',
+          title: isCharge ? 'Insufficient Charges' : 'Power Failed',
           body: msg,
           icon: '❌',
           accentColor: '#EF4444',
@@ -624,22 +611,34 @@ function EntityUniquePowerPanel({
       <div className="text-[9px] font-black tracking-[0.8px] text-[#fde68a]/70 uppercase">Unique NFT Powers</div>
       {powers.map((p) => {
         const k = p.key ?? p.powerType ?? p.effectDefId ?? 'unknown';
-        const usage = usageState[k];
-        const limit = typeof p.dailyLimit === 'number' && p.dailyLimit > 0 ? p.dailyLimit : 1;
-        const isAtLimit = usage ? usage.usageCount >= limit : false;
-        const usageCount = usage?.usageCount ?? 0;
+        const charge: PowerChargeStatus | null = storedUsages[k] ?? null;
+        const costPerUse = charge?.costPerUse ?? 1;
+        const maxChargeUnits = charge?.maxChargeUnits ?? costPerUse;
+        const chargeUnits = charge?.chargeUnits ?? 0;
+        // Also treat as activatable when readyAtMs has already elapsed — the store
+        // still holds stale chargeUnits until the next server patch arrives.
+        const canActivate = chargeUnits >= costPerUse || (charge?.readyAtMs != null && now >= charge.readyAtMs);
+        const usesRemaining = Math.floor(chargeUnits / costPerUse);
+        const usesMax = Math.floor(maxChargeUnits / costPerUse);
         const label = p.name || k;
         const valStr = p.value !== undefined ? formatPowerValue(p.value, p.valueMode ?? 'percent_add') : '—';
         const durStr = p.durationMinutes !== undefined ? `${p.durationMinutes}m` : '—';
         const valueLabel = `${valStr} · ${durStr}`;
-        const remaining = Math.max(0, limit - usageCount);
+
+        let countdownSecs: number | null = null;
+        if (!canActivate && charge?.readyAtMs != null) {
+          countdownSecs = Math.max(0, Math.ceil((charge.readyAtMs - now) / 1000));
+        }
+
         return (
           <div key={k}>
-            {isAtLimit ? (
+            {!canActivate ? (
               <div className="flex items-center justify-between gap-1 bg-white/[0.04] rounded px-2 py-1.5">
                 <span className="text-[9px] font-bold text-white/40 truncate">{label}</span>
                 <span className="text-[8px] font-mono text-white/30 flex-shrink-0">
-                  Resets {formatCountdown(countdown)}
+                  {countdownSecs != null
+                    ? `Ready in ${formatCountdown(countdownSecs)}`
+                    : 'No charges'}
                 </span>
               </div>
             ) : (
@@ -650,23 +649,23 @@ function EntityUniquePowerPanel({
                 </div>
                 <div className="flex items-center justify-between gap-1">
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: limit }).map((_, i) => (
+                    {Array.from({ length: Math.max(1, usesMax) }).map((_, i) => (
                       <div
                         key={i}
                         className={[
                           'w-1.5 h-1.5 rounded-full',
-                          i < usageCount
-                            ? 'bg-white/15'
-                            : 'bg-[#F59E0B]/60',
+                          i < usesRemaining
+                            ? 'bg-[#F59E0B]/60'
+                            : 'bg-white/15',
                         ].join(' ')}
                       />
                     ))}
-                    <span className="text-[8px] text-white/40 ml-0.5">{remaining}/{limit}</span>
+                    <span className="text-[8px] text-white/40 ml-0.5">{usesRemaining}/{usesMax}</span>
                   </div>
                   <button
                     type="button"
                     disabled={!!triggering}
-                    onClick={() => handleTrigger(p.key ?? p.powerType ?? p.effectDefId ?? 'unknown')}
+                    onClick={() => handleTrigger(k)}
                     className="px-2 py-[2px] rounded text-[8px] font-extrabold tracking-[0.04em] cursor-pointer transition-[filter] hover:brightness-110 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed border border-[#F59E0B]/50"
                     style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.7), rgba(245,158,11,0.5))', color: '#fde68a' }}
                   >

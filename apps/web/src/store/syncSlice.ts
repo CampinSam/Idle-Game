@@ -60,6 +60,16 @@ export interface GlobalPowerSnapshot {
   selection: Record<string, any> | null;
 }
 
+export interface PowerChargeStatus {
+  grantId: string;
+  chargeUnits: number;
+  maxChargeUnits: number;
+  costPerUse: number;
+  /** Absolute JS timestamp (ms) when enough charges will be ready via tick drip.
+   *  null when there are already enough charges or when there is no TICK recharge rule. */
+  readyAtMs: number | null;
+}
+
 interface SyncState {
   status: SyncStatus;
   cursor: string | null;
@@ -92,13 +102,13 @@ interface SyncState {
   // current by the global_power.changed SSE broadcast.
   globalPowers: GlobalPowerSnapshot[];
 
-  // Entity power usage — keyed by entityId → { [powerKey]: { usageCount, lastUsedUtcDay } }
+  // Entity power usage — keyed by entityId → { [powerKey]: PowerChargeStatus }
   // Populated from the bootstrap snapshot and patched after TriggerEntityPower commands.
-  entityPowerUsages: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
+  entityPowerUsages: Record<string, Record<string, PowerChargeStatus>>;
 
-  // Location power usage — keyed by locationId → { [powerKey]: { usageCount, lastUsedUtcDay } }
+  // Location power usage — keyed by locationId → { [powerKey]: PowerChargeStatus }
   // Populated from the bootstrap snapshot and patched after TriggerLocationPower commands.
-  locationPowerUsages: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
+  locationPowerUsages: Record<string, Record<string, PowerChargeStatus>>;
 
   // Visual catalog — read-only, comes down in bootstrap. Keyed by `key`
   // so `<Tag tagKey>` is a single dictionary lookup.
@@ -336,7 +346,11 @@ const syncSlice = createSlice({
 
         if (patch.entity === 'entityPowerUsage') {
           if (patch.op === 'upsert' && patch.id && patch.data) {
-            state.entityPowerUsages[patch.id] = patch.data as Record<string, { usageCount: number; lastUsedUtcDay: string }>;
+            // Merge into existing map so a single-power patch doesn't wipe other powers.
+            state.entityPowerUsages[patch.id] = {
+              ...(state.entityPowerUsages[patch.id] ?? {}),
+              ...(patch.data as Record<string, PowerChargeStatus>),
+            };
           } else if (patch.op === 'delete' && patch.id) {
             delete state.entityPowerUsages[patch.id];
           }
@@ -345,7 +359,11 @@ const syncSlice = createSlice({
 
         if (patch.entity === 'locationPowerUsage') {
           if (patch.op === 'upsert' && patch.id && patch.data) {
-            state.locationPowerUsages[patch.id] = patch.data as Record<string, { usageCount: number; lastUsedUtcDay: string }>;
+            // Merge into existing map so a single-power patch doesn't wipe other powers.
+            state.locationPowerUsages[patch.id] = {
+              ...(state.locationPowerUsages[patch.id] ?? {}),
+              ...(patch.data as Record<string, PowerChargeStatus>),
+            };
           } else if (patch.op === 'delete' && patch.id) {
             delete state.locationPowerUsages[patch.id];
           }
