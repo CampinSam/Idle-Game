@@ -668,28 +668,73 @@ model BoostEvent {
   @@map("boost_events")
 }
 
-model LocationPowerUsage {
-  id                 String           @id @default(uuid())
-  locationInstanceId String
-  powerKey           String
-  lastUsedUtcDay     String
-  usageCount         Int              @default(1)
-  locationInstance   LocationInstance @relation(fields: [locationInstanceId], references: [id], onDelete: Cascade)
+model PowerGrant {
+  id                   String               @id @default(uuid())
+  /// 'entity' | 'location' | 'player' | 'global'
+  targetType           String
+  /// entityId, locationInstanceId, userId, or '_global'
+  targetId             String
+  powerKey             String
+  /// FK → PowerDef; null for legacy inline-only powers
+  powerDefId           String?
+  /// Inline overrides: value, valueMode, durationMinutes, scope, selection, effectOverrides
+  overrides            Json?
+  /// 'nft_unique' | 'admin' | 'season' | 'consumable'
+  sourceType           String
+  /// nftAssetId, seasonId, consumable item instance id, etc.
+  sourceId             String?
+  expiresAt            DateTime?
+  /// null = infinite; when 0 the grant is exhausted and treated as inactive
+  remainingChargeUnits Float?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  powerDef             PowerDef?            @relation(fields: [powerDefId], references: [id])
+  entityUsages         EntityPowerUsage[]
+  locationUsages       LocationPowerUsage[]
+  useEvents            PowerUseEvent[]
 
-  @@unique([locationInstanceId, powerKey])
+  @@unique([targetType, targetId, powerKey, sourceType, sourceId])
+  @@index([targetType, targetId])
+  @@index([targetId])
+  @@index([expiresAt])
+  @@map("power_grants")
+}
+
+model PowerUseEvent {
+  id                String     @id @default(uuid())
+  powerGrantId      String
+  triggeredByUserId String?
+  /// Server tick number at the moment the power fired
+  triggeredAtTick   BigInt
+  createdAt         DateTime   @default(now())
+  powerGrant        PowerGrant @relation(fields: [powerGrantId], references: [id], onDelete: Cascade)
+
+  @@index([powerGrantId, triggeredAtTick])
+  @@map("power_use_events")
+}
+
+model LocationPowerUsage {
+  id                  String           @id @default(uuid())
+  locationInstanceId  String
+  powerGrantId        String           @unique
+  chargeUnits         Float
+  lastChargeAppliedAt BigInt?
+  locationInstance    LocationInstance @relation(fields: [locationInstanceId], references: [id], onDelete: Cascade)
+  powerGrant          PowerGrant       @relation(fields: [powerGrantId], references: [id], onDelete: Cascade)
+
   @@index([locationInstanceId])
   @@map("location_power_usages")
 }
 
 model EntityPowerUsage {
-  id             String @id @default(uuid())
-  entityId       String
-  powerKey       String
-  lastUsedUtcDay String
-  usageCount     Int    @default(1)
-  entity         Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  id                  String     @id @default(uuid())
+  entityId            String
+  powerGrantId        String     @unique
+  chargeUnits         Float
+  lastChargeAppliedAt BigInt?
+  entity              Entity     @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  powerGrant          PowerGrant @relation(fields: [powerGrantId], references: [id], onDelete: Cascade)
 
-  @@unique([entityId, powerKey])
   @@index([entityId])
   @@map("entity_power_usages")
 }
@@ -1279,26 +1324,29 @@ model EffectDef {
 /// Reusable power blueprint. Embedded PowerRef JSON in entity/location definitions
 /// references a PowerDef by powerDefId (UUID or key slug) and may override individual fields.
 model PowerDef {
-  id                     String    @id @default(uuid())
-  key                    String    @unique
+  id                     String       @id @default(uuid())
+  key                    String       @unique
   name                   String
   description            String?
-  /// 'tick_speed_boost' | 'effect_backed'
+  /// 'tick_speed_boost' | 'effect_backed' | 'keeper_xp_boost' | 'entity_xp_boost' | etc.
   powerType              String
   /// FK → EffectDef; null for tick_speed_boost powers
   effectDefId            String?
-  defaultValue           Float     @default(0)
-  defaultValueMode       String    @default("percent_add")
-  defaultDurationMinutes Int       @default(30)
-  defaultDailyLimit      Int       @default(1)
+  defaultValue           Float        @default(0)
+  defaultValueMode       String       @default("percent_add")
+  defaultDurationMinutes Int          @default(30)
+  /// Tick-based charge configuration. Null = 1-charge / no recharge (backward compat).
+  /// Shape: { maxChargeUnits, costPerUse, initialChargeUnits, rechargeRules[] }
+  chargeConfig           Json?
   /// 'global' | 'player' | 'entity' | 'location'
-  defaultScope           String    @default("global")
+  defaultScope           String       @default("global")
   /// Optional default EffectSelection JSON
   selection              Json?
-  enabled                Boolean   @default(true)
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-  effectDef              EffectDef? @relation(fields: [effectDefId], references: [id])
+  enabled                Boolean      @default(true)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  effectDef              EffectDef?   @relation(fields: [effectDefId], references: [id])
+  grants                 PowerGrant[]
 
   @@index([enabled])
   @@index([powerType])

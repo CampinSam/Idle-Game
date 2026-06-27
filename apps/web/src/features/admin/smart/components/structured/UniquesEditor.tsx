@@ -38,13 +38,14 @@ export interface PowerRef {
 
 interface PowerDefRow {
   id: string;
+  key: string;
   name: string;
   powerType: string;
   defaultValue?: number;
   defaultValueMode?: string;
   defaultDurationMinutes?: number;
-  defaultDailyLimit?: number;
   defaultScope?: string;
+  chargeConfig?: Record<string, unknown> | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -409,8 +410,6 @@ function PowerRefEditor({
               {', '}
               {selectedDef.defaultDurationMinutes ?? '—'}min
               {', '}
-              limit×{selectedDef.defaultDailyLimit ?? '—'}/day
-              {', '}
               scope={selectedDef.defaultScope ?? '—'}
             </div>
           )}
@@ -492,7 +491,7 @@ function PowerRefEditor({
                         dailyLimit: e.target.value === '' ? undefined : Number(e.target.value),
                       })
                     }
-                    placeholder={selectedDef?.defaultDailyLimit != null ? String(selectedDef.defaultDailyLimit) : '(def)'}
+                    placeholder="(def)"
                     style={{ ...numberInputStyle, width: '100%' }}
                   />
                 </div>

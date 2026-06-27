@@ -10,6 +10,7 @@ import { LocationSettlementService } from '../location/location-settlement.servi
 import { CraftingService } from '../crafting/crafting.service';
 import { generateEntityData, levelUpEntityToLevel } from '../entity/entity-generator.util';
 import { NftCollectionService } from '../nft/nft-collection.service';
+import { PowerGrantService } from '../global-power/power-grant.service';
 import { STAT_KEYS, computeScaling, computeCompositRarity, levelFromXp, type ScalingContribution } from '@derp/math';
 import { GameRulesService, GameUser, TeamEntitySnap } from '../game-rules/game-rules.service';
 import type { SelectionContext } from '../selection/selection.types';
@@ -83,6 +84,7 @@ export class AdminService {
     private tickProcessor: TickEventProcessorService,
     private nftCollectionService: NftCollectionService,
     private notificationService: NotificationService,
+    private powerGrantService: PowerGrantService,
   ) {}
 
   /**
@@ -1232,6 +1234,14 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id: playerId } });
     if (!user) throw new NotFoundException(`Player ${playerId} not found`);
     return this.nftCollectionService.syncUserCollections(playerId);
+  }
+
+  async resyncAllEntityGrants(): Promise<{ updated: number; failed: number }> {
+    return this.powerGrantService.resyncAllEntityGrants();
+  }
+
+  async resyncAllLocationGrants(): Promise<{ updated: number; failed: number }> {
+    return this.powerGrantService.resyncAllLocationGrants();
   }
 
   async getPlayerCount(): Promise<{ total: number; active: number }> {

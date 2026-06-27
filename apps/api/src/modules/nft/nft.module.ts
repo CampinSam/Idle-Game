@@ -8,9 +8,10 @@ import { NftImageImportService } from './nft-image-import.service';
 import { NftAssetCacheService } from './nft-asset-cache.service';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 import { LocationModule } from '../location/location.module';
+import { GlobalPowerModule } from '../global-power/global-power.module';
 
 @Module({
-  imports: [InfrastructureModule, LocationModule],
+  imports: [InfrastructureModule, LocationModule, GlobalPowerModule],
   providers: [CardanoOwnershipProvider, EvmOwnershipProvider, NftOwnershipService, NftCollectionService, NftImageImportService, NftAssetCacheService],
   controllers: [NftCollectionController],
   exports: [NftOwnershipService, NftCollectionService, CardanoOwnershipProvider, NftImageImportService, NftAssetCacheService],

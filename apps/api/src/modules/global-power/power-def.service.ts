@@ -1,14 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ChargeConfig } from './power-charge.service';
 
 @Injectable()
 export class PowerDefService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Resolve a PowerDef by either its UUID id or its slug key.
-   * Returns the UUID id of the matching record, or throws NotFoundException.
-   */
   private async resolveUuid(keyOrUuid: string): Promise<string> {
     const def = await this.prisma.powerDef.findFirst({
       where: { OR: [{ id: keyOrUuid }, { key: keyOrUuid }] },
@@ -18,10 +15,6 @@ export class PowerDefService {
     return def.id;
   }
 
-  /**
-   * Resolve an EffectDef reference (UUID or slug key) to a UUID id.
-   * Returns null when effectDefId is null/undefined.
-   */
   private async resolveEffectDefUuid(effectDefId: string | null | undefined): Promise<string | null> {
     if (!effectDefId) return null;
     const def = await (this.prisma as any).effectDef.findFirst({
@@ -60,7 +53,7 @@ export class PowerDefService {
     defaultValue?: number;
     defaultValueMode?: string;
     defaultDurationMinutes?: number;
-    defaultDailyLimit?: number;
+    chargeConfig?: ChargeConfig | null;
     defaultScope?: string;
     selection?: any;
     enabled?: boolean;
@@ -89,12 +82,19 @@ export class PowerDefService {
       throw new BadRequestException('effectDefId is required for effect_backed powers');
     }
 
-    // data.id is the caller-provided slug key; id (UUID) is auto-generated.
     const { id: key, effectDefId: rawEffectDefId, ...rest } = data;
     const effectDefId = await this.resolveEffectDefUuid(rawEffectDefId);
 
+    const { chargeConfig, ...restWithoutCharge } = rest as any;
     return this.prisma.powerDef.create({
-      data: { key, effectDefId, ...rest },
+      data: {
+        key,
+        effectDefId,
+        ...restWithoutCharge,
+        ...(chargeConfig !== undefined
+          ? { chargeConfig: chargeConfig ?? (null as any) }
+          : {}),
+      },
     });
   }
 
@@ -108,7 +108,7 @@ export class PowerDefService {
       defaultValue: number;
       defaultValueMode: string;
       defaultDurationMinutes: number;
-      defaultDailyLimit: number;
+      chargeConfig: ChargeConfig | null;
       defaultScope: string;
       selection: any;
       enabled: boolean;
@@ -130,18 +130,19 @@ export class PowerDefService {
   }
 
   /**
-   * Resolve a PowerRef against its PowerDef (if any) to produce a fully-merged
-   * configuration ready for activation.
+   * Resolve a PowerRef (from a PowerGrant's overrides or legacy inline definition) against
+   * its PowerDef to produce a fully-merged configuration ready for power activation.
+   *
+   * The caller should build the ref from the grant:
+   *   { key: grant.powerKey, powerDefId: grant.powerDefId, ...(grant.overrides ?? {}) }
    */
   async resolve(powerRef: {
     powerDefId?: string;
-    /** Optional for legacy inline powers; falls back to powerType then effectDefId. */
     key?: string;
-    name: string;
+    name?: string;
     value?: number;
     valueMode?: string;
     durationMinutes?: number;
-    dailyLimit?: number;
     scope?: string;
     selection?: any;
     powerType?: string;
@@ -156,7 +157,7 @@ export class PowerDefService {
     value: number;
     valueMode: string;
     durationMinutes: number;
-    dailyLimit: number;
+    chargeConfig: ChargeConfig;
     scope: string;
     selection?: any;
   }> {
@@ -169,44 +170,47 @@ export class PowerDefService {
       if (!def.enabled) throw new BadRequestException(`PowerDef "${powerRef.powerDefId}" is disabled`);
     }
 
-    // Determine effective key: PowerRef.key → powerType → effectDefId (legacy inline fallback)
     const effectiveKey: string =
       powerRef.key ?? def?.key ?? powerRef.powerType ?? powerRef.effectDefId ?? 'unknown';
 
-    // Normalise tick_boost → tick_speed_boost for backward compatibility.
-    // Inline-only powers (no powerDefId) that carry effectDefId but no powerType are
-    // treated as 'effect_backed', not 'tick_speed_boost', to avoid misclassification.
     const rawType: string =
       def?.powerType ??
       powerRef.powerType ??
       (powerRef.effectDefId ? 'effect_backed' : 'tick_speed_boost');
     const powerType: string = rawType === 'tick_boost' ? 'tick_speed_boost' : rawType;
 
-    // Raw effectDefId string (could be slug or UUID) from the def or inline PowerRef.
     const rawEffectDefId: string | null = powerRef.effectDefId !== undefined
       ? (powerRef.effectDefId ?? null)
       : (def?.effectDefId ?? null);
 
-    // Resolve to UUID so the caller stores the correct FK value in global_active_powers.
     const effectDefId = await this.resolveEffectDefUuid(rawEffectDefId);
 
     const value: number = powerRef.value ?? def?.defaultValue ?? 50;
     const valueMode: string = powerRef.valueMode ?? def?.defaultValueMode ?? 'percent_add';
     const durationMinutes: number = powerRef.durationMinutes ?? def?.defaultDurationMinutes ?? 30;
-    const dailyLimit: number = powerRef.dailyLimit ?? def?.defaultDailyLimit ?? 1;
     const scope: string = powerRef.scope ?? def?.defaultScope ?? 'global';
     const selection = powerRef.selection ?? def?.selection ?? undefined;
 
+    const rawChargeConfig = def?.chargeConfig as any;
+    const chargeConfig: ChargeConfig = rawChargeConfig && typeof rawChargeConfig === 'object'
+      ? {
+          maxChargeUnits: rawChargeConfig.maxChargeUnits ?? 1,
+          costPerUse: rawChargeConfig.costPerUse ?? 1,
+          initialChargeUnits: rawChargeConfig.initialChargeUnits ?? rawChargeConfig.maxChargeUnits ?? 1,
+          rechargeRules: Array.isArray(rawChargeConfig.rechargeRules) ? rawChargeConfig.rechargeRules : [],
+        }
+      : { maxChargeUnits: 1, costPerUse: 1, initialChargeUnits: 1, rechargeRules: [] };
+
     return {
       key: effectiveKey,
-      name: powerRef.name,
+      name: powerRef.name ?? def?.name ?? effectiveKey,
       powerType,
       effectDefId,
       effectOverrides: powerRef.effectOverrides,
       value,
       valueMode,
       durationMinutes,
-      dailyLimit,
+      chargeConfig,
       scope,
       selection,
     };

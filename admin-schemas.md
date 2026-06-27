@@ -3511,7 +3511,7 @@ Managed via `GET/POST/PUT/DELETE /api/admin/power-defs` and the generic admin sm
 | `defaultValue` | number | | Default effect magnitude. Schema default `0`. |
 | `defaultValueMode` | string | | Default `EffectValueMode`. Schema default `"percent_add"`. |
 | `defaultDurationMinutes` | number | | Default activation duration in minutes. Schema default `30`. |
-| `defaultDailyLimit` | number | | Default maximum times per day this power can fire. Schema default `1`. |
+| `chargeConfig` | JSON \| null | | Tick-based charge system config. See **ChargeConfig** below. `null` = 1 charge, no recharge. |
 | `defaultScope` | string | | Default target scope (e.g. `"global"`, `"self"`). Schema default `"global"`. |
 | `selection` | Json | | Default `EffectSelection` object (`{ scope, agg, filter? }`) applied when the trigger does not supply its own. |
 | `enabled` | boolean | | When `false`, the power cannot be triggered. Default `true`. |
@@ -3532,6 +3532,85 @@ Managed via `GET/POST/PUT/DELETE /api/admin/power-defs` and the generic admin sm
 | `injury_recovery_boost` | `null` | Speeds up entity injury recovery. Shorthand type. |
 
 > **Tip:** Use `effect_backed` + an `EffectDef` when you need fine-grained control over stacking, targeting, or duration. Use shorthand types for simple one-off boosts where the system defaults are sufficient.
+
+### ChargeConfig JSON schema
+
+`chargeConfig` controls how often a power can be activated and whether charges replenish over time.
+
+```json
+{
+  "maxChargeUnits": 1,
+  "costPerUse": 1,
+  "initialChargeUnits": 1,
+  "rechargeRules": [
+    { "type": "TICK", "unitsPerTick": 0.001 }
+  ]
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `maxChargeUnits` | number | `1` | Maximum charge a usage record can accumulate. |
+| `costPerUse` | number | `1` | Charge deducted per activation. |
+| `initialChargeUnits` | number | `1` | Charge units seeded when the usage record is first created. |
+| `rechargeRules` | array | `[]` | One or more recharge rules. Currently supported: `{ "type": "TICK", "unitsPerTick": <number> }` — adds `unitsPerTick` per tick elapsed since last drip. |
+
+---
+
+## Power Grants — `POST /api/admin/powers/grants/resync-entities`
+
+Re-syncs all NFT-backed entity power grants (reads entity `definition.rules.uniques[nftAssetId].powers` for every entity that has an NFT asset ID and upserts `PowerGrant` rows accordingly).
+
+**Auth:** Admin
+
+**Response:** `{ updated: number; failed: number }`
+
+---
+
+## Power Grants — `POST /api/admin/powers/grants/resync-locations`
+
+Same as above but for all location instances with an NFT asset ID.
+
+**Auth:** Admin
+
+**Response:** `{ updated: number; failed: number }`
+
+---
+
+## PowerGrant Table — admin smart table (`powerGrant`)
+
+A `PowerGrant` row is the **single eligibility source** that authorises a specific target (entity or location) to activate a specific power. The trigger handlers check for an active grant before allowing activation.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | auto | UUID |
+| `targetType` | `"entity"` \| `"location"` | ✓ | Type of game object holding the grant |
+| `targetId` | string | ✓ | ID of the entity or location instance |
+| `powerKey` | string | ✓ | Power key this grant authorises (matches `PowerDef.key`) |
+| `powerDefId` | string \| null | | FK → `PowerDef`. When set, PowerDef fields are merged as defaults |
+| `overrides` | JSON \| null | | Field overrides applied on top of PowerDef defaults (`name`, `value`, `valueMode`, `durationMinutes`, `chargeConfig`, …) |
+| `sourceType` | string | ✓ | What created this grant: `nft_unique`, `nft_collection`, `admin`, `season`, `event` |
+| `sourceId` | string \| null | | ID of the source (e.g. NFT asset ID, collection slug) |
+| `expiresAt` | datetime \| null | | After this time the grant is inactive. `null` = permanent |
+| `remainingChargeUnits` | number \| null | | Shared pool counter for one-off limited grants. `null` = unlimited from config |
+
+---
+
+## PowerUseEvent Table — admin smart table (`powerUseEvent`)
+
+Audit log written every time a power activation succeeds.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | UUID |
+| `powerGrantId` | string | FK → `PowerGrant` that was consumed |
+| `triggerType` | `"entity"` \| `"location"` | Whether an entity or location triggered the activation |
+| `triggeredByEntityId` | string \| null | Entity that triggered (entity grants) |
+| `triggeredByLocationId` | string \| null | Location that triggered (location grants) |
+| `globalActivePowerId` | string \| null | `GlobalActivePower` created by this activation |
+| `chargeSpent` | number | Charge units deducted |
+| `tickAtUse` | number | Game tick at activation |
+| `createdAt` | datetime | Wall-clock timestamp |
 
 ---
 

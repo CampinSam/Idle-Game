@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { TriggerLocationPowerHandler } from '../commands/handlers/trigger-location-power.handler';
+import { PowerChargeService } from './power-charge.service';
 
 jest.mock('../commands/patch-builder', () => {
   const mockPb = {
@@ -13,8 +14,6 @@ jest.mock('../commands/patch-builder', () => {
   };
 });
 
-const TODAY = new Date().toISOString().slice(0, 10);
-
 function makeResolved(overrides: Record<string, any> = {}) {
   return {
     key: 'tick_speed_boost',
@@ -25,50 +24,59 @@ function makeResolved(overrides: Record<string, any> = {}) {
     value: 25,
     valueMode: 'percent_add',
     durationMinutes: 60,
-    dailyLimit: 1,
+    chargeConfig: { maxChargeUnits: 1, costPerUse: 1, initialChargeUnits: 1, rechargeRules: [] },
     scope: 'global',
     selection: undefined,
     ...overrides,
   };
 }
 
-function makeLocation(powerRefs: any[] = [makeDefaultPowerRef()], nftAssetId = 'loc-asset-001') {
+function makeGrant(overrides: Record<string, any> = {}) {
   return {
-    id: 'location-1',
-    ownerUserId: 'user-1',
-    nftAssetId,
-    name: 'Ember Outpost',
-    definition: {
-      id: 'outpost_def_alpha',
-      rules: {
-        uniques: {
-          [nftAssetId]: { powers: powerRefs },
-        },
-      },
-    },
+    id: 'lgrant-1',
+    targetType: 'location',
+    targetId: 'location-1',
+    powerKey: 'tick_speed_boost',
+    powerDefId: null,
+    overrides: null,
+    sourceType: 'nft_unique',
+    sourceId: 'loc-asset-001',
+    expiresAt: null,
+    remainingChargeUnits: null,
+    powerDef: null,
+    ...overrides,
   };
 }
 
-function makeDefaultPowerRef() {
-  return { key: 'tick_speed_boost', name: 'Outpost Speed Boost' };
+function makeUsage(overrides: Record<string, any> = {}) {
+  return {
+    id: 'lusage-1',
+    chargeUnits: 1,
+    lastChargeAppliedAt: null,
+    ...overrides,
+  };
 }
 
 function makeFakes(options: {
-  powerRefs?: any[];
+  grant?: any;
+  usage?: any;
   resolvedOverrides?: Record<string, any>;
-  existingUsage?: any;
   isAdmin?: boolean;
-  nftAssetId?: string;
 } = {}) {
   const {
-    powerRefs = [makeDefaultPowerRef()],
+    grant = makeGrant(),
+    usage = makeUsage(),
     resolvedOverrides = {},
-    existingUsage = null,
     isAdmin = false,
-    nftAssetId = 'loc-asset-001',
   } = options;
 
-  const location = makeLocation(powerRefs, nftAssetId);
+  const location = {
+    id: 'location-1',
+    ownerUserId: 'user-1',
+    nftAssetId: 'loc-asset-001',
+    name: 'Ember Outpost',
+    definition: { id: 'outpost_def', rules: {} },
+  };
   const resolved = makeResolved(resolvedOverrides);
 
   const tx: any = {
@@ -78,14 +86,7 @@ function makeFakes(options: {
     },
   };
 
-  const prisma: any = {
-    locationPowerUsage: {
-      findUnique: jest.fn().mockResolvedValue(existingUsage),
-      create: jest.fn().mockResolvedValue({}),
-      update: jest.fn().mockResolvedValue({}),
-      findMany: jest.fn().mockResolvedValue([]),
-    },
-  };
+  const prisma: any = {};
 
   const globalPowerService: any = {
     triggerPower: jest.fn().mockResolvedValue({ id: 'gap-2', label: 'Ember Outpost — Outpost Speed Boost' }),
@@ -95,13 +96,38 @@ function makeFakes(options: {
     resolve: jest.fn().mockResolvedValue(resolved),
   };
 
-  const notificationService: any = {
-    createForCommand: jest.fn().mockResolvedValue({ id: 'notif-1', type: 'power_activated', category: 'system', priority: 'normal', title: '', body: '', readAt: null, dismissedAt: null, createdAt: new Date().toISOString() }),
+  const powerGrantService: any = {
+    findActiveGrant: jest.fn().mockResolvedValue(grant),
   };
-  const handler = new TriggerLocationPowerHandler(prisma, globalPowerService, powerDefService, notificationService);
+
+  const powerChargeService: any = {
+    extractChargeConfig: jest.fn().mockReturnValue(resolved.chargeConfig),
+    getOrCreateLocationUsage: jest.fn().mockResolvedValue(usage),
+    applyLocationTickDrip: jest.fn().mockResolvedValue(usage.chargeUnits),
+    deductLocationCharge: jest.fn().mockResolvedValue(undefined),
+  };
+  jest.spyOn(PowerChargeService, 'extractChargeConfig').mockReturnValue(resolved.chargeConfig);
+
+  const tickService: any = {
+    getCurrentTick: jest.fn().mockResolvedValue(100),
+  };
+
+  const notificationService: any = {
+    createForCommandSilent: jest.fn().mockResolvedValue({ id: 'notif-1', type: 'power_activated', category: 'system', priority: 'normal', title: '', body: '', readAt: null, dismissedAt: null, createdAt: new Date().toISOString() }),
+  };
+
+  const handler = new TriggerLocationPowerHandler(
+    prisma,
+    globalPowerService,
+    powerDefService,
+    powerGrantService,
+    powerChargeService,
+    tickService,
+    notificationService,
+  );
   const ctx = { userId: 'user-1', tx };
 
-  return { handler, ctx, tx, prisma, globalPowerService, powerDefService, resolved };
+  return { handler, ctx, tx, prisma, globalPowerService, powerDefService, powerGrantService, powerChargeService, resolved };
 }
 
 describe('TriggerLocationPowerHandler — validation', () => {
@@ -118,276 +144,78 @@ describe('TriggerLocationPowerHandler — validation', () => {
   it('throws NotFoundException when location does not exist', async () => {
     const { handler, ctx, tx } = makeFakes();
     tx.locationInstance.findUnique.mockResolvedValue(null);
-    await expect(
-      handler.execute(ctx, { locationId: 'missing', powerKey: 'tick_speed_boost' }),
-    ).rejects.toThrow(NotFoundException);
+    await expect(handler.execute(ctx, { locationId: 'missing', powerKey: 'tick_speed_boost' })).rejects.toThrow(NotFoundException);
   });
 
   it('throws ForbiddenException when location is owned by another user', async () => {
     const { handler, ctx, tx } = makeFakes();
-    tx.locationInstance.findUnique.mockResolvedValue({ ...makeLocation(), ownerUserId: 'other-user' });
-    await expect(
-      handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' }),
-    ).rejects.toThrow(ForbiddenException);
+    tx.locationInstance.findUnique.mockResolvedValue({ id: 'location-1', ownerUserId: 'other-user', nftAssetId: 'a', name: 'X', definition: { rules: {} } });
+    await expect(handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' })).rejects.toThrow(ForbiddenException);
   });
 
-  it('throws BadRequestException when location has no NFT asset ID', async () => {
-    const { handler, ctx, tx } = makeFakes();
-    tx.locationInstance.findUnique.mockResolvedValue({ ...makeLocation(), nftAssetId: null });
-    await expect(
-      handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' }),
-    ).rejects.toThrow(BadRequestException);
+  it('throws NotFoundException when no active grant exists for the power', async () => {
+    const { handler, ctx, powerGrantService } = makeFakes();
+    powerGrantService.findActiveGrant.mockResolvedValue(null);
+    await expect(handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' })).rejects.toThrow(NotFoundException);
   });
 
-  it('throws BadRequestException when location has no unique powers defined', async () => {
-    const { handler, ctx, tx } = makeFakes();
-    tx.locationInstance.findUnique.mockResolvedValue({
-      ...makeLocation(),
-      definition: { rules: { uniques: {} } },
+  it('throws BadRequestException when charge is insufficient', async () => {
+    const { handler, ctx, powerChargeService } = makeFakes({
+      usage: makeUsage({ chargeUnits: 0 }),
     });
-    await expect(
-      handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' }),
-    ).rejects.toThrow(BadRequestException);
-  });
-
-  it('throws BadRequestException when the requested power key is not found', async () => {
-    const { handler, ctx } = makeFakes({
-      powerRefs: [{ key: 'some_other_power', name: 'Other' }],
-    });
-    await expect(
-      handler.execute(ctx, { locationId: 'location-1', powerKey: 'nonexistent_key' }),
-    ).rejects.toThrow(BadRequestException);
-  });
-
-  it('throws BadRequestException when non-tick power has no effectDefId', async () => {
-    const { handler, ctx } = makeFakes({
-      powerRefs: [{ key: 'buff_power', name: 'Buff Power', powerType: 'effect_backed' }],
-      resolvedOverrides: {
-        key: 'buff_power',
-        powerType: 'effect_backed',
-        effectDefId: null,
-      },
-    });
-    await expect(
-      handler.execute(ctx, { locationId: 'location-1', powerKey: 'buff_power' }),
-    ).rejects.toThrow(BadRequestException);
+    powerChargeService.applyLocationTickDrip.mockResolvedValue(0);
+    await expect(handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' })).rejects.toThrow(BadRequestException);
   });
 });
 
-describe('TriggerLocationPowerHandler — happy path (PowerRef key format)', () => {
-  it('activates a GlobalActivePower on the happy path', async () => {
-    const { handler, ctx, globalPowerService } = makeFakes();
-
+describe('TriggerLocationPowerHandler — happy path', () => {
+  it('calls globalPowerService.triggerPower and deducts charge on success', async () => {
+    const { handler, ctx, globalPowerService, powerChargeService } = makeFakes();
     const result = await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' });
-
-    expect(globalPowerService.triggerPower).toHaveBeenCalledWith(
-      expect.objectContaining({
-        selection: { scope: 'global', agg: 'any' },
-        durationMinutes: 60,
-        triggeredByUserId: 'user-1',
-        effectDefId: null,
-      }),
-    );
-
-    expect(result.ui).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ type: 'notification' }),
-      ]),
-    );
-    expect(result.patches).toBeDefined();
+    expect(globalPowerService.triggerPower).toHaveBeenCalledTimes(1);
+    expect(powerChargeService.deductLocationCharge).toHaveBeenCalledTimes(1);
+    expect(result).toHaveProperty('patches');
   });
 
-  it('creates a usage record on first trigger', async () => {
-    const { handler, ctx, prisma } = makeFakes();
+  it('admin user can trigger power on location they do not own', async () => {
+    const { handler, ctx, tx, globalPowerService } = makeFakes({ isAdmin: true });
+    tx.locationInstance.findUnique.mockResolvedValue({ id: 'location-1', ownerUserId: 'other-user', nftAssetId: 'a', name: 'X', definition: { rules: {} } });
+    const result = await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' });
+    expect(globalPowerService.triggerPower).toHaveBeenCalledTimes(1);
+    expect(result).toHaveProperty('patches');
+  });
 
+  it('uses global selection for tick_speed_boost', async () => {
+    const { handler, ctx, globalPowerService } = makeFakes();
     await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' });
-
-    expect(prisma.locationPowerUsage.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          locationInstanceId: 'location-1',
-          powerKey: 'tick_speed_boost',
-          lastUsedUtcDay: TODAY,
-          usageCount: 1,
-        }),
-      }),
-    );
+    const call = globalPowerService.triggerPower.mock.calls[0][0];
+    expect(call.selection).toEqual({ scope: 'global', agg: 'any' });
   });
 
-  it('activates an effect_backed power with effectDefId', async () => {
+  it('uses location selection for location-scoped effect_backed power', async () => {
     const { handler, ctx, globalPowerService } = makeFakes({
-      powerRefs: [{ key: 'production_boost', name: 'Production Boost', powerDefId: 'pd_prod' }],
-      resolvedOverrides: {
-        key: 'production_boost',
-        powerType: 'effect_backed',
-        effectDefId: 'eff_production',
-        scope: 'location',
-        durationMinutes: 120,
-      },
+      resolvedOverrides: { powerType: 'effect_backed', effectDefId: 'eff-1', scope: 'location', selection: undefined },
     });
-
-    await handler.execute(ctx, { locationId: 'location-1', powerKey: 'production_boost' });
-
-    expect(globalPowerService.triggerPower).toHaveBeenCalledWith(
-      expect.objectContaining({
-        effectDefId: 'eff_production',
-        durationMinutes: 120,
-        triggeredByUserId: 'user-1',
-        selection: { scope: 'entity', agg: 'any', filter: { locationId: 'location-1' } },
-      }),
-    );
-  });
-
-  it('resolves the power via PowerDefService using the PowerRef from definition rules', async () => {
-    const { handler, ctx, powerDefService } = makeFakes({
-      powerRefs: [{ key: 'tick_speed_boost', name: 'Speed', powerDefId: 'pd_speed' }],
-    });
-
     await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' });
-
-    expect(powerDefService.resolve).toHaveBeenCalledWith(
-      expect.objectContaining({ key: 'tick_speed_boost', powerDefId: 'pd_speed' }),
-    );
+    const call = globalPowerService.triggerPower.mock.calls[0][0];
+    expect(call.selection).toEqual({ scope: 'entity', agg: 'any', filter: { locationId: 'location-1' } });
   });
 
-  it('allows admin to trigger power on a location they do not own', async () => {
-    const { handler, ctx, globalPowerService } = makeFakes({ isAdmin: true });
-    ctx.userId = 'admin-user';
-
-    await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' });
-
-    expect(globalPowerService.triggerPower).toHaveBeenCalled();
-  });
-
-  it('derives player-scoped selection when scope is "player"', async () => {
+  it('uses explicit selection from PowerDef when present', async () => {
+    const customSelection = { scope: 'entity', agg: 'any', filter: { speciesId: 'bird' } };
     const { handler, ctx, globalPowerService } = makeFakes({
-      powerRefs: [{ key: 'player_buff', name: 'Player Buff', powerType: 'effect_backed' }],
-      resolvedOverrides: {
-        key: 'player_buff',
-        powerType: 'effect_backed',
-        effectDefId: 'eff_player_buff',
-        scope: 'player',
-      },
+      resolvedOverrides: { powerType: 'effect_backed', effectDefId: 'eff-1', scope: 'location', selection: customSelection },
     });
-
-    await handler.execute(ctx, { locationId: 'location-1', powerKey: 'player_buff' });
-
-    expect(globalPowerService.triggerPower).toHaveBeenCalledWith(
-      expect.objectContaining({
-        selection: { scope: 'entity', agg: 'any', filter: { userId: 'user-1' } },
-      }),
-    );
+    await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' });
+    const call = globalPowerService.triggerPower.mock.calls[0][0];
+    expect(call.selection).toEqual(customSelection);
   });
 });
 
-describe('TriggerLocationPowerHandler — daily limit enforcement', () => {
-  it('throws BadRequestException when daily limit is reached on the same UTC day', async () => {
-    const { handler, ctx } = makeFakes({
-      existingUsage: { lastUsedUtcDay: TODAY, usageCount: 1 },
-      resolvedOverrides: { dailyLimit: 1 },
-    });
-
-    await expect(
-      handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' }),
-    ).rejects.toThrow(BadRequestException);
-  });
-
-  it('allows trigger when usageCount is below daily limit on same UTC day', async () => {
-    const { handler, ctx, globalPowerService } = makeFakes({
-      existingUsage: { lastUsedUtcDay: TODAY, usageCount: 2 },
-      resolvedOverrides: { dailyLimit: 5 },
-    });
-
-    await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' });
-
-    expect(globalPowerService.triggerPower).toHaveBeenCalled();
-  });
-
-  it('resets usage count when existing record is from a previous UTC day', async () => {
-    const { handler, ctx, prisma, globalPowerService } = makeFakes({
-      existingUsage: { lastUsedUtcDay: '2000-01-01', usageCount: 1 },
-      resolvedOverrides: { dailyLimit: 1 },
-    });
-
-    await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' });
-
-    expect(globalPowerService.triggerPower).toHaveBeenCalled();
-
-    expect(prisma.locationPowerUsage.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ lastUsedUtcDay: TODAY, usageCount: 1 }),
-      }),
-    );
-  });
-
-  it('increments usageCount when triggering again on same day within limit', async () => {
-    const { handler, ctx, prisma } = makeFakes({
-      existingUsage: { lastUsedUtcDay: TODAY, usageCount: 1 },
-      resolvedOverrides: { dailyLimit: 5 },
-    });
-
-    await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' });
-
-    expect(prisma.locationPowerUsage.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { usageCount: { increment: 1 } },
-      }),
-    );
-  });
-});
-
-describe('TriggerLocationPowerHandler — PowerRef alias resolution', () => {
-  it('matches a PowerRef by powerType field (legacy inline format) when key is absent', async () => {
-    const { handler, ctx, globalPowerService } = makeFakes({
-      powerRefs: [{ powerType: 'tick_speed_boost', name: 'Speed Up' }],
-      resolvedOverrides: { key: 'tick_speed_boost' },
-    });
-
-    await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' });
-
-    expect(globalPowerService.triggerPower).toHaveBeenCalled();
-  });
-
-  it('resolves tick_boost alias to tick_speed_boost canonical key', async () => {
-    const { handler, ctx, globalPowerService } = makeFakes({
-      powerRefs: [{ key: 'tick_speed_boost', name: 'Speed Up' }],
-      resolvedOverrides: { key: 'tick_speed_boost' },
-    });
-
-    await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_boost' });
-
-    expect(globalPowerService.triggerPower).toHaveBeenCalled();
-  });
-
-  it('matches a PowerRef by effectDefId field (legacy format) when key and powerType are absent', async () => {
-    const { handler, ctx, globalPowerService } = makeFakes({
-      powerRefs: [{ effectDefId: 'eff_legacy', name: 'Legacy Power' }],
-      resolvedOverrides: {
-        key: 'eff_legacy',
-        powerType: 'effect_backed',
-        effectDefId: 'eff_legacy',
-      },
-    });
-
-    await handler.execute(ctx, { locationId: 'location-1', powerKey: 'eff_legacy' });
-
-    expect(globalPowerService.triggerPower).toHaveBeenCalled();
-  });
-});
-
-describe('TriggerLocationPowerHandler — canonical key used for usage accounting', () => {
-  it('records usage under the canonical key returned by resolve(), not the alias', async () => {
-    const { handler, ctx, prisma } = makeFakes({
-      powerRefs: [{ key: 'tick_speed_boost', name: 'Speed Up' }],
-      resolvedOverrides: { key: 'tick_speed_boost' },
-    });
-
-    await handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_boost' });
-
-    expect(prisma.locationPowerUsage.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ powerKey: 'tick_speed_boost' }),
-      }),
-    );
+describe('TriggerLocationPowerHandler — disabled PowerDef', () => {
+  it('propagates NotFoundException from resolve() when PowerDef does not exist', async () => {
+    const { handler, ctx, powerDefService } = makeFakes({ grant: makeGrant({ powerDefId: 'p-1' }) });
+    powerDefService.resolve.mockRejectedValue(new NotFoundException('PowerDef "p-1" not found'));
+    await expect(handler.execute(ctx, { locationId: 'location-1', powerKey: 'tick_speed_boost' })).rejects.toThrow(NotFoundException);
   });
 });

@@ -1,27 +1,26 @@
 /**
- * Integration tests for the TriggerEntityPower and TriggerLocationPower command handlers.
+ * Integration tests for the PowerGrant → TriggerEntityPower / TriggerLocationPower pipeline.
  *
- * Unlike the handler unit specs, these tests do NOT mock PowerDefService or
- * GlobalPowerService. Instead they use real service instances backed by a
- * stateful in-memory Prisma substitute, so every step in the
- *   PowerRef → PowerDefService.resolve() → GlobalPowerService.triggerPower() → GlobalActivePower persisted
- * pipeline runs as real code. buildEntityPatch / buildLocationPatches are the only
- * things mocked (they make deep entity-serialisation DB calls unrelated to power
- * triggering and would require a much larger test fixture).
+ * These tests use real service instances (PowerGrantService, PowerChargeService,
+ * PowerDefService, GlobalPowerService) backed by a stateful in-memory Prisma substitute.
+ * buildEntityPatch / buildLocationPatches are mocked (deep entity-serialisation DB calls).
  *
  * Scenarios verified:
- *  - Happy path: a GlobalActivePower row is created after the first trigger
- *  - Daily limit: a second trigger on the same UTC day is rejected without a second row
- *  - Non-existent power key: the handler rejects before reaching GlobalPowerService
- *  - PowerRef with powerDefId: resolve() merges PowerDef defaults (duration, etc.)
- *  - Disabled PowerDef: resolve() throws before triggerPower is reached
+ *  - Happy path: grant exists → trigger fires → charge deducted → PowerUseEvent created
+ *  - No grant: NotFoundException before reaching GlobalPowerService
+ *  - Insufficient charges: BadRequestException, GlobalPowerService NOT called
+ *  - Grant with powerDefId: resolve() merges PowerDef defaults
+ *  - Disabled PowerDef: BadRequestException from resolve()
+ *  - Location power happy path
  */
 
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { TriggerEntityPowerHandler } from '../commands/handlers/trigger-entity-power.handler';
 import { TriggerLocationPowerHandler } from '../commands/handlers/trigger-location-power.handler';
 import { GlobalPowerService } from './global-power.service';
 import { PowerDefService } from './power-def.service';
+import { PowerGrantService } from './power-grant.service';
+import { PowerChargeService } from './power-charge.service';
 
 jest.mock('../commands/patch-builder', () => {
   const mockPb = {
@@ -36,37 +35,139 @@ jest.mock('../commands/patch-builder', () => {
   };
 });
 
-const TODAY = new Date().toISOString().slice(0, 10);
-
 // ---------------------------------------------------------------------------
 // Stateful in-memory Prisma factory
-// All tables are plain Maps; keys follow Prisma's compound-key convention.
 // ---------------------------------------------------------------------------
 function makeInMemoryPrisma() {
   const globalActivePowers = new Map<string, any>();
+  const powerGrants = new Map<string, any>();
+  const powerDefs = new Map<string, any>();
   const entityPowerUsages = new Map<string, any>();
   const locationPowerUsages = new Map<string, any>();
+  const powerUseEvents: any[] = [];
   const boostEvents = new Map<string, any>();
   let seq = 1;
   const nextId = (prefix = 'rec') => `${prefix}-${seq++}`;
 
-  // powerDef lookup — seeded per-test via seedPowerDef()
-  const powerDefStore = new Map<string, any>();
-
   return {
-    _tables: { globalActivePowers, entityPowerUsages, locationPowerUsages, boostEvents },
+    _tables: { globalActivePowers, powerGrants, powerDefs, entityPowerUsages, locationPowerUsages, powerUseEvents },
 
-    // Helper: seed a PowerDef row for a test that needs one
-    _seedPowerDef: (def: any) => powerDefStore.set(def.id, def),
+    _seedPowerDef: (def: any) => {
+      powerDefs.set(def.id, def);
+      powerDefs.set(def.key, def);
+    },
+    _seedPowerGrant: (grant: any) => { powerGrants.set(grant.id, grant); },
+    _seedEntityUsage: (usage: any) => { entityPowerUsages.set(usage.powerGrantId, usage); },
+    _seedLocationUsage: (usage: any) => { locationPowerUsages.set(usage.powerGrantId, usage); },
 
-    // PowerDef table
     powerDef: {
-      findUnique: jest.fn(({ where }: any) =>
-        Promise.resolve(powerDefStore.get(where.id) ?? null),
-      ),
+      findFirst: jest.fn((args: any) => {
+        const { where } = args ?? {};
+        if (where?.OR) {
+          for (const cond of where.OR) {
+            if (cond.id && powerDefs.has(cond.id)) return Promise.resolve(powerDefs.get(cond.id));
+            if (cond.key && powerDefs.has(cond.key)) return Promise.resolve(powerDefs.get(cond.key));
+          }
+        }
+        return Promise.resolve(null);
+      }),
+      findUnique: jest.fn((args: any) => {
+        return Promise.resolve(powerDefs.get(args.where.id) ?? null);
+      }),
     },
 
-    // GlobalActivePower table
+    effectDef: {
+      findFirst: jest.fn(({ where }: any) => {
+        const id = where?.OR?.[0]?.id ?? where?.OR?.[1]?.key;
+        return Promise.resolve(id ? { id } : null);
+      }),
+    },
+
+    powerGrant: {
+      findFirst: jest.fn((args: any) => {
+        const { where } = args;
+        const now = new Date();
+        for (const g of powerGrants.values()) {
+          let match = true;
+          if (where.targetType && g.targetType !== where.targetType) match = false;
+          if (where.targetId && g.targetId !== where.targetId) match = false;
+          if (where.powerKey && g.powerKey !== where.powerKey) match = false;
+          if (where.AND) {
+            for (const cond of where.AND) {
+              if (cond.OR) {
+                const expOk = cond.OR.some((c: any) =>
+                  (c.expiresAt === null && g.expiresAt == null) ||
+                  (c.expiresAt?.gt && g.expiresAt != null && new Date(g.expiresAt) > now),
+                );
+                if (!expOk) match = false;
+              }
+              if (cond.NOT?.remainingChargeUnits !== undefined) {
+                if (g.remainingChargeUnits === cond.NOT.remainingChargeUnits) match = false;
+              }
+            }
+          }
+          if (match) {
+            const result = { ...g };
+            if (g.powerDefId) result.powerDef = powerDefs.get(g.powerDefId) ?? null;
+            else result.powerDef = null;
+            if (args.include?.powerDef !== undefined && !args.include.powerDef) delete result.powerDef;
+            return Promise.resolve(result);
+          }
+        }
+        return Promise.resolve(null);
+      }),
+      findUnique: jest.fn((args: any) => {
+        return Promise.resolve(powerGrants.get(args.where.id) ?? null);
+      }),
+      update: jest.fn((args: any) => {
+        const g = powerGrants.get(args.where.id);
+        if (g) Object.assign(g, args.data);
+        return Promise.resolve(g ?? null);
+      }),
+    },
+
+    entityPowerUsage: {
+      findUnique: jest.fn((args: any) => {
+        return Promise.resolve(entityPowerUsages.get(args.where.powerGrantId) ?? null);
+      }),
+      create: jest.fn((args: any) => {
+        const record = { id: nextId('epu'), ...args.data };
+        entityPowerUsages.set(record.powerGrantId, record);
+        return Promise.resolve(record);
+      }),
+      update: jest.fn((args: any) => {
+        const u = entityPowerUsages.get(args.where.id) ??
+          [...entityPowerUsages.values()].find((x) => x.id === args.where.id);
+        if (u) Object.assign(u, args.data);
+        return Promise.resolve(u ?? null);
+      }),
+    },
+
+    locationPowerUsage: {
+      findUnique: jest.fn((args: any) => {
+        return Promise.resolve(locationPowerUsages.get(args.where.powerGrantId) ?? null);
+      }),
+      create: jest.fn((args: any) => {
+        const record = { id: nextId('lpu'), ...args.data };
+        locationPowerUsages.set(record.powerGrantId, record);
+        return Promise.resolve(record);
+      }),
+      update: jest.fn((args: any) => {
+        const u = locationPowerUsages.get(args.where.id) ??
+          [...locationPowerUsages.values()].find((x) => x.id === args.where.id);
+        if (u) Object.assign(u, args.data);
+        return Promise.resolve(u ?? null);
+      }),
+    },
+
+    powerUseEvent: {
+      create: jest.fn((args: any) => {
+        const record = { id: nextId('pue'), ...args.data };
+        powerUseEvents.push(record);
+        return Promise.resolve(record);
+      }),
+    },
+
     globalActivePower: {
       create: jest.fn((args: any) => {
         const id = nextId('gap');
@@ -92,453 +193,332 @@ function makeInMemoryPrisma() {
           if (where.status && p.status !== where.status) return false;
           return true;
         });
-        if ((args as any)?.orderBy?.startTime === 'desc') {
-          results.sort((a, b) => (b.startTime as any) - (a.startTime as any));
-        }
         return Promise.resolve(results);
       }),
       update: jest.fn((args: any) => {
         const p = globalActivePowers.get(args.where.id);
-        if (!p) return Promise.resolve(null);
-        Object.assign(p, args.data);
-        return Promise.resolve(p);
+        if (p) Object.assign(p, args.data);
+        return Promise.resolve(p ?? null);
       }),
       updateMany: jest.fn(() => Promise.resolve({ count: 0 })),
     },
 
-    // EntityPowerUsage table (compound key: entityId_powerKey)
-    entityPowerUsage: {
-      findUnique: jest.fn((args: any) => {
-        const { entityId, powerKey } = args.where.entityId_powerKey;
-        return Promise.resolve(entityPowerUsages.get(`${entityId}:${powerKey}`) ?? null);
-      }),
-      create: jest.fn((args: any) => {
-        const { entityId, powerKey } = args.data;
-        const record = { ...args.data };
-        entityPowerUsages.set(`${entityId}:${powerKey}`, record);
-        return Promise.resolve(record);
-      }),
-      update: jest.fn((args: any) => {
-        const { entityId, powerKey } = args.where.entityId_powerKey;
-        const key = `${entityId}:${powerKey}`;
-        const existing = entityPowerUsages.get(key) ?? {};
-        const updated = { ...existing };
-        if (typeof args.data.usageCount?.increment === 'number') {
-          updated.usageCount = (existing.usageCount ?? 0) + args.data.usageCount.increment;
-        }
-        if (args.data.lastUsedUtcDay !== undefined) updated.lastUsedUtcDay = args.data.lastUsedUtcDay;
-        if (args.data.usageCount !== undefined && typeof args.data.usageCount !== 'object') {
-          updated.usageCount = args.data.usageCount;
-        }
-        entityPowerUsages.set(key, updated);
-        return Promise.resolve(updated);
-      }),
-      findMany: jest.fn((args: any) => {
-        const { where } = (args as any) ?? {};
-        const results = [...entityPowerUsages.values()].filter((u) => {
-          if (where?.entityId && u.entityId !== where.entityId) return false;
-          if (where?.lastUsedUtcDay && u.lastUsedUtcDay !== where.lastUsedUtcDay) return false;
-          return true;
-        });
-        return Promise.resolve(results);
-      }),
-    },
-
-    // LocationPowerUsage table (compound key: locationInstanceId_powerKey)
-    locationPowerUsage: {
-      findUnique: jest.fn((args: any) => {
-        const { locationInstanceId, powerKey } = args.where.locationInstanceId_powerKey;
-        return Promise.resolve(locationPowerUsages.get(`${locationInstanceId}:${powerKey}`) ?? null);
-      }),
-      create: jest.fn((args: any) => {
-        const { locationInstanceId, powerKey } = args.data;
-        const record = { ...args.data };
-        locationPowerUsages.set(`${locationInstanceId}:${powerKey}`, record);
-        return Promise.resolve(record);
-      }),
-      update: jest.fn((args: any) => {
-        const { locationInstanceId, powerKey } = args.where.locationInstanceId_powerKey;
-        const key = `${locationInstanceId}:${powerKey}`;
-        const existing = locationPowerUsages.get(key) ?? {};
-        const updated = { ...existing };
-        if (typeof args.data.usageCount?.increment === 'number') {
-          updated.usageCount = (existing.usageCount ?? 0) + args.data.usageCount.increment;
-        }
-        if (args.data.lastUsedUtcDay !== undefined) updated.lastUsedUtcDay = args.data.lastUsedUtcDay;
-        if (args.data.usageCount !== undefined && typeof args.data.usageCount !== 'object') {
-          updated.usageCount = args.data.usageCount;
-        }
-        locationPowerUsages.set(key, updated);
-        return Promise.resolve(updated);
-      }),
-      findMany: jest.fn((args: any) => {
-        const { where } = (args as any) ?? {};
-        const results = [...locationPowerUsages.values()].filter((u) => {
-          if (where?.locationInstanceId && u.locationInstanceId !== where.locationInstanceId) return false;
-          if (where?.lastUsedUtcDay && u.lastUsedUtcDay !== where.lastUsedUtcDay) return false;
-          return true;
-        });
-        return Promise.resolve(results);
-      }),
-    },
-
-    // BoostEvent table — used by GlobalPowerService for tick_speed_boost
     boostEvent: {
+      findFirst: jest.fn(() => Promise.resolve(null)),
       create: jest.fn((args: any) => {
         const id = nextId('be');
         const record = { id, ...args.data };
         boostEvents.set(id, record);
         return Promise.resolve(record);
       }),
-      findFirst: jest.fn(() => Promise.resolve(null)),
       findMany: jest.fn(() => Promise.resolve([])),
-      update: jest.fn(() => Promise.resolve({})),
-      updateMany: jest.fn(() => Promise.resolve({ count: 0 })),
+      update: jest.fn(() => Promise.resolve(null)),
     },
 
-    // TickRateInterval — used when applying tick boost; returning empty set is safe
     tickRateInterval: {
-      findFirst: jest.fn(() => Promise.resolve(null)),
       findMany: jest.fn(() => Promise.resolve([])),
-      create: jest.fn((args: any) => Promise.resolve({ id: nextId('tri'), ...args.data })),
-    },
-
-    // EffectDef — not needed for tick_speed_boost; stub prevents runtime errors
-    effectDef: {
-      findFirst: jest.fn(() => Promise.resolve(null)),
-      findUnique: jest.fn(() => Promise.resolve(null)),
     },
   };
 }
 
 // ---------------------------------------------------------------------------
-// No-op PubSubService stub
+// Shared entity / location test fixtures
 // ---------------------------------------------------------------------------
-const stubPubSub: any = {
-  publishBroadcast: jest.fn(),
-  publish: jest.fn(),
+const ENTITY_ID = 'entity-1';
+const LOCATION_ID = 'loc-1';
+const USER_ID = 'user-1';
+const NFT_ASSET_ID = 'asset-001';
+
+const BASE_ENTITY = {
+  id: ENTITY_ID,
+  ownerUserId: USER_ID,
+  nftAssetId: NFT_ASSET_ID,
+  speciesId: 'dragon',
+  display: { name: 'Spark' },
+  definition: { rules: {} },
+  equipment: [],
 };
 
-// ---------------------------------------------------------------------------
-// Entity & location fixture builders
-// ---------------------------------------------------------------------------
-function entityWithPowerRef(powerRefs: any[], nftAssetId = 'nft-001') {
+const BASE_LOCATION = {
+  id: LOCATION_ID,
+  ownerUserId: USER_ID,
+  nftAssetId: NFT_ASSET_ID,
+  name: 'Unique Outpost',
+  definition: { rules: {}, id: 'outpost_forest' },
+};
+
+function makeTx(entityOverride?: any, locationOverride?: any, isAdmin = false) {
   return {
-    id: 'ent-1',
-    ownerUserId: 'user-1',
-    nftAssetId,
-    speciesId: 'phoenix',
-    display: { name: 'Ember' },
-    definition: {
-      rules: { uniques: { [nftAssetId]: { powers: powerRefs } } },
-    },
-    equipment: [],
+    entity: { findUnique: jest.fn().mockResolvedValue(entityOverride ?? BASE_ENTITY) },
+    locationInstance: { findUnique: jest.fn().mockResolvedValue(locationOverride ?? BASE_LOCATION) },
+    user: { findUnique: jest.fn().mockResolvedValue({ flags: isAdmin ? { isAdmin: true } : {} }) },
   };
 }
 
-function locationWithPowerRef(powerRefs: any[], nftAssetId = 'nft-loc-001') {
-  return {
-    id: 'loc-1',
-    ownerUserId: 'user-1',
-    nftAssetId,
-    name: 'Ember Outpost',
-    definition: {
-      id: 'outpost_alpha',
-      rules: { uniques: { [nftAssetId]: { powers: powerRefs } } },
-    },
+function buildEntityHandler(prisma: any) {
+  const pubsub: any = { publish: jest.fn() };
+  const powerDefService = new PowerDefService(prisma as any);
+  const globalPowerService = new GlobalPowerService(prisma as any, pubsub);
+  const powerGrantService = new PowerGrantService(prisma as any);
+  const powerChargeService: any = new (PowerChargeService as any)();
+  const tickService: any = { getCurrentTick: jest.fn().mockResolvedValue(100) };
+  const notificationService: any = {
+    createForCommandSilent: jest.fn().mockResolvedValue({ id: 'n-1', type: 'power_activated', category: 'system', priority: 'normal', title: '', body: '', readAt: null, dismissedAt: null, createdAt: new Date().toISOString() }),
   };
+  return new TriggerEntityPowerHandler(
+    prisma as any, globalPowerService, powerDefService, powerGrantService, powerChargeService, tickService, notificationService,
+  );
 }
 
-function makeTxForEntity(entity: any): any {
-  return {
-    entity: { findUnique: jest.fn().mockResolvedValue(entity) },
-    user: { findUnique: jest.fn().mockResolvedValue({ flags: {} }) },
+function buildLocationHandler(prisma: any) {
+  const pubsub: any = { publish: jest.fn() };
+  const powerDefService = new PowerDefService(prisma as any);
+  const globalPowerService = new GlobalPowerService(prisma as any, pubsub);
+  const powerGrantService = new PowerGrantService(prisma as any);
+  const powerChargeService: any = new (PowerChargeService as any)();
+  const tickService: any = { getCurrentTick: jest.fn().mockResolvedValue(100) };
+  const notificationService: any = {
+    createForCommandSilent: jest.fn().mockResolvedValue({ id: 'n-1', type: 'power_activated', category: 'system', priority: 'normal', title: '', body: '', readAt: null, dismissedAt: null, createdAt: new Date().toISOString() }),
   };
-}
-
-function makeTxForLocation(location: any): any {
-  return {
-    locationInstance: { findUnique: jest.fn().mockResolvedValue(location) },
-    user: { findUnique: jest.fn().mockResolvedValue({ flags: {} }) },
-  };
+  return new TriggerLocationPowerHandler(
+    prisma as any, globalPowerService, powerDefService, powerGrantService, powerChargeService, tickService, notificationService,
+  );
 }
 
 // ---------------------------------------------------------------------------
-// Entity power — integration suite
+// Entity power tests
 // ---------------------------------------------------------------------------
-describe('TriggerEntityPowerHandler — integration (real PowerDefService + GlobalPowerService)', () => {
-  function makeEntitySetup(powerRefs: any[] = [{ key: 'tick_speed_boost', name: 'World Speed Boost' }]) {
+describe('TriggerEntityPower — integration (real services, in-memory DB)', () => {
+  it('happy path: grant active + charge available → GlobalActivePower created + charge deducted', async () => {
     const prisma = makeInMemoryPrisma();
-    const powerDefService = new PowerDefService(prisma as any);
-    const globalPowerService = new GlobalPowerService(prisma as any, stubPubSub);
-    const notificationService: any = {
-      createForCommand: jest.fn().mockResolvedValue({ id: 'notif-1', type: 'power_activated', category: 'system', priority: 'normal', title: '', body: '', readAt: null, dismissedAt: null, createdAt: new Date().toISOString() }),
-    };
-    const handler = new TriggerEntityPowerHandler(prisma as any, globalPowerService, powerDefService, notificationService);
-
-    const entity = entityWithPowerRef(powerRefs);
-    const tx = makeTxForEntity(entity);
-    const ctx: any = { userId: 'user-1', tx };
-
-    return { handler, ctx, prisma };
-  }
-
-  it('happy path: creates a GlobalActivePower row on the first trigger', async () => {
-    const { handler, ctx, prisma } = makeEntitySetup();
-
-    const result = await handler.execute(ctx, { entityId: 'ent-1', powerKey: 'tick_speed_boost' });
-
-    // The real GlobalPowerService.createPower() must have persisted a record
-    expect(prisma.globalActivePower.create).toHaveBeenCalledTimes(1);
-    const createArg = prisma.globalActivePower.create.mock.calls[0][0];
-    expect(createArg.data).toMatchObject({
-      status: 'active',
-      durationMinutes: expect.any(Number),
-      triggeredByUserId: 'user-1',
+    prisma._seedPowerGrant({
+      id: 'grant-1',
+      targetType: 'entity',
+      targetId: ENTITY_ID,
+      powerKey: 'tick_speed_boost',
+      powerDefId: null,
+      overrides: { name: 'Tick Boost', value: 50, valueMode: 'percent_add', durationMinutes: 30 },
+      sourceType: 'nft_unique',
+      sourceId: NFT_ASSET_ID,
+      expiresAt: null,
+      remainingChargeUnits: null,
+    });
+    prisma._seedEntityUsage({
+      id: 'usage-1',
+      entityId: ENTITY_ID,
+      powerGrantId: 'grant-1',
+      chargeUnits: 1,
+      lastChargeAppliedAt: null,
     });
 
-    // In-memory store must contain the record
+    const handler = buildEntityHandler(prisma);
+    const tx = makeTx();
+    const ctx = { userId: USER_ID, tx };
+
+    const result = await handler.execute(ctx as any, { entityId: ENTITY_ID, powerKey: 'tick_speed_boost' });
+
+    expect(result.patches).toBeDefined();
     expect(prisma._tables.globalActivePowers.size).toBe(1);
+    expect(prisma._tables.powerUseEvents).toHaveLength(1);
 
-    // A usage row must also have been persisted
-    expect(prisma.entityPowerUsage.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          entityId: 'ent-1',
-          powerKey: 'tick_speed_boost',
-          lastUsedUtcDay: TODAY,
-          usageCount: 1,
-        }),
-      }),
-    );
-
-    expect(result.ui).toEqual(
-      expect.arrayContaining([expect.objectContaining({ type: 'notification' })]),
-    );
+    const usage = prisma._tables.entityPowerUsages.get('grant-1');
+    expect(usage.chargeUnits).toBe(0);
   });
 
-  it('daily limit: second trigger on the same UTC day is rejected; no second GlobalActivePower created', async () => {
-    const { handler, ctx, prisma } = makeEntitySetup();
-
-    // First trigger — must succeed and persist one GlobalActivePower row
-    await handler.execute(ctx, { entityId: 'ent-1', powerKey: 'tick_speed_boost' });
-    expect(prisma._tables.globalActivePowers.size).toBe(1);
-
-    // Refresh tx so entity lookup succeeds again on the second call
-    ctx.tx = makeTxForEntity(entityWithPowerRef([{ key: 'tick_speed_boost', name: 'World Speed Boost' }]));
-
-    // Second trigger on same day — daily limit is 1 → must throw BadRequestException
-    await expect(
-      handler.execute(ctx, { entityId: 'ent-1', powerKey: 'tick_speed_boost' }),
-    ).rejects.toThrow(BadRequestException);
-
-    // Still exactly one GlobalActivePower row — no second activation occurred
-    expect(prisma._tables.globalActivePowers.size).toBe(1);
-    expect(prisma.globalActivePower.create).toHaveBeenCalledTimes(1);
-  });
-
-  it('non-existent power key: rejects before GlobalPowerService is reached', async () => {
-    const { handler, ctx, prisma } = makeEntitySetup([{ key: 'some_other_power', name: 'Other' }]);
+  it('no grant → NotFoundException before reaching GlobalPowerService', async () => {
+    const prisma = makeInMemoryPrisma();
+    const handler = buildEntityHandler(prisma);
+    const tx = makeTx();
+    const ctx = { userId: USER_ID, tx };
 
     await expect(
-      handler.execute(ctx, { entityId: 'ent-1', powerKey: 'nonexistent_key' }),
-    ).rejects.toThrow(BadRequestException);
+      handler.execute(ctx as any, { entityId: ENTITY_ID, powerKey: 'tick_speed_boost' }),
+    ).rejects.toThrow(NotFoundException);
 
-    expect(prisma.globalActivePower.create).not.toHaveBeenCalled();
     expect(prisma._tables.globalActivePowers.size).toBe(0);
+    expect(prisma._tables.powerUseEvents).toHaveLength(0);
   });
 
-  it('PowerRef with powerDefId: resolve() fetches the PowerDef and merges its default durationMinutes', async () => {
-    const { handler, ctx, prisma } = makeEntitySetup([
-      { key: 'tick_speed_boost', name: 'Boosted Speed', powerDefId: 'pd_tick' },
-    ]);
+  it('charge exhausted → BadRequestException, GlobalPowerService NOT called', async () => {
+    const prisma = makeInMemoryPrisma();
+    prisma._seedPowerGrant({
+      id: 'grant-1',
+      targetType: 'entity',
+      targetId: ENTITY_ID,
+      powerKey: 'tick_speed_boost',
+      powerDefId: null,
+      overrides: { name: 'Tick Boost', value: 50, valueMode: 'percent_add', durationMinutes: 30 },
+      sourceType: 'nft_unique',
+      sourceId: NFT_ASSET_ID,
+      expiresAt: null,
+      remainingChargeUnits: null,
+    });
+    prisma._seedEntityUsage({
+      id: 'usage-1',
+      entityId: ENTITY_ID,
+      powerGrantId: 'grant-1',
+      chargeUnits: 0,
+      lastChargeAppliedAt: null,
+    });
 
-    // Seed the PowerDef so resolve() can look it up
+    const handler = buildEntityHandler(prisma);
+    const tx = makeTx();
+    const ctx = { userId: USER_ID, tx };
+
+    await expect(
+      handler.execute(ctx as any, { entityId: ENTITY_ID, powerKey: 'tick_speed_boost' }),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma._tables.globalActivePowers.size).toBe(0);
+    expect(prisma._tables.powerUseEvents).toHaveLength(0);
+  });
+
+  it('grant with powerDefId → resolves duration from PowerDef', async () => {
+    const prisma = makeInMemoryPrisma();
     prisma._seedPowerDef({
-      id: 'pd_tick',
-      enabled: true,
+      id: 'pd-1',
+      key: 'tick_speed_boost',
+      name: 'Tick Boost',
       powerType: 'tick_speed_boost',
       effectDefId: null,
-      defaultValue: 75,
+      defaultValue: 60,
       defaultValueMode: 'percent_add',
       defaultDurationMinutes: 45,
-      defaultDailyLimit: 2,
+      chargeConfig: { maxChargeUnits: 2, costPerUse: 1, initialChargeUnits: 2, rechargeRules: [] },
       defaultScope: 'global',
       selection: null,
+      enabled: true,
+    });
+    prisma._seedPowerGrant({
+      id: 'grant-1',
+      targetType: 'entity',
+      targetId: ENTITY_ID,
+      powerKey: 'tick_speed_boost',
+      powerDefId: 'pd-1',
+      overrides: null,
+      sourceType: 'nft_unique',
+      sourceId: NFT_ASSET_ID,
+      expiresAt: null,
+      remainingChargeUnits: null,
+    });
+    prisma._seedEntityUsage({
+      id: 'usage-1',
+      entityId: ENTITY_ID,
+      powerGrantId: 'grant-1',
+      chargeUnits: 2,
+      lastChargeAppliedAt: null,
     });
 
-    await handler.execute(ctx, { entityId: 'ent-1', powerKey: 'tick_speed_boost' });
+    const handler = buildEntityHandler(prisma);
+    const tx = makeTx();
+    const ctx = { userId: USER_ID, tx };
 
-    // The PowerDef's defaultDurationMinutes (45) must flow through to the persisted record
-    const createArg = prisma.globalActivePower.create.mock.calls[0][0];
-    expect(createArg.data.durationMinutes).toBe(45);
+    const result = await handler.execute(ctx as any, { entityId: ENTITY_ID, powerKey: 'tick_speed_boost' });
+
+    expect(result.patches).toBeDefined();
+    const gap = [...prisma._tables.globalActivePowers.values()][0];
+    expect(gap).toBeDefined();
+    // durationMinutes 45 → endTime should be ~45 min from now
+    const durationMs = gap.endTime - gap.startTime;
+    expect(durationMs).toBeCloseTo(45 * 60 * 1000, -4);
   });
 
-  it('disabled PowerDef: resolve() throws BadRequestException before triggerPower is reached', async () => {
-    const { handler, ctx, prisma } = makeEntitySetup([
-      { key: 'tick_speed_boost', name: 'Disabled Speed', powerDefId: 'pd_disabled' },
-    ]);
+  it('disabled PowerDef → BadRequestException from resolve()', async () => {
+    const prisma = makeInMemoryPrisma();
+    prisma._seedPowerDef({
+      id: 'pd-disabled',
+      key: 'disabled_power',
+      name: 'Disabled Power',
+      powerType: 'tick_speed_boost',
+      effectDefId: null,
+      defaultValue: 50,
+      defaultValueMode: 'percent_add',
+      defaultDurationMinutes: 30,
+      chargeConfig: null,
+      defaultScope: 'global',
+      selection: null,
+      enabled: false,
+    });
+    prisma._seedPowerGrant({
+      id: 'grant-disabled',
+      targetType: 'entity',
+      targetId: ENTITY_ID,
+      powerKey: 'disabled_power',
+      powerDefId: 'pd-disabled',
+      overrides: null,
+      sourceType: 'nft_unique',
+      sourceId: NFT_ASSET_ID,
+      expiresAt: null,
+      remainingChargeUnits: null,
+    });
+    prisma._seedEntityUsage({
+      id: 'usage-d',
+      entityId: ENTITY_ID,
+      powerGrantId: 'grant-disabled',
+      chargeUnits: 1,
+      lastChargeAppliedAt: null,
+    });
 
-    prisma._seedPowerDef({ id: 'pd_disabled', enabled: false, powerType: 'tick_speed_boost' });
+    const handler = buildEntityHandler(prisma);
+    const tx = makeTx();
+    const ctx = { userId: USER_ID, tx };
 
     await expect(
-      handler.execute(ctx, { entityId: 'ent-1', powerKey: 'tick_speed_boost' }),
+      handler.execute(ctx as any, { entityId: ENTITY_ID, powerKey: 'disabled_power' }),
     ).rejects.toThrow(BadRequestException);
 
-    expect(prisma.globalActivePower.create).not.toHaveBeenCalled();
-  });
-
-  it('missing PowerDef referenced by powerDefId: resolve() throws NotFoundException', async () => {
-    const { handler, ctx, prisma } = makeEntitySetup([
-      { key: 'tick_speed_boost', name: 'Orphan Power', powerDefId: 'pd_missing' },
-    ]);
-
-    // powerDefStore has no record for 'pd_missing'
-    await expect(
-      handler.execute(ctx, { entityId: 'ent-1', powerKey: 'tick_speed_boost' }),
-    ).rejects.toThrow();
-
-    expect(prisma.globalActivePower.create).not.toHaveBeenCalled();
+    expect(prisma._tables.globalActivePowers.size).toBe(0);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Location power — integration suite
+// Location power tests
 // ---------------------------------------------------------------------------
-describe('TriggerLocationPowerHandler — integration (real PowerDefService + GlobalPowerService)', () => {
-  function makeLocationSetup(powerRefs: any[] = [{ key: 'tick_speed_boost', name: 'Outpost Boost' }]) {
+describe('TriggerLocationPower — integration (real services, in-memory DB)', () => {
+  it('happy path: grant active + charge available → GlobalActivePower created + charge deducted', async () => {
     const prisma = makeInMemoryPrisma();
-    const powerDefService = new PowerDefService(prisma as any);
-    const globalPowerService = new GlobalPowerService(prisma as any, stubPubSub);
-    const notificationService: any = {
-      createForCommand: jest.fn().mockResolvedValue({ id: 'notif-1', type: 'power_activated', category: 'system', priority: 'normal', title: '', body: '', readAt: null, dismissedAt: null, createdAt: new Date().toISOString() }),
-    };
-    const handler = new TriggerLocationPowerHandler(prisma as any, globalPowerService, powerDefService, notificationService);
-
-    const location = locationWithPowerRef(powerRefs);
-    const tx = makeTxForLocation(location);
-    const ctx: any = { userId: 'user-1', tx };
-
-    return { handler, ctx, prisma };
-  }
-
-  it('happy path: creates a GlobalActivePower row on the first trigger', async () => {
-    const { handler, ctx, prisma } = makeLocationSetup();
-
-    const result = await handler.execute(ctx, { locationId: 'loc-1', powerKey: 'tick_speed_boost' });
-
-    expect(prisma.globalActivePower.create).toHaveBeenCalledTimes(1);
-    const createArg = prisma.globalActivePower.create.mock.calls[0][0];
-    expect(createArg.data).toMatchObject({
-      status: 'active',
-      durationMinutes: expect.any(Number),
-      triggeredByUserId: 'user-1',
+    prisma._seedPowerGrant({
+      id: 'lgrant-1',
+      targetType: 'location',
+      targetId: LOCATION_ID,
+      powerKey: 'tick_speed_boost',
+      powerDefId: null,
+      overrides: { name: 'Location Boost', value: 25, valueMode: 'percent_add', durationMinutes: 20 },
+      sourceType: 'nft_unique',
+      sourceId: NFT_ASSET_ID,
+      expiresAt: null,
+      remainingChargeUnits: null,
+    });
+    prisma._seedLocationUsage({
+      id: 'lusage-1',
+      locationInstanceId: LOCATION_ID,
+      powerGrantId: 'lgrant-1',
+      chargeUnits: 1,
+      lastChargeAppliedAt: null,
     });
 
+    const handler = buildLocationHandler(prisma);
+    const tx = makeTx();
+    const ctx = { userId: USER_ID, tx };
+
+    const result = await handler.execute(ctx as any, { locationId: LOCATION_ID, powerKey: 'tick_speed_boost' });
+
+    expect(result.patches).toBeDefined();
     expect(prisma._tables.globalActivePowers.size).toBe(1);
+    expect(prisma._tables.powerUseEvents).toHaveLength(1);
 
-    expect(prisma.locationPowerUsage.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          locationInstanceId: 'loc-1',
-          powerKey: 'tick_speed_boost',
-          lastUsedUtcDay: TODAY,
-          usageCount: 1,
-        }),
-      }),
-    );
-
-    expect(result.ui).toEqual(
-      expect.arrayContaining([expect.objectContaining({ type: 'notification' })]),
-    );
+    const usage = prisma._tables.locationPowerUsages.get('lgrant-1');
+    expect(usage.chargeUnits).toBe(0);
   });
 
-  it('daily limit: second trigger on same UTC day is rejected; no second GlobalActivePower created', async () => {
-    const { handler, ctx, prisma } = makeLocationSetup();
-
-    await handler.execute(ctx, { locationId: 'loc-1', powerKey: 'tick_speed_boost' });
-    expect(prisma._tables.globalActivePowers.size).toBe(1);
-
-    // Refresh tx for second call
-    ctx.tx = makeTxForLocation(
-      locationWithPowerRef([{ key: 'tick_speed_boost', name: 'Outpost Boost' }]),
-    );
+  it('no grant → NotFoundException', async () => {
+    const prisma = makeInMemoryPrisma();
+    const handler = buildLocationHandler(prisma);
+    const tx = makeTx();
+    const ctx = { userId: USER_ID, tx };
 
     await expect(
-      handler.execute(ctx, { locationId: 'loc-1', powerKey: 'tick_speed_boost' }),
-    ).rejects.toThrow(BadRequestException);
-
-    expect(prisma._tables.globalActivePowers.size).toBe(1);
-    expect(prisma.globalActivePower.create).toHaveBeenCalledTimes(1);
-  });
-
-  it('non-existent power key: rejects before GlobalPowerService is reached', async () => {
-    const { handler, ctx, prisma } = makeLocationSetup([{ key: 'other_power', name: 'Other' }]);
-
-    await expect(
-      handler.execute(ctx, { locationId: 'loc-1', powerKey: 'nonexistent_key' }),
-    ).rejects.toThrow(BadRequestException);
-
-    expect(prisma.globalActivePower.create).not.toHaveBeenCalled();
-    expect(prisma._tables.globalActivePowers.size).toBe(0);
-  });
-
-  it('PowerRef with powerDefId: resolve() fetches the PowerDef and merges its default durationMinutes', async () => {
-    const { handler, ctx, prisma } = makeLocationSetup([
-      { key: 'tick_speed_boost', name: 'Def-backed Boost', powerDefId: 'pd_loc_tick' },
-    ]);
-
-    prisma._seedPowerDef({
-      id: 'pd_loc_tick',
-      enabled: true,
-      powerType: 'tick_speed_boost',
-      effectDefId: null,
-      defaultValue: 30,
-      defaultValueMode: 'percent_add',
-      defaultDurationMinutes: 90,
-      defaultDailyLimit: 3,
-      defaultScope: 'global',
-      selection: null,
-    });
-
-    await handler.execute(ctx, { locationId: 'loc-1', powerKey: 'tick_speed_boost' });
-
-    const createArg = prisma.globalActivePower.create.mock.calls[0][0];
-    expect(createArg.data.durationMinutes).toBe(90);
-  });
-
-  it('usage counter increments on a second same-day trigger when daily limit allows it', async () => {
-    // dailyLimit = 3 inline on the PowerRef
-    const powerRefs = [{ key: 'tick_speed_boost', name: 'Multi-use Boost', dailyLimit: 3 }];
-    const { handler, ctx, prisma } = makeLocationSetup(powerRefs);
-
-    await handler.execute(ctx, { locationId: 'loc-1', powerKey: 'tick_speed_boost' });
-
-    // Refresh tx for second call
-    ctx.tx = makeTxForLocation(locationWithPowerRef(powerRefs));
-
-    await handler.execute(ctx, { locationId: 'loc-1', powerKey: 'tick_speed_boost' });
-
-    // tick_speed_boost stacking is allowed, so two GlobalActivePower rows created
-    expect(prisma.globalActivePower.create).toHaveBeenCalledTimes(2);
-
-    // Usage counter must have been incremented to 2 in the in-memory store
-    const usageRow = prisma._tables.locationPowerUsages.get('loc-1:tick_speed_boost');
-    expect(usageRow.usageCount).toBe(2);
-    expect(usageRow.lastUsedUtcDay).toBe(TODAY);
-  });
-
-  it('disabled PowerDef: resolve() throws before triggerPower is reached', async () => {
-    const { handler, ctx, prisma } = makeLocationSetup([
-      { key: 'tick_speed_boost', name: 'Disabled', powerDefId: 'pd_off' },
-    ]);
-
-    prisma._seedPowerDef({ id: 'pd_off', enabled: false, powerType: 'tick_speed_boost' });
-
-    await expect(
-      handler.execute(ctx, { locationId: 'loc-1', powerKey: 'tick_speed_boost' }),
-    ).rejects.toThrow(BadRequestException);
-
-    expect(prisma.globalActivePower.create).not.toHaveBeenCalled();
+      handler.execute(ctx as any, { locationId: LOCATION_ID, powerKey: 'tick_speed_boost' }),
+    ).rejects.toThrow(NotFoundException);
   });
 });

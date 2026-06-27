@@ -8,6 +8,7 @@ import { buildLocationDataFromNftMetadata } from './nft-location-builder';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { NftImageImportService } from './nft-image-import.service';
 import { LocationService } from '../location/location.service';
+import { PowerGrantService } from '../global-power/power-grant.service';
 import {
   PatchBuilder,
   fetchFullLocation,
@@ -96,6 +97,7 @@ export class NftCollectionService {
     private pubsub: PubSubService,
     private nftImageImport: NftImageImportService,
     private locationService: LocationService,
+    private powerGrantService: PowerGrantService,
   ) {}
 
   async listCollections() {
@@ -467,8 +469,12 @@ export class NftCollectionService {
             const entitySeed = Math.random() * 0x7fffffff | 0;
             const entityData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta, entitySeed);
 
-            await (this.prisma as any).entity.create({
+            const createdEntity = await (this.prisma as any).entity.create({
               data: { ...entityData, seed: entitySeed, nftAssetId, nftCollectionDefId: collection.id },
+            });
+
+            await this.powerGrantService.syncNftGrants(createdEntity.id).catch((err) => {
+              this.logger.error(`Failed to sync NFT grants for entity ${createdEntity.id}: ${err}`);
             });
 
             this.nftImageImport.invalidateKnownCidCache();
@@ -976,6 +982,9 @@ export class NftCollectionService {
                   });
                   this.nftImageImport.invalidateKnownCidCache();
                   this.nftImageImport.prewarmThumbnail(meta.imageUrl);
+                  await this.powerGrantService.syncNftGrants(existingEntity.id).catch((err) => {
+                    this.logger.error(`Failed to sync NFT grants for entity ${existingEntity.id}: ${err}`);
+                  });
                 } catch (createErr: any) {
                   // Another concurrent sync won the race and created the row first.
                   // Re-fetch so we can still claim/transfer it below.

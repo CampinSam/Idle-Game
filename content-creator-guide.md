@@ -1287,10 +1287,30 @@ A PowerDef is a **reusable template for a global power event** (a site-wide serv
 | `defaultValue` | number | | Default effect magnitude. |
 | `defaultValueMode` | string | | Default `EffectValueMode`. Default `"percent_add"`. |
 | `defaultDurationMinutes` | number | | Default activation duration in minutes. Default `30`. |
-| `defaultDailyLimit` | number | | Default maximum times per day this power can fire. Default `1`. |
+| `chargeConfig` | JSON \| null | | Tick-based charge config. See **ChargeConfig** below. `null` = 1 charge / no recharge. |
 | `defaultScope` | string | | Default target scope, e.g. `"global"`, `"self"`. |
 | `selection` | JSON | | Default `EffectSelection` object applied when the trigger does not supply its own. |
 | `enabled` | boolean | | Default `true`. |
+
+### ChargeConfig
+
+`chargeConfig` controls how often a power can be activated and whether charges recharge over time.
+
+```json
+{
+  "maxChargeUnits": 1,
+  "costPerUse": 1,
+  "initialChargeUnits": 1,
+  "rechargeRules": [{ "type": "TICK", "unitsPerTick": 0.001 }]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `maxChargeUnits` | Charge cap. Default `1`. |
+| `costPerUse` | Charge deducted per activation. Default `1`. |
+| `initialChargeUnits` | Starting charge when usage is first created. Default `1`. |
+| `rechargeRules` | Array of rules. `{ "type": "TICK", "unitsPerTick": N }` adds N charge per tick elapsed. |
 
 ### `powerType` values
 

@@ -695,35 +695,84 @@ export class SeedSyncService {
     }
 
     if (modelName === 'powerDef') {
-      // effectDef UUID PK migration: PowerDef.effectDefId may arrive as a slug
-      // in legacy seed records.  effectDef is seeded before powerDef (see
-      // SEED_TABLE_ORDER), so we can resolve slug → UUID via a single DB query.
+      // PowerDef special handling:
+      //  1. Resolve effectDefId slug → UUID (effectDef is seeded before powerDef).
+      //  2. Strip stale fields that no longer exist in the schema (defaultDailyLimit).
+      //  3. Use Prisma relation syntax for effectDef to avoid checked-input conflicts.
       const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const effectDefs = await this.prisma.effectDef.findMany({ select: { id: true, key: true } });
       const effectDefByKey = new Map(effectDefs.map((e) => [e.key, e.id]));
 
       for (const raw of records) {
         const base = transform ? transform(raw) : raw;
-        const record = this.normalizeDates(base);
+        const normalized = this.normalizeDates(base);
 
         // Resolve slug effectDefId → UUID.  If already a UUID, leave it as-is.
-        const rawEffectDefId: string | null = raw.effectDefId ?? null;
-        if (rawEffectDefId !== null && !UUID_V4.test(rawEffectDefId)) {
-          record.effectDefId = effectDefByKey.get(rawEffectDefId) ?? null;
-          if (record.effectDefId === null) {
+        let resolvedEffectDefId: string | null = normalized.effectDefId ?? null;
+        if (resolvedEffectDefId !== null && !UUID_V4.test(resolvedEffectDefId)) {
+          resolvedEffectDefId = effectDefByKey.get(resolvedEffectDefId) ?? null;
+          if (resolvedEffectDefId === null) {
             this.logger.warn(
-              `upsertTable(powerDef): effectDefId slug "${rawEffectDefId}" not found in effect_defs — setting null`,
+              `upsertTable(powerDef): effectDefId slug "${normalized.effectDefId}" not found in effect_defs — setting null`,
             );
           }
         }
 
-        const where = buildWhere(record);
-        const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+        // Build a clean record: strip stale fields, keep valid scalars.
+        const {
+          id: _id,
+          createdAt: _ca,
+          updatedAt: _ua,
+          effectDefId: _eId,
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          defaultDailyLimit: _ddl,
+          ...scalarRest
+        } = normalized as any;
+
+        // Use raw SQL to bypass Prisma's runtime input validation for PowerDef.
+        // PowerDef has two relations (effectDef + grants) that make the checked-input
+        // type ambiguous — raw SQL is the simplest stable upsert path.
+        const id = _id ?? crypto.randomUUID();
         try {
-          await model.upsert({ where, update: rest, create: record });
+          await this.prisma.$executeRaw`
+            INSERT INTO power_defs (
+              id, key, name, description, "powerType", "effectDefId",
+              "defaultValue", "defaultValueMode", "defaultDurationMinutes",
+              "chargeConfig", "defaultScope", selection, enabled,
+              "createdAt", "updatedAt"
+            ) VALUES (
+              ${id},
+              ${scalarRest.key},
+              ${scalarRest.name},
+              ${scalarRest.description ?? null},
+              ${scalarRest.powerType},
+              ${resolvedEffectDefId},
+              ${scalarRest.defaultValue ?? 0},
+              ${scalarRest.defaultValueMode ?? 'percent_add'},
+              ${scalarRest.defaultDurationMinutes ?? 30},
+              ${scalarRest.chargeConfig ? JSON.stringify(scalarRest.chargeConfig) : null}::jsonb,
+              ${scalarRest.defaultScope ?? 'global'},
+              ${scalarRest.selection ? JSON.stringify(scalarRest.selection) : null}::jsonb,
+              ${scalarRest.enabled ?? true},
+              NOW(), NOW()
+            )
+            ON CONFLICT (key) DO UPDATE SET
+              name = EXCLUDED.name,
+              description = EXCLUDED.description,
+              "powerType" = EXCLUDED."powerType",
+              "effectDefId" = EXCLUDED."effectDefId",
+              "defaultValue" = EXCLUDED."defaultValue",
+              "defaultValueMode" = EXCLUDED."defaultValueMode",
+              "defaultDurationMinutes" = EXCLUDED."defaultDurationMinutes",
+              "chargeConfig" = EXCLUDED."chargeConfig",
+              "defaultScope" = EXCLUDED."defaultScope",
+              selection = EXCLUDED.selection,
+              enabled = EXCLUDED.enabled,
+              "updatedAt" = NOW()
+          `;
         } catch (err: any) {
           this.logger.error(
-            `upsertTable: failed to upsert powerDef (where=${JSON.stringify(where)}): ${err?.message}`,
+            `upsertTable: failed to upsert powerDef key="${scalarRest.key}": ${err?.message}`,
           );
           throw err;
         }

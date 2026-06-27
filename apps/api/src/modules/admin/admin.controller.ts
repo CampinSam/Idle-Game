@@ -528,6 +528,16 @@ export class AdminController {
     return this.adminService.resyncPlayerNfts(id);
   }
 
+  @Post('powers/grants/resync-entities')
+  resyncAllEntityGrants() {
+    return this.adminService.resyncAllEntityGrants();
+  }
+
+  @Post('powers/grants/resync-locations')
+  resyncAllLocationGrants() {
+    return this.adminService.resyncAllLocationGrants();
+  }
+
   @Get('players/search')
   searchPlayers(@Query('q') query: string) {
     return this.adminService.searchPlayers(query || '');
