@@ -226,8 +226,13 @@ export const adminApi = {
 
   getEntityPowerUsage: (userId: string, entityId: string) =>
     adminRequest<any[]>(`/players/${userId}/entities/${entityId}/power-usage`),
-  resetEntityPowerUsage: (userId: string, entityId: string, powerKey: string) =>
-    adminRequest<any>(`/players/${userId}/entities/${entityId}/power-usage/${encodeURIComponent(powerKey)}`, { method: 'DELETE' }),
+  resetEntityPowerUsage: (userId: string, entityId: string, powerGrantId: string) =>
+    adminRequest<any>(`/players/${userId}/entities/${entityId}/power-usage/${powerGrantId}`, { method: 'DELETE' }),
+
+  getLocationPowerUsage: (userId: string, locationId: string) =>
+    adminRequest<any[]>(`/players/${userId}/locations/${locationId}/power-usage`),
+  resetLocationPowerUsage: (userId: string, locationId: string, powerGrantId: string) =>
+    adminRequest<any>(`/players/${userId}/locations/${locationId}/power-usage/${powerGrantId}`, { method: 'DELETE' }),
 
   forceSettleLocation: (id: string, locationId: string) =>
     adminRequest<any>(`/players/${id}/locations/${locationId}/settle`, { method: 'POST' }),

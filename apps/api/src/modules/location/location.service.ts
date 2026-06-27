@@ -14,6 +14,7 @@ import { NotificationService } from "../notification/notification.service";
 import { EffectService } from "../effect/effect.service";
 import { TelemetryService } from "../telemetry/telemetry.service";
 import { ANTI_WHALE_CAPS, EffectCategory, EffectTargetType, applyModifier, emptyResolvedModifier } from "@derp/shared";
+import { PowerChargeService } from "../global-power/power-charge.service";
 import { serializeLocation } from "../commands/location-serializer.util";
 import {
   resolveLevelConfig,
@@ -411,21 +412,37 @@ export class LocationService {
   async getPowerUsage(
     userId: string,
     locationId: string,
-  ): Promise<Record<string, { usageCount: number; lastUsedUtcDay: string }>> {
+  ): Promise<Record<string, { chargeUnits: number; maxChargeUnits: number; costPerUse: number; usesAvailable: number; lastChargeAppliedAtTick: string | null }>> {
     const location = await (this.prisma as any).locationInstance.findFirst({
       where: { id: locationId, ownerUserId: userId },
       select: { id: true },
     });
     if (!location) return {};
 
-    const today = new Date().toISOString().slice(0, 10);
     const usages = await (this.prisma as any).locationPowerUsage.findMany({
-      where: { locationInstanceId: locationId, lastUsedUtcDay: today },
+      where: { locationInstanceId: locationId },
+      include: {
+        powerGrant: {
+          select: {
+            powerKey: true,
+            overrides: true,
+            powerDef: { select: { chargeConfig: true } },
+          },
+        },
+      },
     });
 
-    const result: Record<string, { usageCount: number; lastUsedUtcDay: string }> = {};
+    const result: Record<string, { chargeUnits: number; maxChargeUnits: number; costPerUse: number; usesAvailable: number; lastChargeAppliedAtTick: string | null }> = {};
     for (const u of usages) {
-      result[u.powerKey] = { usageCount: u.usageCount, lastUsedUtcDay: u.lastUsedUtcDay };
+      const chargeConfig = PowerChargeService.extractChargeConfig(u.powerGrant?.powerDef, u.powerGrant?.overrides);
+      const costPerUse = chargeConfig.costPerUse ?? 1;
+      result[u.powerGrant.powerKey] = {
+        chargeUnits: u.chargeUnits,
+        maxChargeUnits: chargeConfig.maxChargeUnits ?? 1,
+        costPerUse,
+        usesAvailable: costPerUse > 0 ? Math.floor(u.chargeUnits / costPerUse) : 0,
+        lastChargeAppliedAtTick: u.lastChargeAppliedAt !== null ? String(u.lastChargeAppliedAt) : null,
+      };
     }
     return result;
   }

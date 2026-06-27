@@ -477,6 +477,73 @@ function JobsTab({ player }: { player: any }) {
   );
 }
 
+function PowerUsageRows({
+  usages,
+  resetting,
+  onReset,
+}: {
+  usages: any[];
+  resetting: string | null;
+  onReset: (powerGrantId: string, powerKey: string) => void;
+}) {
+  return (
+    <>
+      {usages.map((usage) => {
+        const chargeUnits: number = usage.chargeUnits ?? 0;
+        const maxChargeUnits: number = usage.maxChargeUnits ?? 1;
+        const costPerUse: number = usage.costPerUse ?? 1;
+        const usesAvailable: number = usage.usesAvailable ?? 0;
+        const fillPct = maxChargeUnits > 0 ? Math.min(100, (chargeUnits / maxChargeUnits) * 100) : 0;
+        const readyAtMs: number | null = usage.readyAtMs ?? null;
+        return (
+          <div key={usage.powerGrantId} style={{ marginBottom: 8, fontSize: '0.8rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#e0e0ff', flex: 1, fontWeight: 600 }}>{usage.powerKey}</span>
+              <span style={{ color: usesAvailable > 0 ? '#81c784' : '#e57373' }}>
+                {usesAvailable} use{usesAvailable !== 1 ? 's' : ''} avail
+              </span>
+              <button
+                onClick={() => onReset(usage.powerGrantId, usage.powerKey)}
+                disabled={resetting === usage.powerGrantId}
+                style={{
+                  padding: '0.2rem 0.6rem', border: '1px solid #c0392b', borderRadius: 4,
+                  background: 'rgba(192,57,43,0.15)', color: '#e74c3c', cursor: 'pointer',
+                  fontSize: '0.75rem', fontWeight: 600,
+                }}
+              >
+                {resetting === usage.powerGrantId ? '...' : 'Reset'}
+              </button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+              <div style={{ flex: 1, height: 4, background: '#1a1a3e', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ width: `${fillPct}%`, height: '100%', background: fillPct > 50 ? '#6c63ff' : fillPct > 20 ? '#ffb74d' : '#e74c3c', borderRadius: 2 }} />
+              </div>
+              <span style={{ color: '#888', whiteSpace: 'nowrap' }}>
+                {chargeUnits.toFixed(2)} / {maxChargeUnits} (cost {costPerUse}/use)
+              </span>
+            </div>
+            {readyAtMs !== null && (
+              <div style={{ color: '#888', fontSize: '0.72rem', marginTop: 2 }}>
+                ready ~{new Date(readyAtMs).toLocaleTimeString()}
+              </div>
+            )}
+            {usage.remainingChargeUnits !== null && usage.remainingChargeUnits !== undefined && (
+              <div style={{ color: '#666', fontSize: '0.72rem', marginTop: 1 }}>
+                grant remaining: {usage.remainingChargeUnits}
+              </div>
+            )}
+            {usage.lastChargeAppliedAtTick && (
+              <div style={{ color: '#555', fontSize: '0.72rem', marginTop: 1 }}>
+                last recharged tick: {usage.lastChargeAppliedAtTick}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 function EntityPowerUsageSection({ playerId, entityId }: { playerId: string; entityId: string }) {
   const [usages, setUsages] = useState<any[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -496,11 +563,11 @@ function EntityPowerUsageSection({ playerId, entityId }: { playerId: string; ent
 
   useEffect(() => { load(); }, [playerId, entityId]);
 
-  const handleReset = async (powerKey: string) => {
-    if (!window.confirm(`Reset power usage for "${powerKey}"? This will allow the power to be used again immediately.`)) return;
-    setResetting(powerKey); setMsg(null);
+  const handleReset = async (powerGrantId: string, powerKey: string) => {
+    if (!window.confirm(`Reset charge pool for "${powerKey}"? This clears stored charge so the power will recharge from zero.`)) return;
+    setResetting(powerGrantId); setMsg(null);
     try {
-      await adminApi.resetEntityPowerUsage(playerId, entityId, powerKey);
+      await adminApi.resetEntityPowerUsage(playerId, entityId, powerGrantId);
       setMsg({ text: `Reset "${powerKey}" successfully`, type: 'success' });
       await load();
     } catch (e: any) {
@@ -520,26 +587,56 @@ function EntityPowerUsageSection({ playerId, entityId }: { playerId: string; ent
   return (
     <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2a2a4e', paddingTop: '0.75rem' }}>
       <div style={{ color: '#b8b0ff', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>Power Usage</div>
-      {usages.map((usage) => (
-        <div key={usage.powerKey} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: '0.8rem' }}>
-          <span style={{ color: '#e0e0ff', flex: 1 }}>{usage.powerKey}</span>
-          <span style={{ color: '#888' }}>uses: {usage.usageCount ?? 1}</span>
-          {usage.resetAt && (
-            <span style={{ color: '#666' }}>resets: {new Date(usage.resetAt).toLocaleString()}</span>
-          )}
-          <button
-            onClick={() => handleReset(usage.powerKey)}
-            disabled={resetting === usage.powerKey}
-            style={{
-              padding: '0.2rem 0.6rem', border: '1px solid #c0392b', borderRadius: 4,
-              background: 'rgba(192,57,43,0.15)', color: '#e74c3c', cursor: 'pointer',
-              fontSize: '0.75rem', fontWeight: 600,
-            }}
-          >
-            {resetting === usage.powerKey ? '...' : 'Reset'}
-          </button>
-        </div>
-      ))}
+      <PowerUsageRows usages={usages} resetting={resetting} onReset={handleReset} />
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
+function LocationPowerUsageSection({ playerId, locationId }: { playerId: string; locationId: string }) {
+  const [usages, setUsages] = useState<any[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const load = async () => {
+    setLoadError(null);
+    try {
+      const data = await adminApi.getLocationPowerUsage(playerId, locationId);
+      setUsages(data);
+    } catch (e: any) {
+      setUsages([]);
+      setLoadError(e.message || 'Failed to load power usage');
+    }
+  };
+
+  useEffect(() => { load(); }, [playerId, locationId]);
+
+  const handleReset = async (powerGrantId: string, powerKey: string) => {
+    if (!window.confirm(`Reset charge pool for "${powerKey}"? This clears stored charge so the power will recharge from zero.`)) return;
+    setResetting(powerGrantId); setMsg(null);
+    try {
+      await adminApi.resetLocationPowerUsage(playerId, locationId, powerGrantId);
+      setMsg({ text: `Reset "${powerKey}" successfully`, type: 'success' });
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setResetting(null); }
+  };
+
+  if (usages === null) return <div style={{ color: '#666', fontSize: '0.8rem', marginTop: '0.75rem' }}>Loading power usage...</div>;
+  if (loadError) return (
+    <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2a2a4e', paddingTop: '0.75rem' }}>
+      <div style={{ color: '#b8b0ff', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>Power Usage</div>
+      <StatusMsg msg={`Failed to load: ${loadError}`} type="error" />
+    </div>
+  );
+  if (usages.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2a2a4e', paddingTop: '0.75rem' }}>
+      <div style={{ color: '#b8b0ff', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>Power Usage</div>
+      <PowerUsageRows usages={usages} resetting={resetting} onReset={handleReset} />
       {msg && <StatusMsg msg={msg.text} type={msg.type} />}
     </div>
   );
@@ -898,6 +995,7 @@ function LocationsTab({ player }: { player: any }) {
               </div>
             )}
             {Object.keys(stored).length === 0 && <div style={{ fontSize: '0.8rem', color: '#555' }}>No stored resources</div>}
+            <LocationPowerUsageSection playerId={player.id} locationId={loc.id} />
           </div>
         );
       })}

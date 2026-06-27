@@ -1062,15 +1062,35 @@ export class AdminController {
     return this.adminService.getEntityPowerUsage(userId, entityId);
   }
 
-  @Delete('players/:userId/entities/:entityId/power-usage/:powerKey')
+  @Delete('players/:userId/entities/:entityId/power-usage/:powerGrantId')
   async resetEntityPowerUsage(
     @Req() req: any,
     @Param('userId') userId: string,
     @Param('entityId') entityId: string,
-    @Param('powerKey') powerKey: string,
+    @Param('powerGrantId') powerGrantId: string,
   ) {
-    const result = await this.adminService.resetEntityPowerUsage(userId, entityId, powerKey);
-    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'entity_reset_power_usage', recordId: entityId, diff: { powerKey }, metadata: { userId } });
+    const result = await this.adminService.resetEntityPowerUsage(userId, entityId, powerGrantId);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'entity_reset_power_usage', recordId: entityId, diff: { powerGrantId, powerKey: result.powerKey }, metadata: { userId } });
+    return result;
+  }
+
+  @Get('players/:userId/locations/:locationId/power-usage')
+  getLocationPowerUsage(
+    @Param('userId') userId: string,
+    @Param('locationId') locationId: string,
+  ) {
+    return this.adminService.getLocationPowerUsage(userId, locationId);
+  }
+
+  @Delete('players/:userId/locations/:locationId/power-usage/:powerGrantId')
+  async resetLocationPowerUsage(
+    @Req() req: any,
+    @Param('userId') userId: string,
+    @Param('locationId') locationId: string,
+    @Param('powerGrantId') powerGrantId: string,
+  ) {
+    const result = await this.adminService.resetLocationPowerUsage(userId, locationId, powerGrantId);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'location_reset_power_usage', recordId: locationId, diff: { powerGrantId, powerKey: result.powerKey }, metadata: { userId } });
     return result;
   }
 

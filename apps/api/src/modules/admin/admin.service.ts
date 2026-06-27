@@ -48,6 +48,7 @@ import {
   buildEntityPatch,
   buildLocationPatches,
 } from '../commands/patch-builder';
+import { PowerChargeService } from '../global-power/power-charge.service';
 
 function serializeBigInts(obj: any): any {
   if (obj === null || obj === undefined) return obj;
@@ -794,37 +795,125 @@ export class AdminService {
     return { changed: true, newStatus: correctStatus, previousStatus, jobId: matchedJobId, jobType: matchedJobType };
   }
 
+  private _computeReadyAtMs(
+    chargeUnits: number,
+    chargeConfig: ReturnType<typeof PowerChargeService.extractChargeConfig>,
+    ticksPerSecond: number,
+  ): number | null {
+    const costPerUse = chargeConfig.costPerUse ?? 1;
+    if (chargeUnits >= costPerUse) return null;
+    const tickRule = (chargeConfig.rechargeRules ?? []).find(
+      (r): r is { type: 'TICK'; unitsPerTick: number } => r.type === 'TICK',
+    );
+    if (!tickRule || tickRule.unitsPerTick <= 0) return null;
+    const needed = costPerUse - chargeUnits;
+    const ticksNeeded = Math.ceil(needed / tickRule.unitsPerTick);
+    const msPerTick = ticksPerSecond > 0 ? 1000 / ticksPerSecond : 0;
+    return Math.round(Date.now() + ticksNeeded * msPerTick);
+  }
+
   async getEntityPowerUsage(userId: string, entityId: string) {
     const entity = await (this.prisma as any).entity.findFirst({ where: { id: entityId, ownerUserId: userId } });
     if (!entity) throw new NotFoundException(`Entity ${entityId} not found for player ${userId}`);
-    const usages = await (this.prisma as any).entityPowerUsage.findMany({
-      where: { entityId },
-      orderBy: { powerKey: 'asc' },
+
+    const [usages, ticksPerSecond] = await Promise.all([
+      (this.prisma as any).entityPowerUsage.findMany({
+        where: { entityId },
+        include: {
+          powerGrant: {
+            include: { powerDef: { select: { chargeConfig: true } } },
+          },
+        },
+        orderBy: { powerGrant: { powerKey: 'asc' } },
+      }),
+      this.tickService.getCurrentRate(),
+    ]);
+
+    return usages.map((u: any) => {
+      const chargeConfig = PowerChargeService.extractChargeConfig(u.powerGrant.powerDef, u.powerGrant.overrides);
+      const costPerUse = chargeConfig.costPerUse ?? 1;
+      const maxChargeUnits = chargeConfig.maxChargeUnits ?? 1;
+      return {
+        powerKey: u.powerGrant.powerKey,
+        powerGrantId: u.powerGrantId,
+        chargeUnits: u.chargeUnits,
+        maxChargeUnits,
+        costPerUse,
+        usesAvailable: costPerUse > 0 ? Math.floor(u.chargeUnits / costPerUse) : 0,
+        readyAtMs: this._computeReadyAtMs(u.chargeUnits, chargeConfig, ticksPerSecond),
+        lastChargeAppliedAtTick: u.lastChargeAppliedAt !== null ? String(u.lastChargeAppliedAt) : null,
+        remainingChargeUnits: u.powerGrant.remainingChargeUnits,
+      };
     });
-    return serializeBigInts(usages);
   }
 
-  async resetEntityPowerUsage(userId: string, entityId: string, powerKey: string) {
+  async resetEntityPowerUsage(userId: string, entityId: string, powerGrantId: string) {
     const entity = await (this.prisma as any).entity.findFirst({ where: { id: entityId, ownerUserId: userId } });
     if (!entity) throw new NotFoundException(`Entity ${entityId} not found for player ${userId}`);
+
     const usage = await (this.prisma as any).entityPowerUsage.findUnique({
-      where: { entityId_powerKey: { entityId, powerKey } },
+      where: { powerGrantId },
+      include: { powerGrant: { select: { powerKey: true } } },
     });
-    if (!usage) throw new NotFoundException(`No power usage record found for entity ${entityId} and power key "${powerKey}"`);
-    await (this.prisma as any).entityPowerUsage.delete({
-      where: { entityId_powerKey: { entityId, powerKey } },
-    });
-
-    const remainingUsages = await (this.prisma as any).entityPowerUsage.findMany({ where: { entityId } });
-    const usageMap: Record<string, { usageCount: number; lastUsedUtcDay: string }> = {};
-    for (const u of remainingUsages) {
-      usageMap[u.powerKey] = { usageCount: u.usageCount, lastUsedUtcDay: u.lastUsedUtcDay };
+    if (!usage || usage.entityId !== entityId) {
+      throw new NotFoundException(`No power usage record found for entity ${entityId} and grant "${powerGrantId}"`);
     }
-    const pb = new PatchBuilder();
-    pb.upsert('entityPowerUsage', entityId, usageMap);
-    await this.emitAdminDelta(userId, pb.build());
 
-    return { deleted: true, entityId, powerKey };
+    await (this.prisma as any).entityPowerUsage.delete({ where: { powerGrantId } });
+
+    return { deleted: true, entityId, powerGrantId, powerKey: usage.powerGrant.powerKey };
+  }
+
+  async getLocationPowerUsage(userId: string, locationId: string) {
+    const location = await (this.prisma as any).locationInstance.findFirst({ where: { id: locationId, ownerUserId: userId } });
+    if (!location) throw new NotFoundException(`Location ${locationId} not found for player ${userId}`);
+
+    const [usages, ticksPerSecond] = await Promise.all([
+      (this.prisma as any).locationPowerUsage.findMany({
+        where: { locationInstanceId: locationId },
+        include: {
+          powerGrant: {
+            include: { powerDef: { select: { chargeConfig: true } } },
+          },
+        },
+        orderBy: { powerGrant: { powerKey: 'asc' } },
+      }),
+      this.tickService.getCurrentRate(),
+    ]);
+
+    return usages.map((u: any) => {
+      const chargeConfig = PowerChargeService.extractChargeConfig(u.powerGrant.powerDef, u.powerGrant.overrides);
+      const costPerUse = chargeConfig.costPerUse ?? 1;
+      const maxChargeUnits = chargeConfig.maxChargeUnits ?? 1;
+      return {
+        powerKey: u.powerGrant.powerKey,
+        powerGrantId: u.powerGrantId,
+        chargeUnits: u.chargeUnits,
+        maxChargeUnits,
+        costPerUse,
+        usesAvailable: costPerUse > 0 ? Math.floor(u.chargeUnits / costPerUse) : 0,
+        readyAtMs: this._computeReadyAtMs(u.chargeUnits, chargeConfig, ticksPerSecond),
+        lastChargeAppliedAtTick: u.lastChargeAppliedAt !== null ? String(u.lastChargeAppliedAt) : null,
+        remainingChargeUnits: u.powerGrant.remainingChargeUnits,
+      };
+    });
+  }
+
+  async resetLocationPowerUsage(userId: string, locationId: string, powerGrantId: string) {
+    const location = await (this.prisma as any).locationInstance.findFirst({ where: { id: locationId, ownerUserId: userId } });
+    if (!location) throw new NotFoundException(`Location ${locationId} not found for player ${userId}`);
+
+    const usage = await (this.prisma as any).locationPowerUsage.findUnique({
+      where: { powerGrantId },
+      include: { powerGrant: { select: { powerKey: true } } },
+    });
+    if (!usage || usage.locationInstanceId !== locationId) {
+      throw new NotFoundException(`No power usage record found for location ${locationId} and grant "${powerGrantId}"`);
+    }
+
+    await (this.prisma as any).locationPowerUsage.delete({ where: { powerGrantId } });
+
+    return { deleted: true, locationId, powerGrantId, powerKey: usage.powerGrant.powerKey };
   }
 
   async getPlayerTelemetry(userId: string, limit = 30) {

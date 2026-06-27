@@ -78,7 +78,7 @@ class ApiClient {
   }
 
   getEntityPowerUsage(id: string) {
-    return this.request<Record<string, { usageCount: number; lastUsedUtcDay: string }>>(
+    return this.request<Record<string, { chargeUnits: number; maxChargeUnits: number; costPerUse: number; usesAvailable: number; lastChargeAppliedAtTick: string | null }>>(
       `/entities/${id}/power-usage`,
     );
   }
@@ -93,7 +93,7 @@ class ApiClient {
   }
 
   getLocationPowerUsage(id: string) {
-    return this.request<Record<string, { usageCount: number; lastUsedUtcDay: string }>>(
+    return this.request<Record<string, { chargeUnits: number; maxChargeUnits: number; costPerUse: number; usesAvailable: number; lastChargeAppliedAtTick: string | null }>>(
       `/locations/${id}/power-usage`,
     );
   }
