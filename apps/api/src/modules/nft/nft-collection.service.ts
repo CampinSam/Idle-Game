@@ -854,6 +854,11 @@ export class NftCollectionService {
                     enabled: autoActivate,
                   },
                 });
+                // Provision NFT_UNIQUE power grants immediately so trigger
+                // handlers can resolve a grant without a manual admin resync.
+                await this.powerGrantService.syncNftGrantsForLocation(created.id).catch((err: any) => {
+                  this.logger.warn(`syncNftGrantsForLocation failed for ${created.id}: ${err}`);
+                });
                 this.nftImageImport.prewarmThumbnail(meta.imageUrl);
                 claimed++;
                 claimedLocationIds.push(created.id);
