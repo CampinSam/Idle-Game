@@ -5,7 +5,6 @@ import {
   DEFAULT_OVERLAY,
   bgImageCss,
   displayCssVars,
-  extractRuleValue,
   meetsNonTeamRequirements,
   renderTags,
 } from './missionUtils';
@@ -115,12 +114,16 @@ export function MissionsList({
                 </div>
               )}
               {locked && (() => {
-                const keeperLvl = extractRuleValue(def.requirements, 'player', 'keeperLevel');
+                const unmet: Array<{ label?: string; met: boolean }> =
+                  Array.isArray(def.requirementStatus)
+                    ? (def.requirementStatus as any[]).filter((r: any) => !r.met)
+                    : [];
+                const lockText = unmet.length > 0 && unmet[0].label
+                  ? unmet.map((r) => r.label).join(', ')
+                  : 'Requirements not met';
                 return (
                   <div className="text-[11px] text-[#fbbf24] font-semibold mt-1">
-                    🔒 {keeperLvl > 0
-                      ? `Requires Keeper Lv ${keeperLvl}`
-                      : 'Requirements not met'}
+                    🔒 {lockText}
                   </div>
                 );
               })()}

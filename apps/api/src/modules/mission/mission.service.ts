@@ -149,7 +149,7 @@ export class MissionService {
     return filtered.map((c: any) => {
       const requirementStatus: any[] =
         reqContext && c.requirements
-          ? [{ met: this.gameRules.checkRequirements(c.requirements, reqContext, `MissionCategoryDef[${c.id}].requirements`) }]
+          ? evaluateTopLevelRules(c.requirements, reqContext, this.gameRules)
           : [];
 
       return {

@@ -9,6 +9,7 @@ interface CategoryView {
   enabled: boolean;
   hasChildren: boolean;
   inlineOnly: boolean;
+  requirementStatus?: Array<{ label?: string; met: boolean }>;
 }
 
 interface CategoriesGridProps {
@@ -80,7 +81,15 @@ export function CategoriesGrid({
                 )}
               </div>
               {cat.tags.length > 0 && renderTags(cat.tags)}
-              {cat.locked && <div className="text-[11px] text-[#fbbf24] font-semibold mt-1">🔒 Requirements not met</div>}
+              {cat.locked && (() => {
+                const unmet = (cat.requirementStatus ?? []).filter((r) => !r.met);
+                const lockText = unmet.length > 0 && unmet[0].label
+                  ? unmet.map((r) => r.label).join(', ')
+                  : 'Requirements not met';
+                return (
+                  <div className="text-[11px] text-[#fbbf24] font-semibold mt-1">🔒 {lockText}</div>
+                );
+              })()}
               {!cat.enabled && !cat.locked && (
                 <div className="text-[11px] text-[#f87171] font-semibold mt-1">🚫 Currently Unavailable</div>
               )}

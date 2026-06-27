@@ -58,6 +58,8 @@ export default function MissionsContent() {
       const defs = missionDefs.filter((d: any) => d.missionCategoryDefId === catDef.id);
       const locked = !meetsNonTeamRequirements(catDef);
       const hasChildren = missionCategoryDefs.some((c: any) => c.parentId === catDef.id);
+      const requirementStatus: Array<{ label?: string; met: boolean }> =
+        Array.isArray(catDef.requirementStatus) ? catDef.requirementStatus : [];
       catMap.set(catDef.id, {
         id: catDef.id,
         name: catDef.name,
@@ -70,6 +72,7 @@ export default function MissionsContent() {
         count: defs.length,
         hasChildren,
         inlineOnly: catDef.inlineOnly === true,
+        requirementStatus,
       });
     }
     return Array.from(catMap.values()).sort((a, b) => a.sortOrder - b.sortOrder);
