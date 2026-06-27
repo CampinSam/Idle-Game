@@ -701,13 +701,19 @@ model PowerGrant {
 }
 
 model PowerUseEvent {
-  id                String     @id @default(uuid())
-  powerGrantId      String
-  triggeredByUserId String?
+  id                  String     @id @default(uuid())
+  powerGrantId        String
+  triggeredByUserId   String?
   /// Server tick number at the moment the power fired
-  triggeredAtTick   BigInt
-  createdAt         DateTime   @default(now())
-  powerGrant        PowerGrant @relation(fields: [powerGrantId], references: [id], onDelete: Cascade)
+  triggeredAtTick     BigInt
+  /// Charge units consumed by this use (matches chargeConfig.costPerUse at fire time)
+  spentUnits          Float      @default(1.0)
+  /// 'entity' | 'location' | 'player' | 'global' — mirrors PowerGrant.targetType of the trigger source
+  triggerSourceType   String?
+  /// entityId / locationInstanceId / userId that triggered the power
+  triggerSourceId     String?
+  createdAt           DateTime   @default(now())
+  powerGrant          PowerGrant @relation(fields: [powerGrantId], references: [id], onDelete: Cascade)
 
   @@index([powerGrantId, triggeredAtTick])
   @@map("power_use_events")

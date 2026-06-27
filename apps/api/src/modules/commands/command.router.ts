@@ -28,6 +28,8 @@ import { RenameEntityHandler } from './handlers/rename-entity.handler';
 import { SetPrimaryOutpostHandler } from './handlers/set-primary-outpost.handler';
 import { TriggerLocationPowerHandler } from './handlers/trigger-location-power.handler';
 import { TriggerEntityPowerHandler } from './handlers/trigger-entity-power.handler';
+import { RechargeEntityPowerHandler } from './handlers/recharge-entity-power.handler';
+import { RechargeLocationPowerHandler } from './handlers/recharge-location-power.handler';
 import { StartDustingHandler } from './handlers/start-dusting.handler';
 import { CollectDustingHandler } from './handlers/collect-dusting.handler';
 import { SwapOutpostHandler } from './handlers/swap-outpost.handler';
@@ -70,6 +72,8 @@ export class CommandRouter {
     private setPrimaryOutpost: SetPrimaryOutpostHandler,
     private triggerLocationPower: TriggerLocationPowerHandler,
     private triggerEntityPower: TriggerEntityPowerHandler,
+    private rechargeEntityPower: RechargeEntityPowerHandler,
+    private rechargeLocationPower: RechargeLocationPowerHandler,
     private startDusting: StartDustingHandler,
     private collectDusting: CollectDustingHandler,
     private swapOutpost: SwapOutpostHandler,
@@ -105,6 +109,8 @@ export class CommandRouter {
     this.handlers.set('SetPrimaryOutpost', this.setPrimaryOutpost);
     this.handlers.set('TriggerLocationPower', this.triggerLocationPower);
     this.handlers.set('TriggerEntityPower', this.triggerEntityPower);
+    this.handlers.set('RechargeEntityPower', this.rechargeEntityPower);
+    this.handlers.set('RechargeLocationPower', this.rechargeLocationPower);
     this.handlers.set('StartDusting', this.startDusting);
     this.handlers.set('CollectDusting', this.collectDusting);
     this.handlers.set('SwapOutpost', this.swapOutpost);

@@ -1,12 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 
 export interface ChargeConfig {
   maxChargeUnits?: number;
   costPerUse?: number;
   initialChargeUnits?: number;
+  /** Minimum ticks between uses.  0 or absent = no cooldown. */
+  cooldownTicks?: number;
+  /** Array of sliding-window rate limits applied before deduction. */
+  rateLimits?: Array<{ windowTicks: number; maxUses: number }>;
   rechargeRules?: Array<
     | { type: 'TICK'; unitsPerTick: number }
-    | { type: 'RESOURCE_SPEND'; units: number; cost: any[]; gate?: 'owner' | 'everyone' }
+    | {
+        type: 'RESOURCE_SPEND';
+        units: number;
+        cost: Array<{ currencyId: string; amount: number }>;
+        gate?: 'owner' | 'everyone';
+      }
   >;
 }
 
@@ -16,14 +25,25 @@ export interface ChargeUsageSnapshot {
   lastChargeAppliedAt: bigint | null;
 }
 
-/** Shared math — no DB calls. */
+/**
+ * Four-step tick-drip algorithm.
+ * Step 1: compute elapsed ticks since last drip (0 when null → initialise).
+ * Step 2: accumulate delta from TICK recharge rules.
+ * Step 3: clamp to [0, maxChargeUnits].
+ * Step 4: return updated units + whether the row must be written.
+ *
+ * When lastChargeAppliedAt is null the row has never been dripped; we still
+ * advance lastChargeAppliedAt to currentTick so future calls can measure
+ * elapsed ticks correctly.
+ */
 function applyTickDripMath(
   currentChargeUnits: number,
   lastChargeAppliedAt: bigint | null,
   currentTick: bigint,
   config: ChargeConfig,
-): { updatedUnits: number; elapsedTicks: number } {
+): { updatedUnits: number; mustWrite: boolean } {
   const maxUnits = config.maxChargeUnits ?? 1;
+  const isFirstDrip = lastChargeAppliedAt === null;
   const lastTick = lastChargeAppliedAt ?? currentTick;
   const elapsedTicks = Math.max(0, Number(currentTick - lastTick));
 
@@ -39,16 +59,17 @@ function applyTickDripMath(
     Math.max(0, currentChargeUnits + delta),
     maxUnits === Infinity ? Number.MAX_SAFE_INTEGER : maxUnits,
   );
-  return { updatedUnits: clamped, elapsedTicks };
+
+  return {
+    updatedUnits: clamped,
+    // Must write when ticks elapsed (drip happened) OR first call (null initialisation).
+    mustWrite: elapsedTicks > 0 || isFirstDrip,
+  };
 }
 
 @Injectable()
 export class PowerChargeService {
 
-  /**
-   * Fetch or create the EntityPowerUsage charge pool for the given grant.
-   * Returns the current row (with any existing chargeUnits).
-   */
   async getOrCreateEntityUsage(
     entityId: string,
     powerGrantId: string,
@@ -68,9 +89,6 @@ export class PowerChargeService {
     });
   }
 
-  /**
-   * Fetch or create the LocationPowerUsage charge pool for the given grant.
-   */
   async getOrCreateLocationUsage(
     locationInstanceId: string,
     powerGrantId: string,
@@ -92,8 +110,8 @@ export class PowerChargeService {
 
   /**
    * Apply tick-based drip recharge for an EntityPowerUsage row.
-   * Returns the post-drip chargeUnits (does NOT deduct costPerUse).
-   * Writes updated chargeUnits + lastChargeAppliedAt when elapsed > 0.
+   * Always advances lastChargeAppliedAt on first call (null → currentTick) so
+   * future calls measure elapsed ticks correctly.
    */
   async applyEntityTickDrip(
     usage: ChargeUsageSnapshot,
@@ -101,14 +119,14 @@ export class PowerChargeService {
     currentTick: bigint,
     db: any,
   ): Promise<number> {
-    const { updatedUnits, elapsedTicks } = applyTickDripMath(
+    const { updatedUnits, mustWrite } = applyTickDripMath(
       usage.chargeUnits,
       usage.lastChargeAppliedAt,
       currentTick,
       config,
     );
 
-    if (elapsedTicks > 0) {
+    if (mustWrite) {
       await (db as any).entityPowerUsage.update({
         where: { id: usage.id },
         data: { chargeUnits: updatedUnits, lastChargeAppliedAt: currentTick },
@@ -117,23 +135,20 @@ export class PowerChargeService {
     return updatedUnits;
   }
 
-  /**
-   * Apply tick-based drip recharge for a LocationPowerUsage row.
-   */
   async applyLocationTickDrip(
     usage: ChargeUsageSnapshot,
     config: ChargeConfig,
     currentTick: bigint,
     db: any,
   ): Promise<number> {
-    const { updatedUnits, elapsedTicks } = applyTickDripMath(
+    const { updatedUnits, mustWrite } = applyTickDripMath(
       usage.chargeUnits,
       usage.lastChargeAppliedAt,
       currentTick,
       config,
     );
 
-    if (elapsedTicks > 0) {
+    if (mustWrite) {
       await (db as any).locationPowerUsage.update({
         where: { id: usage.id },
         data: { chargeUnits: updatedUnits, lastChargeAppliedAt: currentTick },
@@ -143,8 +158,62 @@ export class PowerChargeService {
   }
 
   /**
+   * Enforce cooldownTicks: reject if the most recent PowerUseEvent for this
+   * grant was fired fewer than cooldownTicks ago.
+   */
+  async checkCooldown(
+    powerGrantId: string,
+    cooldownTicks: number,
+    currentTick: bigint,
+    db: any,
+  ): Promise<void> {
+    if (cooldownTicks <= 0) return;
+    const lastEvent = await (db as any).powerUseEvent.findFirst({
+      where: { powerGrantId },
+      orderBy: { triggeredAtTick: 'desc' },
+      select: { triggeredAtTick: true },
+    });
+    if (lastEvent) {
+      const elapsed = Number(currentTick - BigInt(lastEvent.triggeredAtTick));
+      if (elapsed < cooldownTicks) {
+        throw new BadRequestException(
+          `Power on cooldown. ${cooldownTicks - elapsed} tick(s) remaining before next use.`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Enforce sliding-window rate limits: reject if any window's use count has
+   * reached its maximum.  Uses indexed PowerUseEvent rows.
+   */
+  async checkRateLimits(
+    powerGrantId: string,
+    rateLimits: Array<{ windowTicks: number; maxUses: number }>,
+    currentTick: bigint,
+    db: any,
+  ): Promise<void> {
+    for (const limit of rateLimits) {
+      const windowStart = currentTick - BigInt(limit.windowTicks);
+      const count = await (db as any).powerUseEvent.count({
+        where: {
+          powerGrantId,
+          triggeredAtTick: { gte: windowStart },
+        },
+      });
+      if (count >= limit.maxUses) {
+        throw new BadRequestException(
+          `Power rate limit reached: max ${limit.maxUses} uses per ${limit.windowTicks} ticks.`,
+        );
+      }
+    }
+  }
+
+  /**
    * Deduct costPerUse from an EntityPowerUsage row and record a PowerUseEvent.
    * Also decrements grant.remainingChargeUnits when it is not null.
+   * Call this BEFORE activating the power so a failed activation does not grant
+   * free uses.
    */
   async deductEntityCharge(
     usage: ChargeUsageSnapshot,
@@ -153,6 +222,8 @@ export class PowerChargeService {
     currentTick: bigint,
     triggeredByUserId: string | null,
     db: any,
+    triggerSourceType?: string,
+    triggerSourceId?: string,
   ): Promise<void> {
     const afterDeduct = usage.chargeUnits - costPerUse;
     await (db as any).entityPowerUsage.update({
@@ -167,13 +238,13 @@ export class PowerChargeService {
         powerGrantId,
         triggeredByUserId,
         triggeredAtTick: currentTick,
+        spentUnits: costPerUse,
+        triggerSourceType: triggerSourceType ?? null,
+        triggerSourceId: triggerSourceId ?? null,
       },
     });
   }
 
-  /**
-   * Deduct costPerUse from a LocationPowerUsage row and record a PowerUseEvent.
-   */
   async deductLocationCharge(
     usage: ChargeUsageSnapshot,
     costPerUse: number,
@@ -181,6 +252,8 @@ export class PowerChargeService {
     currentTick: bigint,
     triggeredByUserId: string | null,
     db: any,
+    triggerSourceType?: string,
+    triggerSourceId?: string,
   ): Promise<void> {
     const afterDeduct = usage.chargeUnits - costPerUse;
     await (db as any).locationPowerUsage.update({
@@ -195,6 +268,9 @@ export class PowerChargeService {
         powerGrantId,
         triggeredByUserId,
         triggeredAtTick: currentTick,
+        spentUnits: costPerUse,
+        triggerSourceType: triggerSourceType ?? null,
+        triggerSourceId: triggerSourceId ?? null,
       },
     });
   }
@@ -209,6 +285,8 @@ export class PowerChargeService {
       maxChargeUnits: raw.maxChargeUnits ?? 1,
       costPerUse: raw.costPerUse ?? 1,
       initialChargeUnits: raw.initialChargeUnits ?? raw.maxChargeUnits ?? 1,
+      cooldownTicks: raw.cooldownTicks ?? 0,
+      rateLimits: Array.isArray(raw.rateLimits) ? raw.rateLimits : [],
       rechargeRules: Array.isArray(raw.rechargeRules) ? raw.rechargeRules : [],
     };
   }

@@ -30,6 +30,8 @@ import { RenameEntityHandler } from './handlers/rename-entity.handler';
 import { SetPrimaryOutpostHandler } from './handlers/set-primary-outpost.handler';
 import { TriggerLocationPowerHandler } from './handlers/trigger-location-power.handler';
 import { TriggerEntityPowerHandler } from './handlers/trigger-entity-power.handler';
+import { RechargeEntityPowerHandler } from './handlers/recharge-entity-power.handler';
+import { RechargeLocationPowerHandler } from './handlers/recharge-location-power.handler';
 import { StartDustingHandler } from './handlers/start-dusting.handler';
 import { CollectDustingHandler } from './handlers/collect-dusting.handler';
 import { SwapOutpostHandler } from './handlers/swap-outpost.handler';
@@ -104,6 +106,8 @@ import { NotificationModule } from '../notification/notification.module';
     SetPrimaryOutpostHandler,
     TriggerLocationPowerHandler,
     TriggerEntityPowerHandler,
+    RechargeEntityPowerHandler,
+    RechargeLocationPowerHandler,
     StartDustingHandler,
     CollectDustingHandler,
     SwapOutpostHandler,

@@ -5,7 +5,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { GlobalPowerService } from '../../global-power/global-power.service';
 import { PowerDefService } from '../../global-power/power-def.service';
 import { PowerGrantService } from '../../global-power/power-grant.service';
-import { PowerChargeService } from '../../global-power/power-charge.service';
+import { PowerChargeService, ChargeUsageSnapshot } from '../../global-power/power-charge.service';
 import { TickService } from '../../tick/tick.service';
 import { NotificationService } from '../../notification/notification.service';
 
@@ -63,7 +63,19 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     const currentTick = BigInt(Math.floor(currentTickNum));
 
     const chargeConfig = PowerChargeService.extractChargeConfig(grant.powerDef);
+    const costPerUse = chargeConfig.costPerUse ?? 1;
 
+    // ── 1. Cooldown check ─────────────────────────────────────────────────────
+    if ((chargeConfig.cooldownTicks ?? 0) > 0) {
+      await this.powerChargeService.checkCooldown(grant.id, chargeConfig.cooldownTicks!, currentTick, ctx.tx);
+    }
+
+    // ── 2. Rate-limit check ───────────────────────────────────────────────────
+    if (chargeConfig.rateLimits && chargeConfig.rateLimits.length > 0) {
+      await this.powerChargeService.checkRateLimits(grant.id, chargeConfig.rateLimits, currentTick, ctx.tx);
+    }
+
+    // ── 3. Get/create charge pool and apply tick drip ─────────────────────────
     const usage = await this.powerChargeService.getOrCreateLocationUsage(
       locationId,
       grant.id,
@@ -78,7 +90,6 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       ctx.tx,
     );
 
-    const costPerUse = chargeConfig.costPerUse ?? 1;
     if (afterDrip < costPerUse) {
       throw new BadRequestException(
         `Insufficient charges for power "${powerKey}". ` +
@@ -86,6 +97,7 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       );
     }
 
+    // ── 4. Resolve power definition ───────────────────────────────────────────
     const powerRef = {
       key: grant.powerKey,
       powerDefId: grant.powerDefId ?? undefined,
@@ -123,18 +135,8 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       }
     }
 
-    await this.globalPowerService.triggerPower({
-      label: `${locationName} — ${resolved.name}`,
-      effectDefId: isTickBoost ? null : resolved.effectDefId,
-      effectOverrides: isTickBoost
-        ? { value: resolved.value, valueMode: resolved.valueMode }
-        : { ...resolved.effectOverrides, value: resolved.value, valueMode: resolved.valueMode },
-      selection,
-      durationMinutes: resolved.durationMinutes,
-      triggeredByUserId: ctx.userId,
-    });
-
-    const usageAfterDrip: import('../../global-power/power-charge.service').ChargeUsageSnapshot = {
+    // ── 5. Deduct charge BEFORE activation to prevent free uses on failure ────
+    const usageAfterDrip: ChargeUsageSnapshot = {
       id: usage.id,
       chargeUnits: afterDrip,
       lastChargeAppliedAt: usage.lastChargeAppliedAt,
@@ -147,7 +149,21 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       currentTick,
       ctx.userId,
       ctx.tx,
+      'location',
+      locationId,
     );
+
+    // ── 6. Activate the power ─────────────────────────────────────────────────
+    await this.globalPowerService.triggerPower({
+      label: `${locationName} — ${resolved.name}`,
+      effectDefId: isTickBoost ? null : resolved.effectDefId,
+      effectOverrides: isTickBoost
+        ? { value: resolved.value, valueMode: resolved.valueMode }
+        : { ...resolved.effectOverrides, value: resolved.value, valueMode: resolved.valueMode },
+      selection,
+      durationMinutes: resolved.durationMinutes,
+      triggeredByUserId: ctx.userId,
+    });
 
     const finalChargeUnits = afterDrip - costPerUse;
 
@@ -182,3 +198,4 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     };
   }
 }
+
