@@ -45,10 +45,11 @@ export default function MissionsContent() {
   }, [dispatch]);
 
   // Re-fetch defs whenever the SSE stream (re)connects so stale cached
-  // definitions (missing mode/phases etc.) are replaced without a hard refresh.
+  // definitions (including requirement labels) are replaced without a hard refresh.
   useEffect(() => {
     if (syncStatus === 'connected') {
       dispatch(fetchMissionDefs());
+      dispatch(fetchMissionCategoryDefs());
     }
   }, [syncStatus, dispatch]);
 
