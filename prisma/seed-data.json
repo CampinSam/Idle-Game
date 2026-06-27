@@ -40,7 +40,7 @@
       "id": "e5ac0e05-6499-456a-b5ba-dc413c86ba92",
       "key": "soft_arcanium",
       "name": "Arcanium",
-      "symbol": "🪙",
+      "symbol": "\ud83e\ude99",
       "iconKey": "soft_arcanium",
       "type": "SOFT",
       "seasonId": null,
@@ -67,7 +67,7 @@
       "id": "a10a65a3-212d-43de-9756-45a31d10f154",
       "key": "ada",
       "name": "ADA",
-      "symbol": "₳",
+      "symbol": "\u20b3",
       "iconKey": null,
       "type": "SOFT",
       "seasonId": null,
@@ -94,7 +94,7 @@
       "id": "95a9e42f-dc8b-4b45-8219-010b60ca159c",
       "key": "season_frost_coin",
       "name": "Frost Coin",
-      "symbol": "❄️",
+      "symbol": "\u2744\ufe0f",
       "iconKey": "frost_coin",
       "type": "SEASONAL",
       "seasonId": "season_1",
@@ -148,7 +148,7 @@
       "id": "d1174cd5-72e5-4667-a5fd-5c6e7ef5a61d",
       "key": "hard_essence",
       "name": "Essence",
-      "symbol": "💠",
+      "symbol": "\ud83d\udca0",
       "iconKey": "essence",
       "type": "HARD",
       "seasonId": null,
@@ -175,7 +175,7 @@
       "id": "e2484824-0d12-4ff7-9ff6-c6ba82e70e6c",
       "key": "premium_gems",
       "name": "Gems",
-      "symbol": "💎",
+      "symbol": "\ud83d\udc8e",
       "iconKey": "gems",
       "type": "PREMIUM",
       "seasonId": null,
@@ -259,7 +259,7 @@
     {
       "id": "3391b967-688a-42cb-a63a-08159845c0b0",
       "key": "reconstruction_zone_alpha",
-      "displayName": "Reconstruction Zone █",
+      "displayName": "Reconstruction Zone \u2588",
       "biome": "urban_ruins",
       "imageKey": null,
       "accentColor": null,
@@ -532,7 +532,7 @@
     {
       "id": "a15424ad-6254-4d2c-8ca4-99267bdd9133",
       "key": "display_recipe_default",
-      "name": "Recipe — Default",
+      "name": "Recipe \u2014 Default",
       "borderColor": "#8b5cf6",
       "backgroundImage": null,
       "cardBackground": "linear-gradient(135deg, rgba(139,92,246,0.10), rgba(34,24,88,0.6))",
@@ -6211,7 +6211,7 @@
       "id": "a9a752a6-59a4-4cfd-a1e2-8730c95101ae",
       "key": "bld_forge",
       "name": "The Forge",
-      "description": "A roaring crucible at the heart of the outpost — where raw materials are refined into wonders.",
+      "description": "A roaring crucible at the heart of the outpost \u2014 where raw materials are refined into wonders.",
       "iconKey": null,
       "category": "WORKSHOP",
       "tags": [
@@ -8276,7 +8276,7 @@
           "tiers": {
             "rare": {
               "text": [
-                "Breathtaking technique — flawless crossing."
+                "Breathtaking technique \u2014 flawless crossing."
               ],
               "rewards": [
                 {
@@ -8296,7 +8296,7 @@
             },
             "common": {
               "text": [
-                "Made it through — barely."
+                "Made it through \u2014 barely."
               ],
               "rewards": [
                 {
@@ -8351,7 +8351,7 @@
           "duration": 60,
           "difficulty": 22,
           "injuryRate": 0.25,
-          "description": "A submerged room with unstable flooring. High risk — failure pauses for your call.",
+          "description": "A submerged room with unstable flooring. High risk \u2014 failure pauses for your call.",
           "continueRules": {
             "onFailure": "wait",
             "onSuccess": "next_phase"
@@ -8453,13 +8453,13 @@
             },
             "failure": {
               "text": [
-                "Trapped by the tide — mission failed at the last moment."
+                "Trapped by the tide \u2014 mission failed at the last moment."
               ],
               "rewards": []
             },
             "uncommon": {
               "text": [
-                "Clean extraction — minimal losses."
+                "Clean extraction \u2014 minimal losses."
               ],
               "rewards": [
                 {
@@ -8491,7 +8491,7 @@
       "tiers": {
         "rare": {
           "text": [
-            "A sealed vault — untouched for centuries."
+            "A sealed vault \u2014 untouched for centuries."
           ],
           "rewards": [
             {
@@ -11495,7 +11495,7 @@
       "mode": "multi_phase",
       "phases": [
         {
-          "name": "Outer Walls — Sweep",
+          "name": "Outer Walls \u2014 Sweep",
           "count": 3,
           "tiers": {
             "common": {
@@ -11592,7 +11592,7 @@
           "duration": 40,
           "difficulty": 20,
           "injuryRate": 0.25,
-          "description": "Force the main gate. One chance — failure means regrouping outside.",
+          "description": "Force the main gate. One chance \u2014 failure means regrouping outside.",
           "continueRules": {
             "onFailure": "wait",
             "onSuccess": "next_phase"
@@ -11664,7 +11664,7 @@
             },
             "common": {
               "text": [
-                "The Keeper falls — costly victory."
+                "The Keeper falls \u2014 costly victory."
               ],
               "rewards": [
                 {
@@ -11877,7 +11877,7 @@
             },
             "common": {
               "text": [
-                "The corruption retreats — for now."
+                "The corruption retreats \u2014 for now."
               ],
               "rewards": [
                 {
@@ -11918,7 +11918,7 @@
           "duration": 70,
           "difficulty": 32,
           "injuryRate": 0.45,
-          "description": "The heart of the citadel. One final push — win or lose, there is no going back.",
+          "description": "The heart of the citadel. One final push \u2014 win or lose, there is no going back.",
           "continueRules": {
             "onFailure": "end_job",
             "onSuccess": "complete"
@@ -11991,7 +11991,7 @@
         "sigma": 2.2,
         "common": {
           "text": [
-            "The corruption was contained — barely."
+            "The corruption was contained \u2014 barely."
           ],
           "rewards": [
             {
@@ -13597,7 +13597,7 @@
       "id": "ed4c13e8-d4e0-48fb-bc96-140d14f7b1f6",
       "key": "mission_perp_1_data_sweep",
       "name": "Data Recovery Sweep",
-      "description": "The reconstruction zone still hums with abandoned GL!TCH-BIO terminals. Somewhere in the static noise lies Dr. Vape’s earliest calibration logs. Send a PERP to sift through corrupted consoles, extract viable residue, and avoid triggering automated clean-up drones. They’re not supposed to touch anything important. They’re absolutely going to touch everything.",
+      "description": "The reconstruction zone still hums with abandoned GL!TCH-BIO terminals. Somewhere in the static noise lies Dr. Vape\u2019s earliest calibration logs. Send a PERP to sift through corrupted consoles, extract viable residue, and avoid triggering automated clean-up drones. They\u2019re not supposed to touch anything important. They\u2019re absolutely going to touch everything.",
       "difficulty": 1,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -14210,7 +14210,7 @@
       "id": "a53a5e8f-4c9d-4ca8-a437-c3a48b554701",
       "key": "demo_multi_forest_patrol",
       "name": "Forest Path Patrol",
-      "description": "A routine patrol through three checkpoints in the forest. Straightforward advancement — succeed at each leg and return home.",
+      "description": "A routine patrol through three checkpoints in the forest. Straightforward advancement \u2014 succeed at each leg and return home.",
       "difficulty": 10,
       "minSuccessChance": 55,
       "maxSuccessChance": 100,
@@ -14287,7 +14287,7 @@
           "tiers": {
             "rare": {
               "text": [
-                "A traveller's stash — well hidden."
+                "A traveller's stash \u2014 well hidden."
               ],
               "rewards": [
                 {
@@ -14307,7 +14307,7 @@
             },
             "common": {
               "text": [
-                "Animal tracks — nothing threatening."
+                "Animal tracks \u2014 nothing threatening."
               ],
               "rewards": [
                 {
@@ -14391,7 +14391,7 @@
             },
             "failure": {
               "text": [
-                "Arrived too late — report dismissed."
+                "Arrived too late \u2014 report dismissed."
               ],
               "rewards": []
             },
@@ -17689,7 +17689,7 @@
       "name": "Seasonal Check-In Reward",
       "version": 1,
       "presentation": {
-        "body": "The frost grows deeper — so do your rewards.",
+        "body": "The frost grows deeper \u2014 so do your rewards.",
         "title": "Seasonal Reward",
         "rarity": "RARE",
         "iconKey": "frost_coin"
@@ -17768,7 +17768,7 @@
       "name": "Weekly Bonus Reward",
       "version": 1,
       "presentation": {
-        "body": "Your streak is climbing — here's a solid Essence reward.",
+        "body": "Your streak is climbing \u2014 here's a solid Essence reward.",
         "title": "Weekly Bonus",
         "rarity": "RARE",
         "iconKey": "essence"
@@ -17820,7 +17820,7 @@
       "name": "Daily Login Reward",
       "version": 1,
       "presentation": {
-        "body": "Your streak is paying off — here's a healthy supply of Arcanium.",
+        "body": "Your streak is paying off \u2014 here's a healthy supply of Arcanium.",
         "title": "Daily Check-In Reward",
         "rarity": "UNCOMMON",
         "iconKey": "soft_arcanium"
@@ -19697,7 +19697,7 @@
       "id": "6b42c3b6-2a8c-45a9-914f-f503ab3e1fd0",
       "key": "modal_clickreveal_smoke",
       "name": "Click Reveal Smoke Test",
-      "description": "Dev-only modal that demonstrates the clickReveal block composed inside a list — each reward is hidden behind a tap-to-reveal cover with rarity-driven sound and FX.",
+      "description": "Dev-only modal that demonstrates the clickReveal block composed inside a list \u2014 each reward is hidden behind a tap-to-reveal cover with rarity-driven sound and FX.",
       "version": 1,
       "spec": {
         "id": "modal_clickreveal_smoke",
@@ -19730,7 +19730,7 @@
                     "rows": [
                       {
                         "label": "${item.rarity}",
-                        "value": "${item.name} ×${item.qty}"
+                        "value": "${item.name} \u00d7${item.qty}"
                       }
                     ],
                     "type": "metaRows"
@@ -19831,7 +19831,7 @@
                 "rows": [
                   {
                     "label": "#${index}",
-                    "value": "${item.name} ×${item.qty}"
+                    "value": "${item.name} \u00d7${item.qty}"
                   }
                 ],
                 "type": "metaRows"
@@ -20679,7 +20679,7 @@
                     "c": [
                       {
                         "t": "text",
-                        "v": "The mission was a ${results.quality} success! You had ${data.synergy.ruleIds.length} synergies."
+                        "v": "The mission was a\u00a0${results.quality} success! You had\u00a0${data.synergy.ruleIds.length} synergies."
                       }
                     ],
                     "t": "p"
@@ -21517,7 +21517,7 @@
       "key": "banner_active_season",
       "name": "Active Season Banner",
       "title": "ACTIVE SEASON",
-      "subtitle": "SEASON ENDS IN: —",
+      "subtitle": "SEASON ENDS IN: \u2014",
       "description": null,
       "backgroundImage": "/media/images/season-banner.png",
       "ctaLabel": "SEASON MISSIONS",
@@ -21624,7 +21624,7 @@
       "id": "6d9f4679-4bfb-4f12-97b2-ce3367d87301",
       "key": "syn_corpo_viking_conflict",
       "name": "Corpo + Viking Conflict",
-      "description": "Corporate and Viking traits clash — each such pair reduces synergy score by 2 (up to 3 applications). Represents contrasting leadership styles.",
+      "description": "Corporate and Viking traits clash \u2014 each such pair reduces synergy score by 2 (up to 3 applications). Represents contrasting leadership styles.",
       "enabled": true,
       "sourceSelector": null,
       "targetSelector": null,
@@ -21674,7 +21674,7 @@
       "id": "f77c4387-079b-41f4-bcc1-a7fa12d90e1c",
       "key": "syn_pred_holy_conflict",
       "name": "Predator + Holy Conflict",
-      "description": "Predators and holy-archetype entities (Deity or Monk) conflict on any mission — synergy score drops by 5 once regardless of team size.",
+      "description": "Predators and holy-archetype entities (Deity or Monk) conflict on any mission \u2014 synergy score drops by 5 once regardless of team size.",
       "enabled": true,
       "sourceSelector": null,
       "targetSelector": null,
@@ -21890,12 +21890,17 @@
       "defaultValue": 50,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 60,
-      "defaultDailyLimit": 1,
       "defaultScope": "global",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T18:06:23.789Z",
-      "updatedAt": "2026-06-25T15:09:57.602Z"
+      "updatedAt": "2026-06-25T15:09:57.602Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 1,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "5cab0053-4085-4371-814e-a53cb84ddee8",
@@ -21907,12 +21912,17 @@
       "defaultValue": 20,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 0,
-      "defaultDailyLimit": 0,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:22:31.131Z",
-      "updatedAt": "2026-06-25T15:09:57.591Z"
+      "updatedAt": "2026-06-25T15:09:57.591Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 0,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "26a2420c-7c2a-48ba-bab2-804ff7d9f6f3",
@@ -21924,12 +21934,17 @@
       "defaultValue": -20,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 60,
-      "defaultDailyLimit": 1,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.234Z",
-      "updatedAt": "2026-06-25T15:09:57.618Z"
+      "updatedAt": "2026-06-25T15:09:57.618Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 1,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "ea26045d-e200-4ae3-83cd-653fa0da5ab2",
@@ -21941,12 +21956,17 @@
       "defaultValue": -15,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 60,
-      "defaultDailyLimit": 1,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.243Z",
-      "updatedAt": "2026-06-25T15:09:57.629Z"
+      "updatedAt": "2026-06-25T15:09:57.629Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 1,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "d9f0c375-cccc-4e3f-909d-33323c48a2c8",
@@ -21958,12 +21978,17 @@
       "defaultValue": -20,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 60,
-      "defaultDailyLimit": 1,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:26:20.038Z",
-      "updatedAt": "2026-06-25T15:09:57.641Z"
+      "updatedAt": "2026-06-25T15:09:57.641Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 1,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "d3efb61b-733e-4a0c-88a5-9f6d4b0576d4",
@@ -21975,12 +22000,17 @@
       "defaultValue": -15,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 60,
-      "defaultDailyLimit": 1,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.246Z",
-      "updatedAt": "2026-06-25T15:09:57.634Z"
+      "updatedAt": "2026-06-25T15:09:57.634Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 1,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "34900814-853d-4c2c-b017-bac6f7e51c02",
@@ -21992,12 +22022,17 @@
       "defaultValue": 20,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 0,
-      "defaultDailyLimit": 0,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:22:31.138Z",
-      "updatedAt": "2026-06-25T15:09:57.637Z"
+      "updatedAt": "2026-06-25T15:09:57.637Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 0,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "1a8c367c-343f-48b8-9bff-caee0921dd7f",
@@ -22009,12 +22044,17 @@
       "defaultValue": 30,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 60,
-      "defaultDailyLimit": 1,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.249Z",
-      "updatedAt": "2026-06-25T15:09:57.581Z"
+      "updatedAt": "2026-06-25T15:09:57.581Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 1,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "c61199dc-0576-43ea-bc24-0f4d9fa87c85",
@@ -22026,12 +22066,17 @@
       "defaultValue": 20,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 0,
-      "defaultDailyLimit": 0,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:22:31.141Z",
-      "updatedAt": "2026-06-25T15:09:57.586Z"
+      "updatedAt": "2026-06-25T15:09:57.586Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 0,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "76d3d004-e606-4108-96a8-a1e809321081",
@@ -22043,12 +22088,17 @@
       "defaultValue": 20,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 0,
-      "defaultDailyLimit": 0,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:22:31.145Z",
-      "updatedAt": "2026-06-25T15:09:57.595Z"
+      "updatedAt": "2026-06-25T15:09:57.595Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 0,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "06f38c66-6104-4aaa-baad-d16ba78573a3",
@@ -22060,12 +22110,17 @@
       "defaultValue": 20,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 0,
-      "defaultDailyLimit": 0,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:22:31.149Z",
-      "updatedAt": "2026-06-25T15:09:57.599Z"
+      "updatedAt": "2026-06-25T15:09:57.599Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 0,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "a11fdf4e-68aa-4ca6-80ad-eb019a25a966",
@@ -22077,12 +22132,17 @@
       "defaultValue": 25,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 60,
-      "defaultDailyLimit": 1,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.223Z",
-      "updatedAt": "2026-06-25T15:09:57.607Z"
+      "updatedAt": "2026-06-25T15:09:57.607Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 1,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "da0100c4-39ce-4f8d-8983-066e9393a21f",
@@ -22094,12 +22154,17 @@
       "defaultValue": 25,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 60,
-      "defaultDailyLimit": 1,
       "defaultScope": "entity",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.226Z",
-      "updatedAt": "2026-06-25T15:09:57.611Z"
+      "updatedAt": "2026-06-25T15:09:57.611Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 1,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "ba991cc2-9a72-4f7e-98fe-4bf37e1b69f7",
@@ -22111,12 +22176,17 @@
       "defaultValue": 15,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 60,
-      "defaultDailyLimit": 1,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.230Z",
-      "updatedAt": "2026-06-25T15:09:57.615Z"
+      "updatedAt": "2026-06-25T15:09:57.615Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 1,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     },
     {
       "id": "6a881381-420d-4d6a-8234-1f53fed8fa1f",
@@ -22128,12 +22198,17 @@
       "defaultValue": -20,
       "defaultValueMode": "percent_add",
       "defaultDurationMinutes": 60,
-      "defaultDailyLimit": 1,
       "defaultScope": "player",
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.238Z",
-      "updatedAt": "2026-06-25T15:09:57.625Z"
+      "updatedAt": "2026-06-25T15:09:57.625Z",
+      "chargeConfig": {
+        "maxChargeUnits": 1,
+        "costPerUse": 1,
+        "initialChargeUnits": 1,
+        "rechargeRules": []
+      }
     }
   ],
   "soundDef": [
@@ -22602,7 +22677,7 @@
     {
       "id": "1ea328cb-92af-4d95-b689-bdfb9ec0bd7c",
       "key": "perfect",
-      "label": "★ Perfect",
+      "label": "\u2605 Perfect",
       "category": "system",
       "color": "#ffffff",
       "backgroundColor": "#2a1a3a",
@@ -22996,7 +23071,7 @@
       "id": "d9e8d7c7-b802-4ea0-b27e-1db5f2d4027b",
       "key": "rainbow-perfect",
       "name": "Perfect Rainbow",
-      "description": "Animated rainbow gradient — reserved for \"perfect\" / mythic tier.",
+      "description": "Animated rainbow gradient \u2014 reserved for \"perfect\" / mythic tier.",
       "cssAnimation": "rainbow",
       "durationMs": 4000,
       "easing": "linear",
@@ -23010,7 +23085,7 @@
       "id": "53147417-8d34-4201-a366-7e9770ef3aed",
       "key": "shimmer-gold",
       "name": "Gold Shimmer",
-      "description": "Diagonal gold sweep — used on legendary items and ach tags.",
+      "description": "Diagonal gold sweep \u2014 used on legendary items and ach tags.",
       "cssAnimation": "shimmer",
       "durationMs": 2400,
       "easing": "ease-in-out",
@@ -23105,7 +23180,7 @@
       "id": "0f461247-fa01-4097-987e-ca93bba4c141",
       "key": "bounce-call",
       "name": "Call-to-action Bounce",
-      "description": "Bounce loop — used on \"claim now\" tags.",
+      "description": "Bounce loop \u2014 used on \"claim now\" tags.",
       "cssAnimation": "bounce",
       "durationMs": 1400,
       "easing": "cubic-bezier(0.28, 0.84, 0.42, 1)",
@@ -24117,7 +24192,7 @@
             "mobile"
           ],
           "owner": "design",
-          "description": "Main store screen. Draft — not yet active."
+          "description": "Main store screen. Draft \u2014 not yet active."
         },
         "sections": [
           {
