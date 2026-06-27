@@ -53,6 +53,17 @@ export default function MissionsContent() {
     }
   }, [syncStatus, dispatch]);
 
+  // Re-fetch defs whenever player flags or keeper level change so requirement
+  // status (locked/unlocked) is always evaluated with the latest player state.
+  const profileRequirementKey = profile
+    ? JSON.stringify({ f: profile.flags ?? {}, kl: profile.keeperLevel ?? 0 })
+    : null;
+  useEffect(() => {
+    if (!profileRequirementKey) return;
+    dispatch(fetchMissionDefs());
+    dispatch(fetchMissionCategoryDefs());
+  }, [profileRequirementKey, dispatch]);
+
   const allCategories = useMemo(() => {
     const catMap = new Map<string, any>();
     for (const catDef of missionCategoryDefs) {
