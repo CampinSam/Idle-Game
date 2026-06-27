@@ -536,8 +536,13 @@ export class NftCollectionService {
             const meta = nftAssetRowToMetadata(cachedAsset);
             const locationData = buildLocationDataFromNftMetadata(collection, meta, nftAssetId);
 
-            await (this.prisma as any).locationInstance.create({
+            const newLoc = await (this.prisma as any).locationInstance.create({
               data: { ...locationData, ownerUserId: null, enabled: false },
+            });
+            // Provision NFT_UNIQUE power grants immediately so trigger handlers
+            // can find a grant without requiring a manual admin resync.
+            await this.powerGrantService.syncNftGrantsForLocation(newLoc.id).catch((err: any) => {
+              this.logger.warn(`syncNftGrantsForLocation failed for ${newLoc.id}: ${err}`);
             });
 
             upserted++;
