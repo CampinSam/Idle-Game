@@ -166,6 +166,30 @@ function makeInMemoryPrisma() {
         powerUseEvents.push(record);
         return Promise.resolve(record);
       }),
+      // Used by checkCooldown: find most recent event for a grant.
+      findFirst: jest.fn((args: any) => {
+        const { where, orderBy } = args ?? {};
+        let results = [...powerUseEvents];
+        if (where?.powerGrantId) {
+          results = results.filter((e) => e.powerGrantId === where.powerGrantId);
+        }
+        if (orderBy?.triggeredAtTick === 'desc') {
+          results.sort((a, b) => Number(BigInt(b.triggeredAtTick) - BigInt(a.triggeredAtTick)));
+        }
+        return Promise.resolve(results[0] ?? null);
+      }),
+      // Used by checkRateLimits: count events in a sliding window.
+      count: jest.fn((args: any) => {
+        const { where } = args ?? {};
+        let results = [...powerUseEvents];
+        if (where?.powerGrantId) {
+          results = results.filter((e) => e.powerGrantId === where.powerGrantId);
+        }
+        if (where?.triggeredAtTick?.gte !== undefined) {
+          results = results.filter((e) => BigInt(e.triggeredAtTick) >= BigInt(where.triggeredAtTick.gte));
+        }
+        return Promise.resolve(results.length);
+      }),
     },
 
     globalActivePower: {
@@ -217,6 +241,10 @@ function makeInMemoryPrisma() {
 
     tickRateInterval: {
       findMany: jest.fn(() => Promise.resolve([])),
+      findFirst: jest.fn(() => Promise.resolve(null)),
+      create: jest.fn((args: any) => Promise.resolve({ id: nextId('tri'), ...args.data })),
+      update: jest.fn((args: any) => Promise.resolve(args.data)),
+      updateMany: jest.fn(() => Promise.resolve({ count: 0 })),
     },
   };
 }
@@ -247,8 +275,15 @@ const BASE_LOCATION = {
   definition: { rules: {}, id: 'outpost_forest' },
 };
 
-function makeTx(entityOverride?: any, locationOverride?: any, isAdmin = false) {
+/**
+ * Build the transaction context by spreading the in-memory prisma delegates
+ * and then overriding entity/locationInstance/user with per-test mocks.
+ * This ensures ctx.tx has all model delegates (powerGrant, entityPowerUsage,
+ * powerUseEvent, etc.) that the handlers and services call through ctx.tx.
+ */
+function makeTx(prisma: any, entityOverride?: any, locationOverride?: any, isAdmin = false) {
   return {
+    ...prisma,
     entity: { findUnique: jest.fn().mockResolvedValue(entityOverride ?? BASE_ENTITY) },
     locationInstance: { findUnique: jest.fn().mockResolvedValue(locationOverride ?? BASE_LOCATION) },
     user: { findUnique: jest.fn().mockResolvedValue({ flags: isAdmin ? { isAdmin: true } : {} }) },
@@ -256,7 +291,7 @@ function makeTx(entityOverride?: any, locationOverride?: any, isAdmin = false) {
 }
 
 function buildEntityHandler(prisma: any) {
-  const pubsub: any = { publish: jest.fn() };
+  const pubsub: any = { publish: jest.fn(), publishBroadcast: jest.fn() };
   const powerDefService = new PowerDefService(prisma as any);
   const globalPowerService = new GlobalPowerService(prisma as any, pubsub);
   const powerGrantService = new PowerGrantService(prisma as any);
@@ -271,7 +306,7 @@ function buildEntityHandler(prisma: any) {
 }
 
 function buildLocationHandler(prisma: any) {
-  const pubsub: any = { publish: jest.fn() };
+  const pubsub: any = { publish: jest.fn(), publishBroadcast: jest.fn() };
   const powerDefService = new PowerDefService(prisma as any);
   const globalPowerService = new GlobalPowerService(prisma as any, pubsub);
   const powerGrantService = new PowerGrantService(prisma as any);
@@ -312,7 +347,7 @@ describe('TriggerEntityPower — integration (real services, in-memory DB)', () 
     });
 
     const handler = buildEntityHandler(prisma);
-    const tx = makeTx();
+    const tx = makeTx(prisma);
     const ctx = { userId: USER_ID, tx };
 
     const result = await handler.execute(ctx as any, { entityId: ENTITY_ID, powerKey: 'tick_speed_boost' });
@@ -328,7 +363,7 @@ describe('TriggerEntityPower — integration (real services, in-memory DB)', () 
   it('no grant → NotFoundException before reaching GlobalPowerService', async () => {
     const prisma = makeInMemoryPrisma();
     const handler = buildEntityHandler(prisma);
-    const tx = makeTx();
+    const tx = makeTx(prisma);
     const ctx = { userId: USER_ID, tx };
 
     await expect(
@@ -362,7 +397,7 @@ describe('TriggerEntityPower — integration (real services, in-memory DB)', () 
     });
 
     const handler = buildEntityHandler(prisma);
-    const tx = makeTx();
+    const tx = makeTx(prisma);
     const ctx = { userId: USER_ID, tx };
 
     await expect(
@@ -410,7 +445,7 @@ describe('TriggerEntityPower — integration (real services, in-memory DB)', () 
     });
 
     const handler = buildEntityHandler(prisma);
-    const tx = makeTx();
+    const tx = makeTx(prisma);
     const ctx = { userId: USER_ID, tx };
 
     const result = await handler.execute(ctx as any, { entityId: ENTITY_ID, powerKey: 'tick_speed_boost' });
@@ -460,7 +495,7 @@ describe('TriggerEntityPower — integration (real services, in-memory DB)', () 
     });
 
     const handler = buildEntityHandler(prisma);
-    const tx = makeTx();
+    const tx = makeTx(prisma);
     const ctx = { userId: USER_ID, tx };
 
     await expect(
@@ -498,7 +533,7 @@ describe('TriggerLocationPower — integration (real services, in-memory DB)', (
     });
 
     const handler = buildLocationHandler(prisma);
-    const tx = makeTx();
+    const tx = makeTx(prisma);
     const ctx = { userId: USER_ID, tx };
 
     const result = await handler.execute(ctx as any, { locationId: LOCATION_ID, powerKey: 'tick_speed_boost' });
@@ -514,7 +549,7 @@ describe('TriggerLocationPower — integration (real services, in-memory DB)', (
   it('no grant → NotFoundException', async () => {
     const prisma = makeInMemoryPrisma();
     const handler = buildLocationHandler(prisma);
-    const tx = makeTx();
+    const tx = makeTx(prisma);
     const ctx = { userId: USER_ID, tx };
 
     await expect(
