@@ -136,7 +136,7 @@ export async function resolveRewardSpec(
     const reqContext: RequirementContext = user
       ? gameRules.buildRequirementContext(user as any)
       : { user: {}, userFlags: {} };
-    const { resolved } = await gameRules.resolveOutcomesAsync(outcomeEntries, reqContext, makeRng());
+    const { resolved, unlocks: resolvedUnlocks } = await gameRules.resolveOutcomes(outcomeEntries, reqContext, makeRng());
 
     for (const r of resolved) {
       const granted = await grantOutcomeEntry(
@@ -144,6 +144,13 @@ export async function resolveRewardSpec(
         r.entry, r.amount ?? 0,
       );
       if (granted) grants.push(granted);
+    }
+    for (const { key } of resolvedUnlocks) {
+      await (prisma as any).userUnlock.upsert({
+        where: { userId_key: { userId, key } },
+        create: { userId, key, source: 'gift' },
+        update: {},
+      });
     }
   }
 

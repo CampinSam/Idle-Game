@@ -303,7 +303,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     return reset;
   }
 
-  async claimReward(userId: string, questInstanceId: string, tx?: any): Promise<{ grants: any[]; permanentEffectId: string | null; readNotifications: any[] }> {
+  async claimReward(userId: string, questInstanceId: string, tx?: any): Promise<{ grants: any[]; permanentEffectId: string | null; readNotifications: any[]; unlocks: { key: string }[] }> {
     const db = tx || this.prisma;
 
     const instance = await (db as any).questInstance.findUnique({
@@ -322,7 +322,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     const reqContext: RequirementContext = user
       ? this.gameRules.buildRequirementContext(user as any)
       : { user: {}, userFlags: {} };
-    const { resolved } = await this.gameRules.resolveOutcomesAsync(items, reqContext, makeRng());
+    const { resolved, unlocks: resolvedUnlocks } = await this.gameRules.resolveOutcomes(items, reqContext, makeRng());
 
     const grants: any[] = [];
     for (const r of resolved) {
@@ -345,6 +345,14 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
         });
         grants.push({ type: 'item', key: entry.key, amount });
       }
+    }
+
+    for (const { key } of resolvedUnlocks) {
+      await (db as any).userUnlock.upsert({
+        where: { userId_key: { userId, key } },
+        create: { userId, key, source: 'quest' },
+        update: {},
+      });
     }
 
     // Apply permanentEffectSpec if present (used by achievement-category defs
@@ -432,7 +440,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       this.logger.warn(`Failed to record quest/achievement claim telemetry: ${err}`);
     }
 
-    return { grants, permanentEffectId, readNotifications };
+    return { grants, permanentEffectId, readNotifications, unlocks: resolvedUnlocks };
   }
 
   /**

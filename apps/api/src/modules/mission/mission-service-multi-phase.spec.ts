@@ -120,6 +120,7 @@ function makeDeps(dbOverrides: any = {}) {
     },
     missionDef: {
       findUnique: jest.fn(async ({ where }: any) => (where.id === defRow.id ? defRow : null)),
+      findFirst: jest.fn(async () => defRow),
     },
     entity: {
       findFirst: jest.fn(async () => entityRow),
@@ -187,10 +188,11 @@ function makeDeps(dbOverrides: any = {}) {
     })),
     checkRequirements: jest.fn(() => true),
     checkVisibility: jest.fn(() => true),
-    resolveOutcomesAsync: jest.fn(async (items: any[]) => ({
+    resolveOutcomes: jest.fn(async (items: any[]) => ({
       resolved: [],
       texts: [],
       flags: [],
+      unlocks: [],
     })),
     resolveName: jest.fn(async (type: string, key: string) => key),
   };
@@ -460,47 +462,49 @@ describe('MissionService.completeMission — rewardsMode', () => {
       ...defOverrides,
     };
     deps.db.missionDef.findUnique = jest.fn(async () => deps.defRow);
+    deps.db.missionDef.findFirst = jest.fn(async () => deps.defRow);
 
-    deps.gameRules.resolveOutcomesAsync = jest.fn(async (items: any[]) => ({
+    deps.gameRules.resolveOutcomes = jest.fn(async (items: any[]) => ({
       resolved: items.map((item: any) => ({ entry: item, amount: item.min ?? 1 })),
       texts: [],
       flags: [],
+      unlocks: [],
     }));
 
     return deps;
   }
 
-  it('final_bundle: calls resolveOutcomesAsync with the tiers rewards (non-empty outcomeItems)', async () => {
+  it('final_bundle: calls resolveOutcomes with the tiers rewards (non-empty outcomeItems)', async () => {
     const deps = makeCompletableDeps({ rewardsMode: 'final_bundle' });
     const svc = buildService(deps);
 
     await svc.completeMission('user-1', 'job-1', deps.db);
 
-    const calls: any[][] = deps.gameRules.resolveOutcomesAsync.mock.calls;
+    const calls: any[][] = deps.gameRules.resolveOutcomes.mock.calls;
     const firstCallItems = calls[0][0];
     expect(firstCallItems.length).toBeGreaterThan(0);
     expect(firstCallItems[0].type).toBe('currency');
     expect(firstCallItems[0].key).toBe('gold');
   });
 
-  it('per_phase: suppresses the final bundle (first resolveOutcomesAsync call has empty outcomeItems)', async () => {
+  it('per_phase: suppresses the final bundle (first resolveOutcomes call has empty outcomeItems)', async () => {
     const deps = makeCompletableDeps({ rewardsMode: 'per_phase' });
     const svc = buildService(deps);
 
     await svc.completeMission('user-1', 'job-1', deps.db);
 
-    const calls: any[][] = deps.gameRules.resolveOutcomesAsync.mock.calls;
+    const calls: any[][] = deps.gameRules.resolveOutcomes.mock.calls;
     const finalBundleItems = calls[0][0];
     expect(finalBundleItems).toHaveLength(0);
   });
 
-  it('per_phase: calls resolveOutcomesAsync for each successful phase (per-phase reward resolution)', async () => {
+  it('per_phase: calls resolveOutcomes for each successful phase (per-phase reward resolution)', async () => {
     const deps = makeCompletableDeps({ rewardsMode: 'per_phase' });
     const svc = buildService(deps);
 
     await svc.completeMission('user-1', 'job-1', deps.db);
 
-    const callCount = deps.gameRules.resolveOutcomesAsync.mock.calls.length;
+    const callCount = deps.gameRules.resolveOutcomes.mock.calls.length;
     expect(callCount).toBe(2);
   });
 
@@ -510,7 +514,7 @@ describe('MissionService.completeMission — rewardsMode', () => {
 
     await svc.completeMission('user-1', 'job-1', deps.db);
 
-    const calls: any[][] = deps.gameRules.resolveOutcomesAsync.mock.calls;
+    const calls: any[][] = deps.gameRules.resolveOutcomes.mock.calls;
     expect(calls.length).toBe(2);
 
     const finalBundleItems = calls[0][0];
@@ -527,7 +531,7 @@ describe('MissionService.completeMission — rewardsMode', () => {
     const svc = buildService(deps);
     await svc.completeMission('user-1', 'job-1', deps.db);
 
-    const calls: any[][] = deps.gameRules.resolveOutcomesAsync.mock.calls;
+    const calls: any[][] = deps.gameRules.resolveOutcomes.mock.calls;
     expect(calls.length).toBe(1);
   });
 
@@ -609,6 +613,11 @@ describe('ContinueMissionHandler integration', () => {
             phases: [{ name: 'P1', duration: 10 }, { name: 'P2', duration: 10 }],
           }),
         ),
+        findFirst: jest.fn(async () =>
+          makeDef({
+            phases: [{ name: 'P1', duration: 10 }, { name: 'P2', duration: 10 }],
+          }),
+        ),
       },
       user: {
         findUnique: jest.fn(async () => makeUser()),
@@ -622,6 +631,9 @@ describe('ContinueMissionHandler integration', () => {
       notification: {
         create: jest.fn(async () => ({ id: 'notif-1' })),
         findFirst: jest.fn(async () => null),
+      },
+      userUnlock: {
+        findMany: jest.fn(async () => []),
       },
     };
   }

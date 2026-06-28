@@ -306,34 +306,6 @@ export class GameRulesService {
    * deferred post-loop pass so that flag mutations from earlier items in the
    * same bundle are visible when evaluating each unlock's requirements.
    */
-  async resolveOutcomesAsync(
-    items: any[],
-    reqContext: RequirementContext,
-    rng: { chance: (p: number) => boolean; nextInt: (min: number, max: number) => number },
-  ): Promise<{ resolved: { entry: any; amount?: number }[]; texts: string[]; flags: { entry: any }[]; unlocks: { key: string }[] }> {
-    const defs = await this.loadBundleDefs(items);
-    const expanded = this.expandBundleRefs(items, defs);
-    const { resolved, texts, flags, deferredUnlocks } = this.resolveOutcomes(expanded, reqContext, rng);
-
-    const unlocks: { key: string }[] = [];
-    for (const pattern of deferredUnlocks) {
-      const keys = await this.expandUnlockPattern(pattern, reqContext);
-      for (const key of keys) {
-        if (!unlocks.some(u => u.key === key)) {
-          unlocks.push({ key });
-          // Propagate into reqContext so later patterns in this resolution can
-          // see keys granted earlier in the same outcome block.
-          if (reqContext.userUnlocks && !reqContext.userUnlocks.includes(key)) {
-            reqContext.userUnlocks.push(key);
-          } else if (!reqContext.userUnlocks) {
-            reqContext.userUnlocks = [key];
-          }
-        }
-      }
-    }
-
-    return { resolved, texts, flags, unlocks };
-  }
 
   /**
    * Expands a single grant_unlock pattern against the UnlockDef registry.
@@ -456,11 +428,18 @@ export class GameRulesService {
     await processItems(effects);
   }
 
-  resolveOutcomes(
+  async resolveOutcomes(
     items: any[],
     reqContext: RequirementContext,
     rng: { chance: (p: number) => boolean; nextInt: (min: number, max: number) => number },
-  ): { resolved: { entry: any; amount?: number }[]; texts: string[]; flags: { entry: any }[]; deferredUnlocks: string[] } {
+  ): Promise<{ resolved: { entry: any; amount?: number }[]; texts: string[]; flags: { entry: any }[]; unlocks: { key: string }[] }> {
+    // Bundle-ref expansion: load any referenced BundleDefs and inline them.
+    // Callers that pre-expand (e.g. admin outcome simulation) still benefit
+    // because loadBundleDefs returns an empty map immediately when the
+    // already-expanded items contain no bundle_ref entries.
+    const _defs = await this.loadBundleDefs(items);
+    items = this.expandBundleRefs(items, _defs);
+
     const texts: string[] = [];
     const flags: { entry: any }[] = [];
     const deferredUnlocks: string[] = [];
@@ -591,7 +570,22 @@ export class GameRulesService {
     resolveItems(items);
     applyText(pickWeightedText(collectTexts(items)));
 
-    return { resolved, texts, flags, deferredUnlocks };
+    const unlocks: { key: string }[] = [];
+    for (const pattern of deferredUnlocks) {
+      const keys = await this.expandUnlockPattern(pattern, reqContext);
+      for (const key of keys) {
+        if (!unlocks.some(u => u.key === key)) {
+          unlocks.push({ key });
+          if (reqContext.userUnlocks && !reqContext.userUnlocks.includes(key)) {
+            reqContext.userUnlocks.push(key);
+          } else if (!reqContext.userUnlocks) {
+            reqContext.userUnlocks = [key];
+          }
+        }
+      }
+    }
+
+    return { resolved, texts, flags, unlocks };
   }
 
   async resolveName(type: string, key: string): Promise<string> {

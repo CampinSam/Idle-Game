@@ -1181,12 +1181,12 @@ export class AdminService {
     }
 
     // Pre-load + expand bundle refs ONCE outside the loop, then reuse the
-    // expanded tree across all N iterations. This is intentionally the manual
-    // form of `resolveOutcomesAsync` — calling that wrapper per iteration
-    // would re-issue `loadBundleDefs` (a Prisma query) for every roll, which
-    // becomes very expensive at iterations=1000. The two paths are otherwise
-    // semantically identical: same canonical chain, same resolver, same
-    // determinism guarantees.
+    // expanded tree across all N iterations. resolveOutcomes internally calls
+    // loadBundleDefs, but pre-expanded items contain no bundle_ref entries so
+    // that call returns an empty map immediately (effectively a no-op). This
+    // keeps the N-iteration simulation at O(1) DB round-trips for bundles.
+    // Unlock grants are intentionally excluded from simulation results — the
+    // purpose is statistical reward distribution, not live state mutation.
     const defs = await this.gameRules.loadBundleDefs(items);
     const expanded = this.gameRules.expandBundleRefs(items, defs);
 
@@ -1215,7 +1215,7 @@ export class AdminService {
             nextInt: (lo: number, hi: number) => Math.floor(Math.random() * (hi - lo + 1)) + lo,
           };
 
-      runs.push(this.gameRules.resolveOutcomes(expanded, reqContext, rng));
+      runs.push(await this.gameRules.resolveOutcomes(expanded, reqContext, rng));
     }
 
     type EntryAgg = {

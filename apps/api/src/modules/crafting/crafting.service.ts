@@ -657,7 +657,7 @@ export class CraftingService {
 
     const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
 
-    const { resolved, texts: rolledTexts, flags: resolvedFlags } = await this.gameRules.resolveOutcomesAsync(outcomeItems, reqContext, rng);
+    const { resolved, texts: rolledTexts, flags: resolvedFlags, unlocks: resolvedUnlocks } = await this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
 
     const nameCache: Record<string, string> = {};
     for (const { entry } of resolved) {
@@ -707,6 +707,14 @@ export class CraftingService {
 
       if (resolvedFlags.length > 0) {
         await (tx as any).user.update({ where: { id: userId }, data: { flags: reqContext.userFlags as any } });
+      }
+
+      for (const { key } of resolvedUnlocks) {
+        await (tx as any).userUnlock.upsert({
+          where: { userId_key: { userId, key } },
+          create: { userId, key, source: 'crafting' },
+          update: {},
+        });
       }
 
       await this.entityService.setEntityStatus(entity.id, userId, 'idle', tx);

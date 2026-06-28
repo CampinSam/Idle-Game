@@ -73,11 +73,15 @@ export class OpenLootBoxHandler implements CommandHandler {
     const reqContext = this.gameRules.buildRequirementContext(user);
 
     const allGrants: any[] = [];
+    const allUnlocks: { key: string }[] = [];
     let anyFlags = false;
 
     for (let i = 0; i < rollCount; i++) {
-      const { resolved, flags: resolvedFlags } = await this.gameRules.resolveOutcomesAsync(outcomes, reqContext, rng);
+      const { resolved, flags: resolvedFlags, unlocks } = await this.gameRules.resolveOutcomes(outcomes, reqContext, rng);
       if (resolvedFlags.length > 0) anyFlags = true;
+      for (const u of unlocks) {
+        if (!allUnlocks.some(x => x.key === u.key)) allUnlocks.push(u);
+      }
       for (const { entry, amount } of resolved) {
         if (entry.type === 'currency') {
           await this.currencyService.creditTx(ctx.tx, {
@@ -105,6 +109,14 @@ export class OpenLootBoxHandler implements CommandHandler {
 
     if (anyFlags) {
       await (ctx.tx as any).user.update({ where: { id: ctx.userId }, data: { flags: reqContext.userFlags as any } });
+    }
+
+    for (const { key } of allUnlocks) {
+      await (ctx.tx as any).userUnlock.upsert({
+        where: { userId_key: { userId: ctx.userId, key } },
+        create: { userId: ctx.userId, key, source: 'lootbox' },
+        update: {},
+      });
     }
 
     if ((item.quantity ?? 1) > 1) {

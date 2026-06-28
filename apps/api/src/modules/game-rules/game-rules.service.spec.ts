@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 import { GameRulesService } from './game-rules.service';
 
 function makeService(): GameRulesService {
-  const fakePrisma: any = { user: { findUnique: jest.fn() }, bundleDef: { findMany: jest.fn() } };
+  const fakePrisma: any = { user: { findUnique: jest.fn() }, bundleDef: { findMany: jest.fn().mockResolvedValue([]) }, unlockDef: { findMany: jest.fn().mockResolvedValue([]) } };
   const fakeSelectionResolver: any = { evaluate: jest.fn().mockReturnValue(true) };
   const svc = new GameRulesService(fakePrisma, fakeSelectionResolver);
   (svc as any).logger = { warn: jest.fn(), log: jest.fn(), debug: jest.fn(), error: jest.fn() } as unknown as Logger;
@@ -186,7 +186,7 @@ function seqRng(seq: number[]) {
 const emptyReqContext = (): any => ({ user: { keeperLevel: 1 }, userFlags: {} });
 
 describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', () => {
-  it('picks exactly pickMax entries even when pickMax > pool.length, allowing duplicates', () => {
+  it('picks exactly pickMax entries even when pickMax > pool.length, allowing duplicates', async () => {
     const svc = makeService();
     const items = [{
       bundle: [
@@ -198,7 +198,7 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
 
     // Single-entry pool: every nextInt call resolves to that one entry.
     const rng = seqRng([0, 0, 0, 0, 0, 0, 0, 0]);
-    const out = svc.resolveOutcomes(items, emptyReqContext(), rng);
+    const out = await svc.resolveOutcomes(items, emptyReqContext(), rng);
 
     expect(out.resolved).toHaveLength(7);
     for (const r of out.resolved) {
@@ -208,7 +208,7 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
     }
   });
 
-  it('with a 3-entry pool and pickMax=7, produces 7 picks with duplicates', () => {
+  it('with a 3-entry pool and pickMax=7, produces 7 picks with duplicates', async () => {
     const svc = makeService();
     const items = [{
       bundle: [
@@ -220,7 +220,7 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
       pickMax: 7,
     }];
 
-    const out = svc.resolveOutcomes(items, emptyReqContext(), seqRng([0, 1, 2, 0, 1, 2, 0]));
+    const out = await svc.resolveOutcomes(items, emptyReqContext(), seqRng([0, 1, 2, 0, 1, 2, 0]));
 
     expect(out.resolved).toHaveLength(7);
     const keys = out.resolved.map((r) => r.entry.key);
@@ -229,7 +229,7 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
     expect(keys.length).toBeGreaterThan(uniq.size);
   });
 
-  it('regression: pickMax=1 from a multi-entry pool still produces a single weighted pick', () => {
+  it('regression: pickMax=1 from a multi-entry pool still produces a single weighted pick', async () => {
     const svc = makeService();
     const items = [{
       bundle: [
@@ -241,13 +241,13 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
       pickMax: 1,
     }];
 
-    const out = svc.resolveOutcomes(items, emptyReqContext(), seqRng([0]));
+    const out = await svc.resolveOutcomes(items, emptyReqContext(), seqRng([0]));
 
     expect(out.resolved).toHaveLength(1);
     expect(out.resolved[0].entry.key).toBe('soft_arcanium');
   });
 
-  it('with pool.length=3 and pickMax=2 (count <= pool size), still produces exactly the requested count and allows duplicates', () => {
+  it('with pool.length=3 and pickMax=2 (count <= pool size), still produces exactly the requested count and allows duplicates', async () => {
     const svc = makeService();
     const items = [{
       bundle: [
@@ -262,14 +262,14 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
     // Seeded RNG returns idx 0 for both picks → with-replacement allows the
     // same entry to fire twice. Without-replacement (the old behaviour) would
     // have removed entry 0 after the first pick and produced a different key.
-    const out = svc.resolveOutcomes(items, emptyReqContext(), seqRng([0, 0]));
+    const out = await svc.resolveOutcomes(items, emptyReqContext(), seqRng([0, 0]));
 
     expect(out.resolved).toHaveLength(2);
     expect(out.resolved[0].entry.key).toBe('a');
     expect(out.resolved[1].entry.key).toBe('a');
   });
 
-  it('honours requirements: ineligible entries are excluded from the pool before picking', () => {
+  it('honours requirements: ineligible entries are excluded from the pool before picking', async () => {
     const svc = makeService();
     const items = [{
       bundle: [
@@ -280,7 +280,7 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
       pickMax: 5,
     }];
 
-    const out = svc.resolveOutcomes(items, emptyReqContext(), seqRng([0, 0, 0, 0, 0]));
+    const out = await svc.resolveOutcomes(items, emptyReqContext(), seqRng([0, 0, 0, 0, 0]));
 
     expect(out.resolved).toHaveLength(5);
     for (const r of out.resolved) {
@@ -288,7 +288,7 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
     }
   });
 
-  it('coerces string-typed pickMin/pickMax so the seeded RNG receives numbers', () => {
+  it('coerces string-typed pickMin/pickMax so the seeded RNG receives numbers', async () => {
     const svc = makeService();
     const items = [{
       bundle: [
@@ -298,7 +298,7 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
       pickMax: '3',
     } as any];
 
-    const out = svc.resolveOutcomes(items, emptyReqContext(), seqRng([0, 0, 0]));
+    const out = await svc.resolveOutcomes(items, emptyReqContext(), seqRng([0, 0, 0]));
 
     expect(out.resolved).toHaveLength(3);
     for (const r of out.resolved) {
@@ -306,7 +306,7 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
     }
   });
 
-  it('wraps the rewards in an inner pick-bundle so the outer pickMax multiplies the whole recipe (Derpshire pattern)', () => {
+  it('wraps the rewards in an inner pick-bundle so the outer pickMax multiplies the whole recipe (Derpshire pattern)', async () => {
     const svc = makeService();
     // BundleDef expanded shape: top-level is one wrapped recipe; outer pickMax=4
     // therefore picks the recipe 4 times. Each recipe roll grants Keeper XP +
@@ -334,7 +334,7 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
     // Sequence consumed in order:
     //   outer pick: nextInt × 4 (one per recipe roll, all -> idx 0)
     //   per recipe roll: keeper_xp amount, entity_xp amount, inner pick idx, inner item amount
-    const out = svc.resolveOutcomes(items, emptyReqContext(), seqRng([
+    const out = await svc.resolveOutcomes(items, emptyReqContext(), seqRng([
       0, 0, 0, 0,            // outer picks (4 copies of the wrapped recipe)
       3, 15, 0, 2,           // roll 1: keeper=3, entity=15, material idx=0, amount=2
       4, 18, 0, 1,           // roll 2
@@ -351,17 +351,18 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
     expect(itemRolls).toHaveLength(4);
   });
 
-  it('returns no picks when the pool is empty after requirements filtering', () => {
+  it('returns no picks when the pool is empty after requirements filtering', async () => {
     const svc = makeService();
+    jest.spyOn(svc, 'checkRequirements').mockReturnValue(false);
     const items = [{
       bundle: [
-        { type: 'item', key: 'gated', min: 1, max: 1, requirements: [{ type: 'keeper_level', operator: 'gte', value: 999 }] },
+        { type: 'item', key: 'gated', min: 1, max: 1, requirements: { op: 'all', children: [] } },
       ],
       pickMin: 5,
       pickMax: 5,
     }];
 
-    const out = svc.resolveOutcomes(items, emptyReqContext(), seqRng([0]));
+    const out = await svc.resolveOutcomes(items, emptyReqContext(), seqRng([0]));
     expect(out.resolved).toHaveLength(0);
   });
 });
@@ -387,12 +388,13 @@ describe('GameRulesService.processEffectsWithBundles — pick mode (with replace
 
   it('returns no picks when the pool is empty after requirements filtering (parity with seeded path)', async () => {
     const svc = makeService();
+    jest.spyOn(svc, 'checkRequirements').mockReturnValue(false);
     (svc as any).prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 'u1', keeperLevel: 1, flags: {} });
     const applyFlag = jest.spyOn(svc as any, 'applyFlagEffect').mockResolvedValue(undefined);
 
     const effects = [{
       bundle: [
-        { type: 'flag', operation: 'set', key: 'gated', value: true, odds: 100, requirements: [{ type: 'keeper_level', operator: 'gte', value: 999 }] },
+        { type: 'flag', operation: 'set', key: 'gated', value: true, odds: 100, requirements: { op: 'all', children: [] } },
       ],
       pickMin: 5,
       pickMax: 5,
@@ -419,7 +421,7 @@ describe('GameRulesService.processEffectsWithBundles — pick mode (with replace
     ];
     const N = 5;
 
-    const seededOut = svc.resolveOutcomes(
+    const seededOut = await svc.resolveOutcomes(
       [{ bundle: pool, pickMin: N, pickMax: N }],
       emptyReqContext(),
       seqRng([0, 0, 0, 0, 0]),

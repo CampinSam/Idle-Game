@@ -909,7 +909,7 @@ export class MissionService {
     const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
     const entityResultsMap = new Map<string, { id: string; name: string; oldLevel: number; newLevel: number; xpGained: number; leveledUp: boolean; injured: boolean }>();
 
-    const { resolved, texts: rolledTexts, flags: resolvedFlags, unlocks: resolvedUnlocks = [] } = await this.gameRules.resolveOutcomesAsync(outcomeItems, reqContext, rng);
+    const { resolved, texts: rolledTexts, flags: resolvedFlags, unlocks: resolvedUnlocks } = await this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
 
     const rewardMod = this.effectService.resolve(playerEffects, EffectCategory.REWARD_MULTIPLIER);
     const xpMod = this.effectService.resolve(playerEffects, EffectCategory.XP_MULTIPLIER);
@@ -1066,7 +1066,7 @@ export class MissionService {
         }
         if (phaseOutcomeItems.length === 0) continue;
         const phaseRng = new SeededRng(`${missionSeed}_reward_phase_${phaseResult.phaseIndex}`);
-        const { resolved: phaseResolved } = await this.gameRules.resolveOutcomesAsync(phaseOutcomeItems, reqContext, phaseRng);
+        const { resolved: phaseResolved } = await this.gameRules.resolveOutcomes(phaseOutcomeItems, reqContext, phaseRng);
         for (const { entry: pe, amount: rawPa } of phaseResolved) {
           let pa = rawPa;
           if (!pa || pa <= 0) continue;

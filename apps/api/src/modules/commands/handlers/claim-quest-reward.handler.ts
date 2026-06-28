@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
-import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildActiveEffectPatches } from '../patch-builder';
+import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildActiveEffectPatches, buildPlayerPatch } from '../patch-builder';
 import { QuestService } from '../../quest/quest.service';
 import { buildGrantsRewardsBlock } from './grant-label.util';
 
@@ -26,6 +26,7 @@ export class ClaimQuestRewardHandler implements CommandHandler {
     for (const notif of readNotifications ?? []) {
       pb.upsertNotification(notif);
     }
+    await buildPlayerPatch(pb, ctx.tx, ctx.userId);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     if (permanentEffectId) {

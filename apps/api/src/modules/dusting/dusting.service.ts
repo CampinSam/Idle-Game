@@ -324,7 +324,7 @@ export class DustingService {
 
     const grantedRewards: { type: string; key?: string; amount?: number; defId?: string }[] = [];
 
-    const { resolved, flags: resolvedFlags } = await this.gameRules.resolveOutcomesAsync(outcomeItems, reqContext, rng);
+    const { resolved, flags: resolvedFlags, unlocks: resolvedUnlocks } = await this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
 
     for (const { entry, amount } of resolved) {
       if (entry.type === 'emitEvent') continue;
@@ -361,6 +361,14 @@ export class DustingService {
 
     if (resolvedFlags.length > 0) {
       await (tx as any).user.update({ where: { id: userId }, data: { flags: reqContext.userFlags as any } });
+    }
+
+    for (const { key } of resolvedUnlocks) {
+      await (tx as any).userUnlock.upsert({
+        where: { userId_key: { userId, key } },
+        create: { userId, key, source: 'dusting' },
+        update: {},
+      });
     }
 
     for (const { entry } of resolved) {
