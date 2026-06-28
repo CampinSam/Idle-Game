@@ -597,7 +597,12 @@ export class PaymentService {
             });
           } else if (content.type === 'outpost_slots') {
             const allSlotKeys = ['location_slot.1', 'location_slot.2', 'location_slot.3'];
-            const toGrant = allSlotKeys.slice(0, content.amount);
+            const existing: { key: string }[] = await (tx as any).userUnlock.findMany({
+              where: { userId: purchase.userId, key: { in: allSlotKeys } },
+              select: { key: true },
+            });
+            const existingKeys = new Set(existing.map((u: any) => u.key));
+            const toGrant = allSlotKeys.filter(k => !existingKeys.has(k)).slice(0, content.amount);
             for (const key of toGrant) {
               await (tx as any).userUnlock.upsert({
                 where: { userId_key: { userId: purchase.userId, key } },

@@ -115,7 +115,12 @@ export class ShopPurchaseHandler implements CommandHandler {
         grants.push(`${content.amount}x ${content.id}`);
       } else if (content.type === 'outpost_slots') {
         const allSlotKeys = ['location_slot.1', 'location_slot.2', 'location_slot.3'];
-        const toGrant = allSlotKeys.slice(0, content.amount);
+        const existing: { key: string }[] = await (ctx.tx as any).userUnlock.findMany({
+          where: { userId: ctx.userId, key: { in: allSlotKeys } },
+          select: { key: true },
+        });
+        const existingKeys = new Set(existing.map((u: any) => u.key));
+        const toGrant = allSlotKeys.filter(k => !existingKeys.has(k)).slice(0, content.amount);
         for (const key of toGrant) {
           await (ctx.tx as any).userUnlock.upsert({
             where: { userId_key: { userId: ctx.userId, key } },
