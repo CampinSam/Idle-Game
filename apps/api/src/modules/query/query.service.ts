@@ -10,10 +10,6 @@ import { CheckInService } from '../checkin/checkin.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
 import { serializeEntityFull } from '../entity/entity-stats.util';
-import {
-  adoptLegacyCraftingJobLocations,
-  pickFallbackWorkshopLocationId,
-} from '../crafting/legacy-job-adoption.util';
 
 const MAX_DELTA_AGE = 10000;
 
@@ -473,16 +469,6 @@ export class QueryService {
       this.logger.warn(`CheckIn reward icon enrichment failed for ${userId}: ${err}`);
     }
 
-    // Backward-compat for The Forge: pre-Forge CraftingJobs were stored without
-    // `data.locationId`. Use the shared adoption helper so this path stays in
-    // lockstep with `CraftingService.getActiveJobs`.
-    try {
-      await adoptLegacyCraftingJobLocations(this.prisma, jobs as any[], () =>
-        pickFallbackWorkshopLocationId(locations as any[]),
-      );
-    } catch (err) {
-      this.logger.warn(`Forge legacy job backfill failed for ${userId}: ${err}`);
-    }
 
     const serializedEntities = await Promise.all(
       entities.map((e: any) => serializeEntityFull(this.prisma, e)),

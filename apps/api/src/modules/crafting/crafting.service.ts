@@ -13,7 +13,6 @@ import { EffectService } from '../effect/effect.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
-import { adoptLegacyCraftingJobLocations } from './legacy-job-adoption.util';
 import { EffectCategory, applyModifier, type TraitPrimitive } from '@derp/shared';
 import {
   calculateCraftingLuck,
@@ -324,14 +323,6 @@ export class CraftingService {
       orderBy: { createdAt: 'asc' },
     });
 
-    try {
-      await adoptLegacyCraftingJobLocations(this.prisma, jobs as any[], async () => {
-        const workshops = await this.getWorkshops(userId).catch(() => [] as any[]);
-        return workshops.find((w: any) => w.enabled)?.locationId
-          || workshops[0]?.locationId
-          || null;
-      });
-    } catch { /* best-effort */ }
 
     const tickInfo = await this.tickService.getTickInfo();
     const serverTime = new Date().toISOString();
