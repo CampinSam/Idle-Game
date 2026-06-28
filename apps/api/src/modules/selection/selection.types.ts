@@ -49,6 +49,7 @@ export interface SelectionContext {
   player: {
     keeperLevel: number;
     flags: Record<string, unknown>;
+    unlocks?: string[];
   };
   entities: SelectionEntityContext[];
   inventory: {

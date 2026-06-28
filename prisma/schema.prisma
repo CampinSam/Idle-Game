@@ -21,7 +21,6 @@ model User {
   prestigeTokens    Int                   @default(0)
   flags             Json                  @default("{}")
   primaryLocationId String?
-  bonusOutpostSlots Int                   @default(0)
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
   stripeCustomerId  String?
@@ -45,6 +44,7 @@ model User {
   purchases         Purchase[]
   questInstances    QuestInstance[]
   currencyBalances  UserCurrencyBalance[]
+  unlocks           UserUnlock[]
 
   @@unique([authProvider, providerId])
   @@index([ecosystemId])
@@ -1752,4 +1752,34 @@ model GameConstant {
   updatedAt   DateTime @updatedAt
 
   @@map("game_constants")
+}
+
+/// Registry of every unlock key that the game knows about.
+/// grant_unlock outcomes silently skip keys not present in this table.
+model UnlockDef {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  name         String
+  description  String?
+  requirements Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("unlock_defs")
+}
+
+/// One row per concrete unlock key granted to a player.
+/// Wildcard grant_unlock patterns are expanded at grant-time against UnlockDef,
+/// so only exact keys ever live in this table.
+model UserUnlock {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  grantedAt DateTime @default(now())
+  source    String?
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@map("user_unlocks")
 }

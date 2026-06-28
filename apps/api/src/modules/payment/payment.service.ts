@@ -596,10 +596,18 @@ export class PaymentService {
               sourceId: purchaseId,
             });
           } else if (content.type === 'outpost_slots') {
-            await (tx as any).user.update({
-              where: { id: purchase.userId },
-              data: { bonusOutpostSlots: { increment: content.amount } },
+            const allSlotKeys = ['location_slot.1', 'location_slot.2', 'location_slot.3'];
+            const existing: { key: string }[] = await (tx as any).userUnlock.findMany({
+              where: { userId: purchase.userId, key: { in: allSlotKeys } },
+              select: { key: true },
             });
+            const existingKeys = new Set(existing.map((u: any) => u.key));
+            const toGrant = allSlotKeys.filter(k => !existingKeys.has(k)).slice(0, content.amount);
+            for (const key of toGrant) {
+              await (tx as any).userUnlock.create({
+                data: { userId: purchase.userId, key, source: 'shop_purchase' },
+              });
+            }
           }
         }
       } else {

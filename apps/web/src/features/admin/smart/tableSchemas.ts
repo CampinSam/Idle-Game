@@ -39,6 +39,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   TagDef: 'tagDef',
   VisualEffectDef: 'visualEffectDef',
   Season: 'season',
+  UnlockDef: 'unlockDef',
 };
 
 export interface FieldDef {
@@ -399,6 +400,17 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       repeatable:           { type: 'boolean', default: false, description: 'Can be completed multiple times?' },
       enabled:              { type: 'boolean', default: true, description: 'Active?' },
       sortOrder:            { type: 'number', default: 0, description: 'Display sort order' },
+    },
+  },
+  UnlockDef: {
+    color: '#8B5CF6',
+    group: 'Rewards',
+    fields: {
+      id:           { type: 'string', readonly: true, description: 'UUID (auto-generated, read-only)' },
+      key:          { type: 'string', required: true, description: 'Unique slug key granted to players (e.g. location_slot.1, feature.dark_mode). Supports glob patterns in grant_unlock outcomes.' },
+      name:         { type: 'string', required: true, description: 'Admin-facing display name' },
+      description:  { type: 'string', description: 'What this unlock enables' },
+      requirements: { type: 'richSelection', default: null, description: 'Optional conditions that must be met before this unlock can be granted' },
     },
   },
   NftCollectionDef: {
@@ -846,7 +858,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   Crafting: ['RecipeDef'],
   Locations: ['BuildingDef', 'RoomDef', 'LocationDefinition', 'RegionDefinition'],
   Economy: ['Currency', 'ItemDef'],
-  Rewards: ['GiftDef', 'LootboxDef', 'BundleDef', 'CheckInDef', 'QuestDef'],
+  Rewards: ['GiftDef', 'LootboxDef', 'BundleDef', 'CheckInDef', 'QuestDef', 'UnlockDef'],
   Store: ['ShopHeroDef', 'ShopTabDef', 'ShopSectionDef', 'ShopItemDef', 'GemPackDef'],
   NFT: ['NftCollectionDef'],
   Entities: ['EntityDefinition'],
@@ -902,6 +914,7 @@ export const TABLE_LABELS: Record<string, string> = {
   VisualEffectDef: 'Visual Effects',
   TagDef: 'Tags',
   Season: 'Seasons',
+  UnlockDef: 'Unlock Defs',
 };
 
 export interface ContentTableSub {

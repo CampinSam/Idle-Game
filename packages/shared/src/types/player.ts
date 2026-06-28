@@ -8,7 +8,7 @@ export interface Player {
   prestigeTokens: number;
   createdAt: string;
   primaryLocationId?: string | null;
-  bonusOutpostSlots?: number;
+  unlocks?: string[];
 }
 
 export interface RegisterDto {

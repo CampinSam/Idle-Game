@@ -902,7 +902,7 @@
           }
         },
         "outpost_slots": {
-          "description": "Permanently increments the player's bonusOutpostSlots — no id needed",
+          "description": "Grants unlock keys for location slots — no id needed. Grants up to `amount` location_slot.N keys not already owned.",
           "properties": {
             "type": { "type": "string", "const": "outpost_slots" },
             "amount": { "type": "number", "required": true, "description": "Number of extra outpost slots to unlock" }
@@ -3757,7 +3757,7 @@
             "$ref": "#/complexTypes/ShopContentEntry"
           },
           "default": [],
-          "description": "What the player receives on purchase. Supports 'currency', 'item', and 'outpost_slots' entries. The 'outpost_slots' type has no id field — it permanently increments bonusOutpostSlots."
+          "description": "What the player receives on purchase. Supports 'currency', 'item', and 'outpost_slots' entries. The 'outpost_slots' type grants location_slot.N unlock keys."
         },
         "badge": {
           "type": "string",

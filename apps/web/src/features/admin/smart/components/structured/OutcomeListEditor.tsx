@@ -36,6 +36,7 @@ type OutcomeKind =
   | 'entity_xp'
   | 'keeper_xp'
   | 'flag'
+  | 'grant_unlock'
   | 'text'
   | 'effect'
   | 'nothing';
@@ -74,6 +75,7 @@ function detectKind(entry: Outcome): OutcomeKind {
   if (t === 'entity_xp') return 'entity_xp';
   if (t === 'keeper_xp') return 'keeper_xp';
   if (t === 'flag') return 'flag';
+  if (t === 'grant_unlock') return 'grant_unlock';
   if (t === 'text') return 'text';
   if (t === 'effect') return 'effect';
   if (t === 'nothing') return 'nothing';
@@ -98,6 +100,8 @@ function defaultForKind(kind: OutcomeKind): Outcome {
       return { type: 'keeper_xp', min: 10, max: 50, odds: 100 };
     case 'flag':
       return { type: 'flag', operation: 'set', key: '', value: true, odds: 100 };
+    case 'grant_unlock':
+      return { type: 'grant_unlock', key: '', odds: 100 };
     case 'text':
       return { type: 'text', message: '' };
     case 'effect':
@@ -118,6 +122,7 @@ function summary(entry: Outcome): string {
   if (kind === 'entity_xp') return `entity_xp ${entry.min ?? 0}-${entry.max ?? 0}`;
   if (kind === 'keeper_xp') return `keeper_xp ${entry.min ?? 0}-${entry.max ?? 0}`;
   if (kind === 'flag') return `flag ${entry.operation || 'set'} ${entry.key || '?'}`;
+  if (kind === 'grant_unlock') return `grant_unlock ${entry.key || '?'}`;
   if (kind === 'text') return `text "${(entry.message || '').slice(0, 30)}"`;
   if (kind === 'effect') return `effect (odds ${entry.odds ?? 100}%)`;
   if (kind === 'nothing') return `nothing (weight ${entry.odds ?? 98})`;
@@ -358,6 +363,34 @@ function OutcomeEntryEditor({
               </>
             )}
 
+            {kind === 'grant_unlock' && (
+              <>
+                <div style={{ ...fieldGroupStyle, minWidth: 200 }}>
+                  <span style={labelStyle}>key (glob allowed)</span>
+                  <input
+                    type="text"
+                    value={entry.key ?? ''}
+                    placeholder="e.g. location_slot.1 or feature.*"
+                    onChange={e => onChange({ ...entry, key: e.target.value })}
+                    style={{ ...inputStyle, width: '100%', borderColor: errs.key ? ERROR_BORDER_COLOR : (inputStyle.borderColor as string | undefined) }}
+                  />
+                  {errs.key && <span style={errorTextStyle}>{errs.key}</span>}
+                </div>
+                <div style={fieldGroupStyle}>
+                  <span style={labelStyle}>odds %</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={entry.odds ?? ''}
+                    onChange={e => onChange({ ...entry, odds: e.target.value === '' ? undefined : Number(e.target.value) })}
+                    style={{ ...numberInputStyle, width: '100%' }}
+                  />
+                </div>
+              </>
+            )}
+
             {kind === 'nothing' && (
               <div style={fieldGroupStyle}>
                 <span style={labelStyle}>weight</span>
@@ -582,6 +615,7 @@ function OutcomeArrayEditor({ items, onChange }: { items: Outcome[]; onChange: (
         <button type="button" style={addButtonStyle} onClick={() => add('entity_xp')}>+ entity_xp</button>
         <button type="button" style={addButtonStyle} onClick={() => add('keeper_xp')}>+ keeper_xp</button>
         <button type="button" style={addButtonStyle} onClick={() => add('flag')}>+ flag</button>
+        <button type="button" style={addButtonStyle} onClick={() => add('grant_unlock')}>+ grant_unlock</button>
         <button type="button" style={addButtonStyle} onClick={() => add('text')}>+ text</button>
         <button type="button" style={addButtonStyle} onClick={() => add('effect')}>+ effect</button>
         <button type="button" style={addButtonStyle} onClick={() => add('nothing')}>+ nothing</button>

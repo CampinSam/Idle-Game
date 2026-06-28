@@ -604,6 +604,7 @@ Every reward list is an array of outcome entries. Each entry has a `type` field 
 | `entity_xp` | `min`, `max` | Grants XP split across all mission entities. |
 | `keeper_xp` | `min`, `max` | Grants XP to the player account (Keeper level). |
 | `flag` | `operation`, `key`, `value` | Mutates a **persistent** player flag. Survives across sessions. |
+| `grant_unlock` | `key` | Grants the named unlock key to the player (idempotent). `key` may be a literal key (e.g. `location_slot.1`) or a glob pattern (e.g. `feature.*`) expanded against all matching `UnlockDef` rows. |
 | `tempflag` | `operation`, `key`, `value` | Mutates an **ephemeral** flag scoped to the current resolution only. Use `scope: "tempflag"` in requirements to read it within the same resolution. |
 | `text` | `message` | Picks a weighted flavour-text string for the result modal. |
 | `emitEvent` | `defId`, `payload`, `idempotencyKey` | Dispatches a named game event (e.g. to issue a gift). |
@@ -1036,6 +1037,30 @@ Grants a lifetime bonus when an achievement is claimed for the first time.
 | `targetId` | Explicit target ID. Falls back to the claiming player's user ID if omitted. |
 | `value` | Override the def's `value`. |
 | `stats` | Override the def's `stats` distribution. |
+
+---
+
+## UnlockDef
+
+**Admin table:** `unlockDef`
+
+`UnlockDef` rows define named capabilities that can be granted to players via the `grant_unlock` outcome type. Each player's granted keys are stored as `UserUnlock` rows and are included in the SSE bootstrap payload under `player.unlocks`.
+
+| Field | Type | Required | What it controls |
+|-------|------|----------|-----------------|
+| `id` | string | ✓ | UUID (auto-generated). |
+| `key` | string | ✓ | Unique slug granted to players (e.g. `location_slot.1`, `feature.dark_mode`). Used in `unlocks.*` requirements and `grant_unlock` outcomes. Supports glob patterns when used as a `grant_unlock` key. |
+| `name` | string | ✓ | Admin-facing display name. |
+| `description` | string | | What this unlock enables for the player. |
+| `requirements` | RichSelection | | Optional conditions that must be met before the unlock can be granted. |
+
+### Checking unlock keys in requirements
+
+Use `scope: "unlocks.<key>"` in a `RichSelection` rule. Returns `1` if the player holds that key, `0` otherwise:
+
+```json
+{ "scope": "unlocks.location_slot.1", "op": "eq", "value": 1 }
+```
 
 ---
 

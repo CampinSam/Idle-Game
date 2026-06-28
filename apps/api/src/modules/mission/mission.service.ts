@@ -139,10 +139,11 @@ export class MissionService {
     if (userId) {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (user) {
+        const unlockRows: { key: string }[] = await (this.prisma as any).userUnlock.findMany({ where: { userId }, select: { key: true } });
         filtered = categories.filter((c: any) =>
           this.gameRules.checkVisibility(c.visibilityRequirements, user as any, undefined, undefined, `MissionCategoryDef[${c.id}].visibilityRequirements`)
         );
-        reqContext = this.gameRules.buildRequirementContext(user as any);
+        reqContext = this.gameRules.buildRequirementContext(user as any, { userUnlocks: unlockRows.map(u => u.key) });
       }
     }
 
@@ -187,7 +188,8 @@ export class MissionService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return allDefs.map((d: any) => this.mapDefToLegacy(d));
 
-    const reqContext = this.gameRules.buildRequirementContext(user as any);
+    const unlockRows: { key: string }[] = await (this.prisma as any).userUnlock.findMany({ where: { userId }, select: { key: true } });
+    const reqContext = this.gameRules.buildRequirementContext(user as any, { userUnlocks: unlockRows.map(u => u.key) });
 
     return allDefs
       .filter((d: any) => this.gameRules.checkVisibility(d.visibilityRequirements, user as any, undefined, undefined, `MissionDef[${d.id}].visibilityRequirements`))
@@ -907,7 +909,7 @@ export class MissionService {
     const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
     const entityResultsMap = new Map<string, { id: string; name: string; oldLevel: number; newLevel: number; xpGained: number; leveledUp: boolean; injured: boolean }>();
 
-    const { resolved, texts: rolledTexts, flags: resolvedFlags } = await this.gameRules.resolveOutcomesAsync(outcomeItems, reqContext, rng);
+    const { resolved, texts: rolledTexts, flags: resolvedFlags, unlocks: resolvedUnlocks = [] } = await this.gameRules.resolveOutcomesAsync(outcomeItems, reqContext, rng);
 
     const rewardMod = this.effectService.resolve(playerEffects, EffectCategory.REWARD_MULTIPLIER);
     const xpMod = this.effectService.resolve(playerEffects, EffectCategory.XP_MULTIPLIER);
@@ -1025,6 +1027,14 @@ export class MissionService {
 
     if (resolvedFlags.length > 0) {
       await (db as any).user.update({ where: { id: userId }, data: { flags: reqContext.userFlags as any } });
+    }
+
+    for (const { key } of resolvedUnlocks) {
+      await (db as any).userUnlock.upsert({
+        where: { userId_key: { userId, key } },
+        create: { userId, key, source: `mission:${missionId}` },
+        update: {},
+      });
     }
 
     // ── Per-phase rewards (per_phase / hybrid rewardsMode) ─────────────────────
@@ -1334,6 +1344,7 @@ export class MissionService {
         rewards: grantedRewards,
         removedEffectIds: sessionEffects.map((e: any) => e.id),
         resolvedFlagCount: resolvedFlags.length,
+        resolvedUnlockCount: resolvedUnlocks.length,
       },
     };
   }

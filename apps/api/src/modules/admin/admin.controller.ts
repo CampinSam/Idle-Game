@@ -185,6 +185,7 @@ export class AdminController {
       { key: 'bundleDef',         name: 'Bundle Definitions',         table: 'bundle_defs',          group: 'Rewards' },
       { key: 'checkInDef',        name: 'Check-In Definitions',       table: 'checkin_defs',         group: 'Rewards' },
       { key: 'questDef',          name: 'Quest Definitions',          table: 'quest_defs',           group: 'Rewards' },
+      { key: 'unlockDef',         name: 'Unlock Definitions',         table: 'unlock_defs',          group: 'Rewards' },
       { key: 'shopHeroDef',       name: 'Shop Hero Banners',          table: 'shop_hero_defs',       group: 'Store' },
       { key: 'shopTabDef',        name: 'Shop Tab Definitions',       table: 'shop_tab_defs',        group: 'Store' },
       { key: 'shopSectionDef',    name: 'Shop Section Definitions',   table: 'shop_section_defs',    group: 'Store' },

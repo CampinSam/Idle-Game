@@ -77,7 +77,13 @@ export interface TextEntry {
   odds?: number;
 }
 
-export type OutcomeEntry = RewardEntry | EffectEntry | TextEntry;
+export interface UnlockGrantEntry {
+  type: 'grant_unlock';
+  key: string;
+  odds?: number;
+}
+
+export type OutcomeEntry = RewardEntry | EffectEntry | TextEntry | UnlockGrantEntry;
 
 export interface OutcomeBundle {
   bundle: OutcomeOrBundle[];

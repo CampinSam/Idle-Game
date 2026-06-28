@@ -18,7 +18,7 @@ function makeService(): SelectionResolverService {
 
 function makeCtx(overrides: Partial<SelectionContext> = {}): SelectionContext {
   return {
-    player: { keeperLevel: 5, flags: {} },
+    player: { keeperLevel: 5, flags: {}, unlocks: [] },
     entities: [],
     inventory: { currencies: {}, items: {} },
     locations: [],

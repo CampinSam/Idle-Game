@@ -151,7 +151,7 @@ export class SynergyResolverService {
     const richSel = selector as unknown as RichSelection;
 
     const selCtx: SelectionContext = {
-      player: { keeperLevel: 0, flags: {} },
+      player: { keeperLevel: 0, flags: {}, unlocks: [] },
       entities: [this.descriptorToEntityCtx(entity)],
       inventory: { currencies: {}, items: {} },
       locations: [],
@@ -172,7 +172,7 @@ export class SynergyResolverService {
     const richSel = ruleCtx as unknown as RichSelection;
 
     const selCtx: SelectionContext = {
-      player: { keeperLevel: 0, flags: {} },
+      player: { keeperLevel: 0, flags: {}, unlocks: [] },
       entities: [],
       inventory: { currencies: {}, items: {} },
       locations: [],

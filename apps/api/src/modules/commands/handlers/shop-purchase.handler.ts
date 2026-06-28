@@ -114,11 +114,19 @@ export class ShopPurchaseHandler implements CommandHandler {
         });
         grants.push(`${content.amount}x ${content.id}`);
       } else if (content.type === 'outpost_slots') {
-        await (ctx.tx as any).user.update({
-          where: { id: ctx.userId },
-          data: { bonusOutpostSlots: { increment: content.amount } },
+        const allSlotKeys = ['location_slot.1', 'location_slot.2', 'location_slot.3'];
+        const existing: { key: string }[] = await (ctx.tx as any).userUnlock.findMany({
+          where: { userId: ctx.userId, key: { in: allSlotKeys } },
+          select: { key: true },
         });
-        grants.push(`${content.amount} Outpost Slot${content.amount !== 1 ? 's' : ''}`);
+        const existingKeys = new Set(existing.map((u: any) => u.key));
+        const toGrant = allSlotKeys.filter(k => !existingKeys.has(k)).slice(0, content.amount);
+        for (const key of toGrant) {
+          await (ctx.tx as any).userUnlock.create({
+            data: { userId: ctx.userId, key, source: 'shop' },
+          });
+        }
+        grants.push(`${toGrant.length} Outpost Slot${toGrant.length !== 1 ? 's' : ''}`);
       }
     }
 

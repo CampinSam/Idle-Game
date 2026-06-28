@@ -260,19 +260,30 @@ export class AdminService {
     if (typeof slots !== 'number' || !Number.isInteger(slots) || slots < 0 || slots > 3) {
       throw new BadRequestException('slots must be an integer between 0 and 3');
     }
-    const updated = await this.prisma.user.update({
-      where: { id },
-      data: { bonusOutpostSlots: slots },
+
+    const allSlotKeys = ['location_slot.1', 'location_slot.2', 'location_slot.3'];
+    const desiredKeys = allSlotKeys.slice(0, slots);
+
+    await (this.prisma as any).userUnlock.deleteMany({
+      where: { userId: id, key: { in: allSlotKeys } },
     });
+    for (const key of desiredKeys) {
+      await (this.prisma as any).userUnlock.create({
+        data: { userId: id, key, source: 'admin' },
+      });
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    const unlockRows: { key: string }[] = await (this.prisma as any).userUnlock.findMany({ where: { userId: id }, select: { key: true } });
 
     const pb = new PatchBuilder();
-    pb.upsertPlayer(updated);
+    pb.upsertPlayer(user, unlockRows.map(u => u.key));
     await this.emitAdminDeltaWithNotif(id, pb.build(), {
       title: 'Admin Grant',
       body: `You now have ${slots} bonus outpost slot${slots !== 1 ? 's' : ''}`,
     });
 
-    return serializeBigInts(updated);
+    return serializeBigInts(user);
   }
 
   async setPlayerCurrency(userId: string, currencyId: string, balance: string | number) {
@@ -1404,6 +1415,7 @@ export class AdminService {
       eventDefinition: (this.prisma as any).eventDefinition,
       giftDef: (this.prisma as any).giftDef,
       lootboxDef: (this.prisma as any).lootboxDef,
+      unlockDef: (this.prisma as any).unlockDef,
       bundleDef: (this.prisma as any).bundleDef,
       checkInDef: (this.prisma as any).checkInDef,
       questDef: (this.prisma as any).questDef,

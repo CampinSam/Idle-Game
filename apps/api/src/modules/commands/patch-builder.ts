@@ -80,7 +80,7 @@ export class PatchBuilder {
     return this;
   }
 
-  upsertPlayer(user: any): this {
+  upsertPlayer(user: any, unlocks: string[] = []): this {
     this.patches.push({
       op: 'upsert',
       entity: 'player',
@@ -93,7 +93,7 @@ export class PatchBuilder {
         prestigeTokens: user.prestigeTokens,
         flags: user.flags,
         primaryLocationId: user.primaryLocationId ?? null,
-        bonusOutpostSlots: user.bonusOutpostSlots ?? 0,
+        unlocks,
       },
     });
     return this;
@@ -285,7 +285,9 @@ export async function buildEntityPatch(pb: PatchBuilder, tx: any, entityId: stri
 
 export async function buildPlayerPatch(pb: PatchBuilder, tx: any, userId: string) {
   const user = await tx.user.findUnique({ where: { id: userId } });
-  if (user) pb.upsertPlayer(user);
+  if (!user) return;
+  const unlockRows: { key: string }[] = await tx.userUnlock.findMany({ where: { userId }, select: { key: true } });
+  pb.upsertPlayer(user, unlockRows.map(u => u.key));
 }
 
 export async function fetchActiveEffects(tx: any, userId: string, currentTick?: number) {
@@ -327,7 +329,9 @@ export async function buildMissionDefStatusPatches(
   const user = await (tx as any).user.findUnique({ where: { id: userId } });
   if (!user) return;
 
-  const reqContext = gameRules.buildRequirementContext(user);
+  const unlockRows: { key: string }[] = await (tx as any).userUnlock.findMany({ where: { userId }, select: { key: true } });
+  const userUnlocks = unlockRows.map((u: { key: string }) => u.key);
+  const reqContext = gameRules.buildRequirementContext(user, { userUnlocks });
 
   const categories = await (tx as any).missionCategoryDef.findMany({
     orderBy: { sortOrder: 'asc' },

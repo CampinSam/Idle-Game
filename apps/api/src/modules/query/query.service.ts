@@ -243,6 +243,7 @@ export class QueryService {
       activePowers,
       entityPowerUsageRows,
       locationPowerUsageRows,
+      userUnlockRows,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -254,7 +255,6 @@ export class QueryService {
           prestigeTokens: true,
           flags: true,
           primaryLocationId: true,
-          bonusOutpostSlots: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -412,6 +412,7 @@ export class QueryService {
           },
         },
       }),
+      (this.prisma as any).userUnlock.findMany({ where: { userId }, select: { key: true } }),
     ]);
 
     const cursorId = latestDelta?.id ?? BigInt(0);
@@ -556,6 +557,7 @@ export class QueryService {
           ? {
               ...user,
               keeperXp: user.keeperXp.toString(),
+              unlocks: (userUnlockRows as { key: string }[]).map(u => u.key),
             }
           : null,
         state: {

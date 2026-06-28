@@ -56,7 +56,7 @@ export default function MissionsContent() {
   // Re-fetch defs whenever player flags or keeper level change so requirement
   // status (locked/unlocked) is always evaluated with the latest player state.
   const profileRequirementKey = profile
-    ? JSON.stringify({ f: profile.flags ?? {}, kl: profile.keeperLevel ?? 0 })
+    ? JSON.stringify({ f: profile.flags ?? {}, kl: profile.keeperLevel ?? 0, u: profile.unlocks ?? [] })
     : null;
   useEffect(() => {
     if (!profileRequirementKey) return;

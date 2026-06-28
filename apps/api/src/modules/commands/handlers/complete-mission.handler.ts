@@ -35,7 +35,7 @@ export class CompleteMissionHandler implements CommandHandler {
     // If mission completion resolved any player flags, push updated requirement
     // status for all category/mission defs so the client can unlock gated
     // content in the same render cycle — no separate HTTP refetch needed.
-    if ((result.missionResult as any)?.resolvedFlagCount > 0) {
+    if ((result.missionResult as any)?.resolvedFlagCount > 0 || (result.missionResult as any)?.resolvedUnlockCount > 0) {
       await buildMissionDefStatusPatches(pb, ctx.tx, ctx.userId, this.gameRules);
     }
 

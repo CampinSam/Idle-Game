@@ -337,13 +337,16 @@ export class LocationService {
     const client = externalTx || this.prisma;
     const user = await client.user.findUnique({
       where: { id: userId },
-      select: { keeperLevel: true, bonusOutpostSlots: true },
+      select: { keeperLevel: true },
     });
     if (!user) throw new NotFoundException("User not found");
+    const locationSlotUnlocks = await (client as any).userUnlock.count({
+      where: { userId, key: { in: ['location_slot.1', 'location_slot.2', 'location_slot.3'] } },
+    });
     const activeCount = await (client as any).locationInstance.count({
       where: { ownerUserId: userId, enabled: true },
     });
-    const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel, user.bonusOutpostSlots ?? 0);
+    const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel, locationSlotUnlocks);
     if (activeCount >= maxOutposts) {
       throw new BadRequestException(
         `Maximum ${maxOutposts} active outpost(s) allowed at Keeper Level ${user.keeperLevel}`,
@@ -360,13 +363,16 @@ export class LocationService {
     const client = tx ?? this.prisma;
     const user = await (client as any).user.findUnique({
       where: { id: userId },
-      select: { keeperLevel: true, bonusOutpostSlots: true },
+      select: { keeperLevel: true },
     });
     if (!user) return false;
+    const locationSlotUnlocks = await (client as any).userUnlock.count({
+      where: { userId, key: { in: ['location_slot.1', 'location_slot.2', 'location_slot.3'] } },
+    });
     const activeCount = await (client as any).locationInstance.count({
       where: { ownerUserId: userId, enabled: true },
     });
-    const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel, user.bonusOutpostSlots ?? 0);
+    const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel, locationSlotUnlocks);
     return activeCount < maxOutposts;
   }
 

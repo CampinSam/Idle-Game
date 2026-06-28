@@ -433,6 +433,7 @@ Outcome arrays appear on mission `success` / `failure` blocks and inside bundle 
 | `entity_xp` | `min`, `max`, `odds` | Grants `min`–`max` XP split across all mission entities |
 | `keeper_xp` | `min`, `max`, `odds` | Grants `min`–`max` XP to the keeper (player account) |
 | `flag` | `operation`, `key`, `value`, `odds` | Mutates a **persistent** user flag (written to `user.flags`). Operations: `set`, `unset`, `increment`, `decrement`, `invert`, `remove` |
+| `grant_unlock` | `key`, `odds` | Grants the named unlock key to the player (idempotent). `key` may be a literal key (e.g. `location_slot.1`) or a glob pattern (e.g. `feature.*`) that is expanded against all matching `UnlockDef` rows. |
 | `tempflag` | `operation`, `key`, `value`, `odds` | Mutates an **ephemeral** flag scoped to the current resolution walk only. Never written to `user.flags`. For job-based contexts (mission, crafting, dusting) the flag is persisted in `Job.data.tempFlags` and discarded when the job is collected. For instant-resolution contexts (lootbox, gift, quest) it is in-memory only. Operations: `set`, `unset`, `increment`, `decrement`, `invert`, `remove`. Test with `scope: "tempflag"` in requirements. |
 | `text` | `message`, `odds` | Weighted flavor-text entry; the resolver picks one text per bundle pass and surfaces it in the result modal |
 | `emitEvent` | `defId`, `payload`, `idempotencyKey`, `odds` | Dispatches a named game event |
@@ -2064,7 +2065,7 @@ Each entry in `contents` is an object with `{type, id?, amount}`. The `type` fie
 |--------|------|----------|-------------|
 | `currency` | ✓ currencyId | number | Credits the player's balance for the named currency. |
 | `item` | ✓ itemDefinitionId | number | Adds `amount` copies of the item to the player's inventory. |
-| `outpost_slots` | — (omit) | number | Permanently increments `bonusOutpostSlots` on the player's account, unlocking additional outpost territory claims. |
+| `outpost_slots` | — (omit) | number | Grants up to `amount` `location_slot.N` unlock keys not already owned by the player. |
 
 **Example — 1 outpost slot:**
 ```json
@@ -3847,6 +3848,42 @@ Used on `category: "achievement"` defs to grant a lifetime bonus when the achiev
   }
 }
 ```
+
+---
+
+## UnlockDef — Unlock Definitions
+
+`UnlockDef` rows define named capabilities that can be granted to players. Managed via the generic admin smart table (`unlockDef`).
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | UUID (auto-generated, read-only). |
+| `key` | string | ✓ | Unique slug (e.g. `location_slot.1`, `feature.dark_mode`). This is the value stored in `UserUnlock` and checked via `unlocks.*` requirements. Supports glob patterns in `grant_unlock` outcomes. |
+| `name` | string | ✓ | Admin-facing display name. |
+| `description` | string | | Optional description of what the unlock enables. |
+| `requirements` | `RichSelection` | | Optional conditions evaluated before the unlock can be granted. |
+
+### Player Unlock Requirement
+
+Use the `unlocks.*` scope in `RichSelection` rules to gate content on whether a player holds a specific unlock key:
+
+```json
+{ "scope": "unlocks.location_slot.1", "op": "eq", "value": 1 }
+```
+
+Returns `1` if the player has the key, `0` otherwise. Glob operators are supported on the key segment.
+
+### `grant_unlock` outcome type
+
+Grants an unlock key from a mission/bundle/gift outcome:
+
+```json
+{ "type": "grant_unlock", "key": "location_slot.1", "odds": 100 }
+```
+
+The `key` field may be a literal key or a glob pattern (e.g. `feature.*`) — the resolver expands the pattern against all matching `UnlockDef` rows and grants each matching key idempotently.
 
 ---
 

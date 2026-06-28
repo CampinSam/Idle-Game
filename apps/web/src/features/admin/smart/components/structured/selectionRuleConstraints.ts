@@ -56,6 +56,7 @@ export function classifyField(scope: ScopeType, field: string): FieldType {
   }
 
   if (field.startsWith('flags.')) return FieldType.Flag;
+  if (field.startsWith('unlocks.')) return FieldType.Boolean01;
 
   if (field.startsWith('stats.')) return FieldType.Numeric;
   if (field.startsWith('buildings.')) return FieldType.Boolean01;

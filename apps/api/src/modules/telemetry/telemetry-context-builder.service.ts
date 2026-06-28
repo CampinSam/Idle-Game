@@ -19,14 +19,18 @@ export class TelemetryContextBuilderService {
   ): Promise<SelectionContext> {
     const { entityIds = [], missionContext } = options;
 
-    const user = await (this.prisma as any).user.findUnique({
-      where: { id: userId },
-      select: { keeperLevel: true, flags: true },
-    });
+    const [user, unlockRows] = await Promise.all([
+      (this.prisma as any).user.findUnique({
+        where: { id: userId },
+        select: { keeperLevel: true, flags: true },
+      }),
+      (this.prisma as any).userUnlock.findMany({ where: { userId }, select: { key: true } }),
+    ]);
 
     const player = {
       keeperLevel: user?.keeperLevel ?? 0,
       flags: (user?.flags as Record<string, unknown>) ?? {},
+      unlocks: (unlockRows as { key: string }[]).map(u => u.key),
     };
 
     let entities: SelectionEntityContext[] = [];

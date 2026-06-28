@@ -75,6 +75,7 @@ function reqCtxToSelCtx(reqCtx: RequirementContext): SelectionContext {
     player: {
       keeperLevel: Number(reqCtx.user.keeperLevel ?? 0),
       flags: reqCtx.userFlags,
+      unlocks: reqCtx.userUnlocks ?? [],
     },
     entities: [],
     inventory: { currencies: {}, items: {} },
@@ -130,7 +131,7 @@ function descToSelCtx(desc: SynergyEntityDescriptor): SelectionContext {
     missionTags: desc.missionTags,
   };
   return {
-    player: { keeperLevel: 1, flags: {} },
+    player: { keeperLevel: 1, flags: {}, unlocks: [] },
     entities: [entity],
     inventory: { currencies: {}, items: {} },
     locations: [],
@@ -140,7 +141,7 @@ function descToSelCtx(desc: SynergyEntityDescriptor): SelectionContext {
 /** Map a SynergyActivityContext into a SelectionContext.missionContext. */
 function actCtxToSelCtx(actCtx: SynergyActivityContext, entityCount = 0): SelectionContext {
   return {
-    player: { keeperLevel: 1, flags: {} },
+    player: { keeperLevel: 1, flags: {}, unlocks: [] },
     entities: Array.from({ length: entityCount }, () => ({ traits: {}, stats: {} })),
     inventory: { currencies: {}, items: {} },
     locations: [],
@@ -900,7 +901,7 @@ describe('Stub regression — team_size', () => {
 
   it('RSS team_size gte — returns true when team is large enough', () => {
     const selCtx: SelectionContext = {
-      player: { keeperLevel: 1, flags: {} },
+      player: { keeperLevel: 1, flags: {}, unlocks: [] },
       entities: [{ traits: {}, stats: {} }, { traits: {}, stats: {} }, { traits: {}, stats: {} }],
       inventory: { currencies: {}, items: {} },
       locations: [],
@@ -912,7 +913,7 @@ describe('Stub regression — team_size', () => {
 
   it('RSS team_size gte — returns false when team is too small', () => {
     const selCtx: SelectionContext = {
-      player: { keeperLevel: 1, flags: {} },
+      player: { keeperLevel: 1, flags: {}, unlocks: [] },
       entities: [{ traits: {}, stats: {} }],
       inventory: { currencies: {}, items: {} },
       locations: [],
@@ -958,7 +959,7 @@ describe('Stub regression — building (legacy type "building")', () => {
 
   it('RSS location buildings — true when building present', () => {
     const selCtx: SelectionContext = {
-      player: { keeperLevel: 1, flags: {} },
+      player: { keeperLevel: 1, flags: {}, unlocks: [] },
       entities: [],
       inventory: { currencies: {}, items: {} },
       locations: [{ buildings: [{ buildingDefId: 'forge' }], rooms: [] }],
@@ -969,7 +970,7 @@ describe('Stub regression — building (legacy type "building")', () => {
 
   it('RSS location buildings — false when building absent', () => {
     const selCtx: SelectionContext = {
-      player: { keeperLevel: 1, flags: {} },
+      player: { keeperLevel: 1, flags: {}, unlocks: [] },
       entities: [],
       inventory: { currencies: {}, items: {} },
       locations: [{ buildings: [], rooms: [] }],
@@ -991,7 +992,7 @@ describe('Stub regression — currency', () => {
 
   it('RSS currency_balance gte — true when balance sufficient', () => {
     const selCtx: SelectionContext = {
-      player: { keeperLevel: 1, flags: {} },
+      player: { keeperLevel: 1, flags: {}, unlocks: [] },
       entities: [],
       inventory: { currencies: { gold: 500 }, items: {} },
       locations: [],
@@ -1002,7 +1003,7 @@ describe('Stub regression — currency', () => {
 
   it('RSS currency_balance gte — false when balance insufficient', () => {
     const selCtx: SelectionContext = {
-      player: { keeperLevel: 1, flags: {} },
+      player: { keeperLevel: 1, flags: {}, unlocks: [] },
       entities: [],
       inventory: { currencies: { gold: 50 }, items: {} },
       locations: [],
@@ -1013,7 +1014,7 @@ describe('Stub regression — currency', () => {
 
   it('RSS currency_balance gte — false when currency absent (was stub true)', () => {
     const selCtx: SelectionContext = {
-      player: { keeperLevel: 1, flags: {} },
+      player: { keeperLevel: 1, flags: {}, unlocks: [] },
       entities: [],
       inventory: { currencies: {}, items: {} },
       locations: [],
@@ -1036,7 +1037,7 @@ describe('Stub regression — item', () => {
 
   it('RSS item gte — true when item present', () => {
     const selCtx: SelectionContext = {
-      player: { keeperLevel: 1, flags: {} },
+      player: { keeperLevel: 1, flags: {}, unlocks: [] },
       entities: [],
       inventory: { currencies: {}, items: { sword_001: 2 } },
       locations: [],
@@ -1047,7 +1048,7 @@ describe('Stub regression — item', () => {
 
   it('RSS item gte — false when item absent (was stub true)', () => {
     const selCtx: SelectionContext = {
-      player: { keeperLevel: 1, flags: {} },
+      player: { keeperLevel: 1, flags: {}, unlocks: [] },
       entities: [],
       inventory: { currencies: {}, items: {} },
       locations: [],

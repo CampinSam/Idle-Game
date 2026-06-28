@@ -62,6 +62,10 @@ export function resolveScope(rule: RichSelectionRule, ctx: SelectionContext): an
         const key = field.substring(6);
         return [ctx.player.flags[key]];
       }
+      if (field.startsWith('unlocks.')) {
+        const key = field.substring(8);
+        return [(ctx.player.unlocks ?? []).includes(key) ? 1 : 0];
+      }
       return [undefined];
     }
 

@@ -32,15 +32,19 @@ export class ToggleLocationHandler implements CommandHandler {
     if (enabled) {
       const user = await (ctx.tx as any).user.findUnique({
         where: { id: ctx.userId },
-        select: { keeperLevel: true, bonusOutpostSlots: true },
+        select: { keeperLevel: true },
       });
       if (!user) throw new NotFoundException('User not found');
+
+      const locationSlotUnlocks = await (ctx.tx as any).userUnlock.count({
+        where: { userId: ctx.userId, key: { in: ['location_slot.1', 'location_slot.2', 'location_slot.3'] } },
+      });
 
       const activeCount = await (ctx.tx as any).locationInstance.count({
         where: { ownerUserId: ctx.userId, enabled: true },
       });
 
-      const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel, user.bonusOutpostSlots ?? 0);
+      const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel, locationSlotUnlocks);
 
       if (activeCount >= maxOutposts) {
         const activeLocations = await (ctx.tx as any).locationInstance.findMany({

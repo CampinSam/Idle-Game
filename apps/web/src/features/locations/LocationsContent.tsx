@@ -37,9 +37,11 @@ export default function LocationsContent() {
   if (syncStatus === 'disconnected') return <LocationsPageSkeleton />;
 
   const keeperLevel: number = player?.keeperLevel ?? 1;
-  const bonusSlots: number = player?.bonusOutpostSlots ?? 0;
+  const locationSlotUnlocks = Array.isArray(player?.unlocks)
+    ? (player.unlocks as string[]).filter(k => ['location_slot.1', 'location_slot.2', 'location_slot.3'].includes(k)).length
+    : 0;
   const primaryLocationId: string | null = player?.primaryLocationId ?? null;
-  const slotBudget = outpostSlotBudget(keeperLevel, bonusSlots);
+  const slotBudget = outpostSlotBudget(keeperLevel, locationSlotUnlocks);
 
   const activeLocations = allLocations.filter((l) => l.enabled !== false);
   const activeCount = activeLocations.length;

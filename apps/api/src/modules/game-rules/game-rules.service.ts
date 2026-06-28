@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { EntityTraits, RichSelection, TraitPrimitive } from '@derp/shared';
+import { globToRegex, isGlobPattern } from '@derp/shared';
 import { SelectionResolverService } from '../selection/selection-resolver.service';
 import type { SelectionContext } from '../selection/selection.types';
 
@@ -31,6 +32,7 @@ export interface RequirementContext {
   user: GameUser;
   userFlags: Record<string, unknown>;
   tempFlags?: Record<string, any>;
+  userUnlocks?: string[];
   allPlayerLocations?: LocationContext[];
   currentLocation?: LocationContext;
   parentBuilding?: { buildingDefId: string; rooms?: { roomDefId: string }[] };
@@ -119,6 +121,7 @@ export class GameRulesService {
       player: {
         keeperLevel: Number(context.user.keeperLevel ?? 0),
         flags: context.userFlags,
+        unlocks: context.userUnlocks ?? [],
       },
       entities: (context.team ?? []).map(e => ({
         id: e.id,
@@ -298,15 +301,62 @@ export class GameRulesService {
    * Convenience wrapper that pre-loads all referenced BundleDefs, expands the
    * outcome tree, and then resolves it. Use this instead of the bare
    * `resolveOutcomes` whenever a caller wants `bundle_ref` support.
+   *
+   * grant_unlock items collected during the main pass are expanded here in a
+   * deferred post-loop pass so that flag mutations from earlier items in the
+   * same bundle are visible when evaluating each unlock's requirements.
    */
   async resolveOutcomesAsync(
     items: any[],
     reqContext: RequirementContext,
     rng: { chance: (p: number) => boolean; nextInt: (min: number, max: number) => number },
-  ): Promise<{ resolved: { entry: any; amount?: number }[]; texts: string[]; flags: { entry: any }[] }> {
+  ): Promise<{ resolved: { entry: any; amount?: number }[]; texts: string[]; flags: { entry: any }[]; unlocks: { key: string }[] }> {
     const defs = await this.loadBundleDefs(items);
     const expanded = this.expandBundleRefs(items, defs);
-    return this.resolveOutcomes(expanded, reqContext, rng);
+    const { resolved, texts, flags, deferredUnlocks } = this.resolveOutcomes(expanded, reqContext, rng);
+
+    const unlocks: { key: string }[] = [];
+    for (const pattern of deferredUnlocks) {
+      const keys = await this.expandUnlockPattern(pattern, reqContext);
+      for (const key of keys) {
+        if (!unlocks.some(u => u.key === key)) {
+          unlocks.push({ key });
+        }
+      }
+    }
+
+    return { resolved, texts, flags, unlocks };
+  }
+
+  /**
+   * Expands a single grant_unlock pattern against the UnlockDef registry.
+   * Glob patterns (containing * or **) are matched against all registered keys;
+   * exact patterns perform a single registry lookup.
+   * Defs whose requirements do not pass against `reqContext` are silently skipped.
+   * Unregistered keys are silently skipped.
+   */
+  async expandUnlockPattern(pattern: string, reqContext: RequirementContext): Promise<string[]> {
+    if (isGlobPattern(pattern)) {
+      const regex = globToRegex(pattern);
+      const defs: { key: string; requirements: unknown }[] = await (this.prisma as any).unlockDef.findMany({
+        select: { key: true, requirements: true },
+      });
+      const matched: string[] = [];
+      for (const def of defs) {
+        if (!regex.test(def.key)) continue;
+        if (def.requirements && !this.checkRequirements(def.requirements, reqContext)) continue;
+        matched.push(def.key);
+      }
+      return matched;
+    } else {
+      const def: { key: string; requirements: unknown } | null = await (this.prisma as any).unlockDef.findUnique({
+        where: { key: pattern },
+        select: { key: true, requirements: true },
+      });
+      if (!def) return [];
+      if (def.requirements && !this.checkRequirements(def.requirements, reqContext)) return [];
+      return [def.key];
+    }
   }
 
 
@@ -403,9 +453,10 @@ export class GameRulesService {
     items: any[],
     reqContext: RequirementContext,
     rng: { chance: (p: number) => boolean; nextInt: (min: number, max: number) => number },
-  ): { resolved: { entry: any; amount?: number }[]; texts: string[]; flags: { entry: any }[] } {
+  ): { resolved: { entry: any; amount?: number }[]; texts: string[]; flags: { entry: any }[]; deferredUnlocks: string[] } {
     const texts: string[] = [];
     const flags: { entry: any }[] = [];
+    const deferredUnlocks: string[] = [];
 
     const pickWeightedText = (pool: any[]): { message: string } | undefined => {
       if (pool.length === 0) return undefined;
@@ -514,6 +565,9 @@ export class GameRulesService {
               case 'unset':
               case 'remove':    delete tf[item.key]; break;
             }
+          } else if (item.type === 'grant_unlock') {
+            if (!this.rollOdds(item.odds, rng)) continue;
+            deferredUnlocks.push(item.key as string);
           } else if (item.type === 'emitEvent') {
             if (!this.rollOdds(item.odds, rng)) continue;
             resolved.push({ entry: item });
@@ -530,7 +584,7 @@ export class GameRulesService {
     resolveItems(items);
     applyText(pickWeightedText(collectTexts(items)));
 
-    return { resolved, texts, flags };
+    return { resolved, texts, flags, deferredUnlocks };
   }
 
   async resolveName(type: string, key: string): Promise<string> {
