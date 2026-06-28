@@ -1,4 +1,5 @@
 import type { RichSelectionRule, ScopeType } from '@derp/shared';
+import { globToRegex, isGlobPattern } from '@derp/shared';
 import type { SelectionContext, SelectionEntityContext } from './selection.types';
 
 const STUB_SCOPES: ScopeType[] = [
@@ -63,8 +64,13 @@ export function resolveScope(rule: RichSelectionRule, ctx: SelectionContext): an
         return [ctx.player.flags[key]];
       }
       if (field.startsWith('unlocks.')) {
-        const key = field.substring(8);
-        return [(ctx.player.unlocks ?? []).includes(key) ? 1 : 0];
+        const pattern = field.substring(8);
+        const playerUnlocks = ctx.player.unlocks ?? [];
+        if (isGlobPattern(pattern)) {
+          const regex = globToRegex(pattern);
+          return [playerUnlocks.some(k => regex.test(k)) ? 1 : 0];
+        }
+        return [playerUnlocks.includes(pattern) ? 1 : 0];
       }
       return [undefined];
     }

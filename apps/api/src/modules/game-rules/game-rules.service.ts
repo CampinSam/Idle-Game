@@ -321,6 +321,13 @@ export class GameRulesService {
       for (const key of keys) {
         if (!unlocks.some(u => u.key === key)) {
           unlocks.push({ key });
+          // Propagate into reqContext so later patterns in this resolution can
+          // see keys granted earlier in the same outcome block.
+          if (reqContext.userUnlocks && !reqContext.userUnlocks.includes(key)) {
+            reqContext.userUnlocks.push(key);
+          } else if (!reqContext.userUnlocks) {
+            reqContext.userUnlocks = [key];
+          }
         }
       }
     }

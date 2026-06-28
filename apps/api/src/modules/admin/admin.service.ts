@@ -233,9 +233,10 @@ export class AdminService {
     if (data.prestigeTokens !== undefined) updateData.prestigeTokens = data.prestigeTokens;
 
     const updated = await this.prisma.user.update({ where: { id }, data: updateData });
+    const updatedUnlocks: { key: string }[] = await (this.prisma as any).userUnlock.findMany({ where: { userId: id }, select: { key: true } });
 
     const pb = new PatchBuilder();
-    pb.upsertPlayer(updated);
+    pb.upsertPlayer(updated, updatedUnlocks.map(u => u.key));
 
     const meaningfulChange = data.keeperLevel !== undefined || data.keeperXp !== undefined || data.prestigeTokens !== undefined;
     if (meaningfulChange) {
