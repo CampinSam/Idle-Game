@@ -27,6 +27,7 @@ import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
 import { buildInjuredUntilMap, consumeSessionEffectCharges, PhaseInjury } from './mission-phase.utils';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 // ── Mission tier helpers (mirrors crafting.service.ts pattern) ───────────────
 
@@ -89,6 +90,7 @@ export class MissionService {
     private synergyResolver: SynergyResolverService,
     private telemetryContextBuilder: TelemetryContextBuilderService,
     private gameConstants: GameConstantsService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   private async isCategoryChainEnabled(categoryId: string, db?: any): Promise<boolean> {
@@ -286,7 +288,7 @@ export class MissionService {
       );
     }
     const db = externalTx;
-    const dbDef = await (db as any).missionDef.findFirst({ where: { OR: [{ id: missionDefId }, { key: missionDefId }] } });
+    const dbDef = this.definitionCache.get('missionDef', missionDefId);
     if (!dbDef) throw new NotFoundException('Mission not found');
 
     if (dbDef.enabled === false) {
@@ -534,7 +536,7 @@ export class MissionService {
   }
 
   async getMissionSynergyPreview(userId: string, defId: string, entityIds: string[]): Promise<any> {
-    const def = await (this.prisma as any).missionDef.findFirst({ where: { OR: [{ id: defId }, { key: defId }] } });
+    const def = this.definitionCache.get('missionDef', defId);
     if (!def) throw new NotFoundException('Mission not found');
 
     const entities: any[] = [];
@@ -706,7 +708,7 @@ export class MissionService {
     }
 
     const missionDefId = mission.defId;
-    const def = await (db as any).missionDef.findFirst({ where: { OR: [{ id: missionDefId }, { key: missionDefId }] } });
+    const def = this.definitionCache.get('missionDef', missionDefId);
     if (!def) {
       this.logger.warn(`completeMission: definition not found for defId=${missionDefId}, failing job gracefully`);
       const entityIds = (mission.team as string[]) || [];
@@ -1365,7 +1367,7 @@ export class MissionService {
     });
     if (!job) throw new NotFoundException('No phase_ready mission found');
 
-    const def = await (db as any).missionDef.findFirst({ where: { OR: [{ id: job.defId }, { key: job.defId }] } });
+    const def = this.definitionCache.get('missionDef', job.defId);
     const phases: any[] = Array.isArray(def?.phases) ? def.phases : [];
     const nextPhaseIndex = (job.currentPhase ?? 0) + 1;
     if (nextPhaseIndex >= phases.length) {

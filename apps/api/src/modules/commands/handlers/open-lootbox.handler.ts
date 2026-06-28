@@ -10,6 +10,7 @@ import { NotificationService } from '../../notification/notification.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { resolveSpec } from '../../ui/modal-def-resolver.util';
 import * as crypto from 'crypto';
+import { DefinitionCacheService } from '../../definition-cache/definition-cache.service';
 
 @Injectable()
 export class OpenLootBoxHandler implements CommandHandler {
@@ -21,6 +22,7 @@ export class OpenLootBoxHandler implements CommandHandler {
     private gameRules: GameRulesService,
     private notificationService: NotificationService,
     private prisma: PrismaService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -43,7 +45,7 @@ export class OpenLootBoxHandler implements CommandHandler {
       ((item.definition?.data as any) ?? (item.data as any) ?? {}).lootboxDefId;
     if (!lootboxDefId) throw new BadRequestException('Item has no lootboxDefId');
 
-    const lootboxDef = await (ctx.tx as any).lootboxDef.findFirst({ where: { OR: [{ id: lootboxDefId }, { key: lootboxDefId }] } });
+    const lootboxDef = this.definitionCache.get('lootboxDef', lootboxDefId);
     if (!lootboxDef) throw new NotFoundException(`LootboxDef "${lootboxDefId}" not found`);
     if (!lootboxDef.enabled) throw new BadRequestException('This lootbox is currently disabled');
 

@@ -28,7 +28,7 @@ import { CommandService } from '../commands/command.service';
 import { TickEventProcessorService } from '../tick/tick-event-processor.service';
 import { NotificationService } from '../notification/notification.service';
 import { BootstrapCacheService } from '../query/bootstrap-cache.service';
-import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
+import { DefinitionCacheService, DefinitionType } from '../definition-cache/definition-cache.service';
 import {
   resolveDefRecord,
   resolveScreenSectionProps,
@@ -572,7 +572,7 @@ export class AdminService {
    */
   private async invalidateDefinitionCacheEntry(table: string): Promise<void> {
     try {
-      await this.definitionCache.invalidate(table);
+      await this.definitionCache.invalidate(table as DefinitionType);
     } catch (err) {
       this.logger.warn(`DefinitionCache invalidation failed for ${table}: ${(err as any)?.message ?? err}`);
     }

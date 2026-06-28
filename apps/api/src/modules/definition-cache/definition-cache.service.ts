@@ -2,164 +2,224 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
- * Global in-process cache for all game definition tables.
+ * All known game definition table names. This union is the typed key used
+ * for every cache getter and invalidation call. Extend it when a new
+ * definition table is added to the admin panel.
+ */
+export type DefinitionType =
+  | 'missionDef'
+  | 'recipeDef'
+  | 'buildingDef'
+  | 'roomDef'
+  | 'currency'
+  | 'itemDef'
+  | 'displayDef'
+  | 'missionCategoryDef'
+  | 'entityDefinition'
+  | 'regionDefinition'
+  | 'locationDefinition'
+  | 'eventDefinition'
+  | 'giftDef'
+  | 'lootboxDef'
+  | 'unlockDef'
+  | 'bundleDef'
+  | 'checkInDef'
+  | 'questDef'
+  | 'shopItemDef'
+  | 'shopTabDef'
+  | 'shopSectionDef'
+  | 'shopHeroDef'
+  | 'nftCollectionDef'
+  | 'modalDef'
+  | 'defaultModalDef'
+  | 'effectDef'
+  | 'tagDef'
+  | 'visualEffectDef'
+  | 'season'
+  | 'homeBannerDef'
+  | 'systemIconDef'
+  | 'selectionRuleDef'
+  | 'synergyRule'
+  | 'telemetryDef'
+  | 'gameDefinition'
+  | 'cryptoRateConfig'
+  | 'powerDef'
+  | 'gameConstant';
+
+const ALL_TYPES: DefinitionType[] = [
+  'missionDef', 'recipeDef', 'buildingDef', 'roomDef', 'currency',
+  'itemDef', 'displayDef', 'missionCategoryDef', 'entityDefinition',
+  'regionDefinition', 'locationDefinition', 'eventDefinition', 'giftDef',
+  'lootboxDef', 'unlockDef', 'bundleDef', 'checkInDef', 'questDef',
+  'shopItemDef', 'shopTabDef', 'shopSectionDef', 'shopHeroDef',
+  'nftCollectionDef', 'modalDef', 'defaultModalDef', 'effectDef',
+  'tagDef', 'visualEffectDef', 'season', 'homeBannerDef', 'systemIconDef',
+  'selectionRuleDef', 'synergyRule', 'telemetryDef', 'gameDefinition',
+  'cryptoRateConfig', 'powerDef', 'gameConstant',
+];
+
+interface TypeStore {
+  /** Primary lookup: id → record */
+  byId: Map<string, any>;
+  /** Secondary lookup: key slug → record (empty for tables without a key column) */
+  byKey: Map<string, any>;
+  loadedAt: number;
+}
+
+/**
+ * Global in-process definition cache.
  *
- * Definition tables (missionDef, itemDef, giftDef, etc.) are read-only during
- * normal gameplay — they only change when an admin edits content. Caching them
- * eliminates repeated DB round-trips on every player action and on every
- * tick-event-processor pass.
+ * All game definition tables are read-only during normal gameplay — they only
+ * change when an admin edits content. This service caches every definition
+ * table into a pair of `Map` instances (keyed by `id` and by `key`) so that
+ * gameplay-time lookups are O(1) with zero DB round-trips.
  *
- * Cache lifetime: indefinite by default (process-lifetime). The admin CRUD
- * handler calls `invalidate(table)` on every create/update/delete so the cache
- * reflects content changes within milliseconds. If the process restarts the
- * cache is rebuilt automatically at startup via `onModuleInit`.
+ * ## Lifecycle
+ * - Eager: all tables are loaded at `onModuleInit`. NestJS guarantees this
+ *   completes before any request handler runs, making all getters
+ *   synchronous and safe to call without `await`.
+ * - Invalidation: admin CRUD calls `invalidate(type)` after every
+ *   create/update/delete. The store is rebuilt from the DB within
+ *   milliseconds of a content change.
  *
- * Usage:
- *   const def = await this.defCache.getById('missionDef', jobDefId);
- *   const all = await this.defCache.getAll('giftDef');
+ * ## Usage
+ * ```typescript
+ * // Synchronous — no await needed after module init
+ * const def = this.definitionCache.get('missionDef', job.defId);
+ * const all = this.definitionCache.getAll('giftDef');
+ * ```
+ *
+ * ## Injection
+ * The module is `@Global()` — inject `DefinitionCacheService` directly
+ * without adding `DefinitionCacheModule` to any module's imports.
  */
 @Injectable()
 export class DefinitionCacheService implements OnModuleInit {
   private readonly logger = new Logger(DefinitionCacheService.name);
-
-  /** Map from admin-table-name → array of all records */
-  private readonly cache = new Map<string, any[]>();
-
-  /** Map from admin-table-name → timestamp of last load */
-  private readonly loadedAt = new Map<string, number>();
+  private readonly stores = new Map<DefinitionType, TypeStore>();
 
   constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit(): Promise<void> {
-    // Warm the cache for the highest-frequency definition tables at startup.
-    // Lower-frequency tables are lazily loaded on first access.
-    const eagerly = [
-      'missionDef',
-      'itemDef',
-      'giftDef',
-      'lootboxDef',
-      'effectDef',
-      'entityDefinition',
-      'locationDefinition',
-      'questDef',
-      'recipeDef',
-      'buildingDef',
-      'unlockDef',
-      'checkInDef',
-      'powerDef',
-    ];
     await Promise.allSettled(
-      eagerly.map((t) =>
-        this.reload(t).catch((err) =>
-          this.logger.warn(`Definition cache warm failed for ${t}: ${err}`),
+      ALL_TYPES.map((type) =>
+        this.reload(type).catch((err) =>
+          this.logger.warn(`Definition cache warm failed for ${type}: ${err}`),
         ),
       ),
     );
-    this.logger.log('Definition cache warmed');
+    this.logger.log(`Definition cache warmed: ${this.stores.size} tables loaded`);
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Public synchronous API (safe after onModuleInit resolves)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Returns the definition record matching `idOrKey` from the given table.
+   * Matches on the `id` field first, then the `key` slug field.
+   * Returns `null` if not found or if the table has not been loaded.
+   */
+  get(type: DefinitionType, idOrKey: string): any | null {
+    const store = this.stores.get(type);
+    if (!store) return null;
+    return store.byId.get(idOrKey) ?? store.byKey.get(idOrKey) ?? null;
   }
 
   /**
-   * Returns all records for the given definition table (cached).
+   * Returns all records for the given definition table in insertion order.
+   * Returns `[]` if the table has not been loaded.
    */
-  async getAll(table: string): Promise<any[]> {
-    if (!this.cache.has(table)) {
-      return this.reload(table);
-    }
-    return this.cache.get(table)!;
+  getAll(type: DefinitionType): any[] {
+    const store = this.stores.get(type);
+    if (!store) return [];
+    return [...store.byId.values()];
   }
 
-  /**
-   * Returns a single record matching `id` from the given definition table.
-   * Looks up the `id` field (UUID) or the `key` field.
-   */
-  async getById(table: string, id: string): Promise<any | null> {
-    const all = await this.getAll(table);
-    return all.find((r) => r.id === id || r.key === id) ?? null;
-  }
+  // ─────────────────────────────────────────────────────────
+  // Admin invalidation (typed, best-effort, async)
+  // ─────────────────────────────────────────────────────────
 
   /**
-   * Returns a single record matching the `key` field (slug) from the given
-   * definition table. Falls back to matching `id` if no `key` field exists.
+   * Clears the cached store for `type` and reloads it from the DB.
+   * Called by `AdminService` after every create/update/delete on a definition
+   * table. Non-fatal: a reload failure is logged but does not surface to the
+   * admin caller — the stale (or now-empty) cache will re-load on the next
+   * invalidation cycle.
    */
-  async getByKey(table: string, key: string): Promise<any | null> {
-    const all = await this.getAll(table);
-    return all.find((r) => r.key === key || r.id === key) ?? null;
-  }
-
-  /**
-   * Invalidates the cache entry for the given table and reloads it from the DB.
-   * Called by admin CRUD on every create/update/delete.
-   */
-  async invalidate(table: string): Promise<void> {
-    this.cache.delete(table);
-    this.loadedAt.delete(table);
+  async invalidate(type: DefinitionType): Promise<void> {
+    this.stores.delete(type);
     try {
-      await this.reload(table);
-      this.logger.log(`Definition cache reloaded: ${table}`);
+      await this.reload(type);
+      this.logger.log(`Definition cache reloaded: ${type}`);
     } catch (err) {
-      // Non-fatal: the cache will re-load on the next access attempt.
-      this.logger.warn(`Definition cache reload failed for ${table}: ${err}`);
+      this.logger.warn(`Definition cache reload failed for ${type}: ${err}`);
     }
   }
 
-  private async reload(table: string): Promise<any[]> {
-    const model = this.resolveModel(table);
+  // ─────────────────────────────────────────────────────────
+  // Internal
+  // ─────────────────────────────────────────────────────────
+
+  private async reload(type: DefinitionType): Promise<void> {
+    const model = this.resolveModel(type);
     if (!model) {
-      // Unknown table — store empty so repeated misses don't hammer the logger.
-      this.cache.set(table, []);
-      return [];
+      this.stores.set(type, { byId: new Map(), byKey: new Map(), loadedAt: Date.now() });
+      return;
     }
-    const data: any[] = await model.findMany();
-    this.cache.set(table, data);
-    this.loadedAt.set(table, Date.now());
-    return data;
+    const records: any[] = await model.findMany();
+    const byId = new Map<string, any>();
+    const byKey = new Map<string, any>();
+    for (const r of records) {
+      if (r.id != null) byId.set(String(r.id), r);
+      if (r.key != null) byKey.set(String(r.key), r);
+    }
+    this.stores.set(type, { byId, byKey, loadedAt: Date.now() });
   }
 
-  /**
-   * Maps admin table names to Prisma model handles.
-   * Returns null for tables that are not definition tables or are unknown.
-   */
-  private resolveModel(table: string): any | null {
-    const map: Record<string, any> = {
-      missionDef: (this.prisma as any).missionDef,
-      recipeDef: (this.prisma as any).recipeDef,
-      buildingDef: (this.prisma as any).buildingDef,
-      roomDef: (this.prisma as any).roomDef,
-      currency: (this.prisma as any).currency,
-      itemDef: (this.prisma as any).itemDefinition,
-      displayDef: (this.prisma as any).displayDef,
-      missionCategoryDef: (this.prisma as any).missionCategoryDef,
-      entityDefinition: (this.prisma as any).entityDefinition,
-      regionDefinition: (this.prisma as any).regionDefinition,
-      locationDefinition: (this.prisma as any).locationDefinition,
-      eventDefinition: (this.prisma as any).eventDefinition,
-      giftDef: (this.prisma as any).giftDef,
-      lootboxDef: (this.prisma as any).lootboxDef,
-      unlockDef: (this.prisma as any).unlockDef,
-      bundleDef: (this.prisma as any).bundleDef,
-      checkInDef: (this.prisma as any).checkInDef,
-      questDef: (this.prisma as any).questDef,
-      shopItemDef: (this.prisma as any).shopItemDef,
-      shopTabDef: (this.prisma as any).shopTabDef,
-      shopSectionDef: (this.prisma as any).shopSectionDef,
-      shopHeroDef: (this.prisma as any).shopHeroDef,
-      nftCollectionDef: (this.prisma as any).nftCollectionDef,
-      modalDef: (this.prisma as any).modalDef,
-      defaultModalDef: (this.prisma as any).defaultModalDef,
-      effectDef: (this.prisma as any).effectDef,
-      tagDef: (this.prisma as any).tagDef,
-      visualEffectDef: (this.prisma as any).visualEffectDef,
-      season: (this.prisma as any).season,
-      homeBannerDef: (this.prisma as any).homeBannerDef,
-      systemIconDef: (this.prisma as any).systemIconDef,
-      selectionRuleDef: (this.prisma as any).selectionRuleDef,
-      synergyRule: (this.prisma as any).synergyRule,
-      telemetryDef: (this.prisma as any).telemetryDef,
-      gameDefinition: (this.prisma as any).gameDefinition,
-      cryptoRateConfig: (this.prisma as any).cryptoRateConfig,
-      powerDef: (this.prisma as any).powerDef,
-      gameConstant: (this.prisma as any).gameConstant,
+  /** Maps `DefinitionType` → the corresponding Prisma model handle. */
+  private resolveModel(type: DefinitionType): any | null {
+    const p = this.prisma as any;
+    const map: Record<DefinitionType, any> = {
+      missionDef: p.missionDef,
+      recipeDef: p.recipeDef,
+      buildingDef: p.buildingDef,
+      roomDef: p.roomDef,
+      currency: p.currency,
+      itemDef: p.itemDefinition,
+      displayDef: p.displayDef,
+      missionCategoryDef: p.missionCategoryDef,
+      entityDefinition: p.entityDefinition,
+      regionDefinition: p.regionDefinition,
+      locationDefinition: p.locationDefinition,
+      eventDefinition: p.eventDefinition,
+      giftDef: p.giftDef,
+      lootboxDef: p.lootboxDef,
+      unlockDef: p.unlockDef,
+      bundleDef: p.bundleDef,
+      checkInDef: p.checkInDef,
+      questDef: p.questDef,
+      shopItemDef: p.shopItemDef,
+      shopTabDef: p.shopTabDef,
+      shopSectionDef: p.shopSectionDef,
+      shopHeroDef: p.shopHeroDef,
+      nftCollectionDef: p.nftCollectionDef,
+      modalDef: p.modalDef,
+      defaultModalDef: p.defaultModalDef,
+      effectDef: p.effectDef,
+      tagDef: p.tagDef,
+      visualEffectDef: p.visualEffectDef,
+      season: p.season,
+      homeBannerDef: p.homeBannerDef,
+      systemIconDef: p.systemIconDef,
+      selectionRuleDef: p.selectionRuleDef,
+      synergyRule: p.synergyRule,
+      telemetryDef: p.telemetryDef,
+      gameDefinition: p.gameDefinition,
+      cryptoRateConfig: p.cryptoRateConfig,
+      powerDef: p.powerDef,
+      gameConstant: p.gameConstant,
     };
-    return map[table] ?? null;
+    return map[type] ?? null;
   }
 }

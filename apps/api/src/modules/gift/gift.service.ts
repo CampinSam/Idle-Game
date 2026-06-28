@@ -14,6 +14,7 @@ import { GameRulesService } from '../game-rules/game-rules.service';
 import { resolveRewardSpec } from './reward-resolver.util';
 import { resolveRewardSpecContext } from './reward-spec-resolver.util';
 import type { GiftSpec } from '@derp/shared';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 @Injectable()
 export class GiftService {
@@ -24,6 +25,7 @@ export class GiftService {
     private inventoryService: InventoryService,
     private telemetryService: TelemetryService,
     private gameRules: GameRulesService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   private get giftInstance() {
@@ -49,9 +51,7 @@ export class GiftService {
     modalDefId: string | null;
   }> {
     if ('giftDefId' in spec) {
-      const def = await this.giftDef.findFirst({
-        where: { OR: [{ id: spec.giftDefId }, { key: spec.giftDefId }] },
-      });
+      const def = this.definitionCache.get('giftDef', spec.giftDefId);
       if (!def) {
         throw new NotFoundException(`GiftDef "${spec.giftDefId}" not found`);
       }

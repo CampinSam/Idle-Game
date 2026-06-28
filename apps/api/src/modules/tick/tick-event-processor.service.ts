@@ -466,7 +466,7 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
     job: any,
     currentTick: number,
   ): Promise<{ patches: any[]; shouldNotify: boolean }> {
-    const def = await (this.definitionCache as any).getById('missionDef', job.defId);
+    const def = this.definitionCache.get('missionDef', job.defId);
     if (!def) {
       this.logger.warn(`Multi-phase: missionDef not found for job ${job.id}`);
       const updated = await (this.prisma as any).job.update({

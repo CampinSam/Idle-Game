@@ -305,6 +305,7 @@ function buildMissionService(db: any): MissionService {
 
   const gameConstants: any = { get: jest.fn(async () => 300) };
 
+  const fakeDefinitionCache: any = { get: jest.fn(() => null), getAll: jest.fn(() => []), invalidate: jest.fn() };
   return new MissionService(
     db,
     entityService,
@@ -320,6 +321,7 @@ function buildMissionService(db: any): MissionService {
     synergyResolver,
     telemetryContextBuilder,
     gameConstants,
+    fakeDefinitionCache,
   );
 }
 

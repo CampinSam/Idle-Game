@@ -9,6 +9,7 @@ import { GameRulesService, RequirementContext } from '../game-rules/game-rules.s
 import { SelectionResolverService } from '../selection/selection-resolver.service';
 import { SeededRng } from '@derp/math';
 import { getWindowStart } from '../../common/util/cadence';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 // A QuestDef.cadence value of 'daily' or 'weekly' means the quest auto-resets
 // at the start of the next UTC day (or UTC Monday). 'oneoff' is the legacy
@@ -61,6 +62,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     private inventoryService: InventoryService,
     private gameRules: GameRulesService,
     private selectionResolver: SelectionResolverService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   onModuleInit() {
@@ -85,9 +87,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
 
     // Load all enabled defs. We evaluate each objective's unified selector against
     // a combined SelectionContext that includes the live telemetry event.
-    const allEnabledDefs = await (db as any).questDef.findMany({
-      where: { enabled: true },
-    });
+    const allEnabledDefs = this.definitionCache.getAll('questDef').filter((d: any) => d.enabled);
 
     // Build the combined context: base player/world context from the event (if
     // present) extended with the event payload so `event` scope rules work.
@@ -237,7 +237,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       return existing;
     }
 
-    const def = await (db as any).questDef.findUnique({ where: { id: questDefId } });
+    const def = this.definitionCache.get('questDef', questDefId);
     if (!def || !def.enabled) return null;
 
     const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
@@ -457,7 +457,12 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     if (category !== undefined && category !== null) where.category = category;
 
     const [defs, instances] = await Promise.all([
-      (this.prisma as any).questDef.findMany({ where, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }),
+      Promise.resolve(
+        this.definitionCache
+          .getAll('questDef')
+          .filter((d: any) => d.enabled && (category === undefined || category === null || d.category === category))
+          .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+      ),
       (this.prisma as any).questInstance.findMany({
         where: { userId },
         include: { questDef: true },

@@ -5,6 +5,7 @@ import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { windowsMissed } from '../../common/util/cadence';
 import type { GiftSpec } from '@derp/shared';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 @Injectable()
 export class CheckInService {
@@ -15,10 +16,11 @@ export class CheckInService {
     private giftService: GiftService,
     private telemetryService: TelemetryService,
     private telemetryContextBuilder: TelemetryContextBuilderService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   async ensureInstances(userId: string): Promise<void> {
-    const defs = await (this.prisma as any).checkInDef.findMany({ where: { enabled: true } });
+    const defs = this.definitionCache.getAll('checkInDef').filter((d: any) => d.enabled);
     for (const def of defs) {
       try {
         await (this.prisma as any).checkInInstance.upsert({
@@ -43,7 +45,7 @@ export class CheckInService {
 
     const now = new Date();
 
-    const defs = await (db as any).checkInDef.findMany({ where: { enabled: true } });
+    const defs = this.definitionCache.getAll('checkInDef').filter((d: any) => d.enabled);
     const issuedGiftIds: string[] = [];
 
     for (const def of defs) {

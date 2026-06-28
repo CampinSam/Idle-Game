@@ -13,6 +13,7 @@ import { EffectService } from '../effect/effect.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 import { EffectCategory, applyModifier, type TraitPrimitive } from '@derp/shared';
 import {
   calculateCraftingLuck,
@@ -81,6 +82,7 @@ export class CraftingService {
     private telemetryService: TelemetryService,
     private synergyResolver: SynergyResolverService,
     private telemetryContextBuilder: TelemetryContextBuilderService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   private mapJobToCraftingResponse(job: any) {
@@ -176,7 +178,7 @@ export class CraftingService {
     let recipeCenterOverrides: Partial<Record<string, number>> = {};
     let recipeSigma: number | undefined;
     if (options.recipeId) {
-      const recipe = await (this.prisma as any).recipeDef.findFirst({ where: { OR: [{ id: options.recipeId }, { key: options.recipeId }] } });
+      const recipe = this.definitionCache.get('recipeDef', options.recipeId);
       if (recipe) {
         recipeTiersMap = (recipe.tiers as any) ?? {};
         for (const [key, block] of Object.entries(recipeTiersMap!)) {
@@ -364,7 +366,7 @@ export class CraftingService {
       }
     }
 
-    const recipe = await (this.prisma as any).recipeDef.findFirst({ where: { OR: [{ id: recipeId }, { key: recipeId }] } });
+    const recipe = this.definitionCache.get('recipeDef', recipeId);
     if (!recipe) throw new NotFoundException('Recipe not found');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -553,7 +555,7 @@ export class CraftingService {
     const jobQuantity: number = (job.data as any)?.quantity ?? 1;
 
     const recipeId = job.defId;
-    const recipe = await (this.prisma as any).recipeDef.findFirst({ where: { OR: [{ id: recipeId }, { key: recipeId }] } });
+    const recipe = this.definitionCache.get('recipeDef', recipeId);
     if (!recipe) {
       this.logger.warn(`collectCrafting: definition not found for defId=${recipeId}, failing job gracefully`);
       await this.entityService.setEntityStatus(entity.id, userId, 'idle');
