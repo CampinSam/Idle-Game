@@ -87,6 +87,8 @@ function makeService() {
     completeBuilding: jest.fn(async () => ({ id: 'b1', updatedNotification: null })),
   };
 
+  const definitionCache: any = { getById: jest.fn(async () => null), getAll: jest.fn(async () => []) };
+
   const svc = new TickEventProcessorService(
     prisma as any,
     tickService,
@@ -95,6 +97,7 @@ function makeService() {
     globalPowerService,
     boostService,
     locationService,
+    definitionCache,
   );
 
   (svc as any).logger = {

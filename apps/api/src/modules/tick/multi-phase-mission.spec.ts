@@ -140,6 +140,8 @@ function makeService(store: PrismaStore) {
   const boostService: any = { expireStaleBoosts: jest.fn(async () => 0) };
   const locationService: any = { completeBuilding: jest.fn(async () => ({ id: 'b1', updatedNotification: null })) };
 
+  const definitionCache: any = { getById: jest.fn(async (t: string, id: string) => (prisma as any).missionDef?.findFirst({ where: { OR: [{ id }, { key: id }] } })), getAll: jest.fn(async () => []) };
+
   const svc = new TickEventProcessorService(
     prisma as any,
     tickService,
@@ -148,6 +150,7 @@ function makeService(store: PrismaStore) {
     globalPowerService,
     boostService,
     locationService,
+    definitionCache,
   );
 
   (svc as any).logger = {

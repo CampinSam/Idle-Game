@@ -7,3 +7,4 @@
 - [World cluster UUID lookup patterns](world-cluster-uuid-lookups.md) — slug-based game rules (buildingDefId, roomDefId) must look up by `key`; entity/location def lookups from commands use OR dual; createStarterOutpost resolves slug by key before FK insert.
 - [Admin roles self-heal pattern](admin-roles-self-heal.md) — db push --accept-data-loss truncated admin_roles; BootstrapService.seedBuiltInRoles() upserts on every startup; seed.ts syncs snapshot back to Object Storage post-deploy.
 - [Prisma NOT filter excludes NULLs](prisma-not-null-pitfall.md) — NOT: { field: 0 } in Prisma silently drops NULL rows; use OR [{ field: null }, { field: { gt: 0 } }] instead.
+- [Bootstrap + definition cache architecture](bootstrap-definition-cache.md) — two in-process cache layers eliminate per-request DB hits on definition and catalog tables; admin CRUD auto-invalidates both.

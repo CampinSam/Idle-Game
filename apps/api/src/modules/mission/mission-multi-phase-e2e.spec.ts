@@ -333,6 +333,11 @@ function buildTickProcessor(db: any): TickEventProcessorService {
   const boostService: any = {};
   const locationService: any = {};
 
+  const definitionCache: any = {
+    getById: jest.fn(async (_t: string, id: string) => db.missionDef.findFirst({ where: { OR: [{ id }, { key: id }] } })),
+    getAll: jest.fn(async () => []),
+  };
+
   return new TickEventProcessorService(
     db,
     tickService,
@@ -341,6 +346,7 @@ function buildTickProcessor(db: any): TickEventProcessorService {
     globalPowerService,
     boostService,
     locationService,
+    definitionCache,
   );
 }
 

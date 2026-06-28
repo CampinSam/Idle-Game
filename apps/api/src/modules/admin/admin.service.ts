@@ -27,6 +27,8 @@ import { PubSubService } from '../infrastructure/pubsub.service';
 import { CommandService } from '../commands/command.service';
 import { TickEventProcessorService } from '../tick/tick-event-processor.service';
 import { NotificationService } from '../notification/notification.service';
+import { BootstrapCacheService } from '../query/bootstrap-cache.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 import {
   resolveDefRecord,
   resolveScreenSectionProps,
@@ -86,6 +88,8 @@ export class AdminService {
     private nftCollectionService: NftCollectionService,
     private notificationService: NotificationService,
     private powerGrantService: PowerGrantService,
+    private bootstrapCache: BootstrapCacheService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   /**
@@ -463,6 +467,8 @@ export class AdminService {
     const created = await model.create({ data });
     await this.broadcastIfHomeBanner(table);
     await this.invalidateIfSelectionRule(table);
+    await this.invalidateBootstrapCatalogIfNeeded(table);
+    await this.invalidateDefinitionCacheEntry(table);
     return serializeBigInts(created);
   }
 
@@ -487,6 +493,8 @@ export class AdminService {
     const updated = await model.update({ where: { id: resolvedId }, data });
     await this.broadcastIfHomeBanner(table);
     await this.invalidateIfSelectionRule(table);
+    await this.invalidateBootstrapCatalogIfNeeded(table);
+    await this.invalidateDefinitionCacheEntry(table);
     return serializeBigInts(updated);
   }
 
@@ -527,6 +535,8 @@ export class AdminService {
     const deleted = await model.delete({ where: { id: resolvedId } });
     await this.broadcastIfHomeBanner(table);
     await this.invalidateIfSelectionRule(table);
+    await this.invalidateBootstrapCatalogIfNeeded(table);
+    await this.invalidateDefinitionCacheEntry(table);
     return serializeBigInts(deleted);
   }
 
@@ -536,6 +546,35 @@ export class AdminService {
       await this.selectionResolver.reloadRuleCache();
     } catch (err) {
       this.logger.warn(`SelectionRuleDef cache reload failed: ${(err as any)?.message ?? err}`);
+    }
+  }
+
+  /**
+   * After any write to a bootstrap catalog table (tagDef, visualEffectDef,
+   * systemIconDef, currency, season), invalidates the BootstrapCacheService
+   * so the next player bootstrap picks up the change without a restart.
+   * Best-effort — logs and swallows errors.
+   */
+  private async invalidateBootstrapCatalogIfNeeded(table: string): Promise<void> {
+    const catalogTables = ['tagDef', 'visualEffectDef', 'systemIconDef', 'currency', 'season'] as const;
+    if (!(catalogTables as readonly string[]).includes(table)) return;
+    try {
+      await this.bootstrapCache.invalidate(table as any);
+    } catch (err) {
+      this.logger.warn(`BootstrapCache invalidation failed for ${table}: ${(err as any)?.message ?? err}`);
+    }
+  }
+
+  /**
+   * After any admin write, invalidates the DefinitionCacheService entry for
+   * that table so gameplay paths using the cache pick up the change immediately.
+   * Best-effort — logs and swallows errors.
+   */
+  private async invalidateDefinitionCacheEntry(table: string): Promise<void> {
+    try {
+      await this.definitionCache.invalidate(table);
+    } catch (err) {
+      this.logger.warn(`DefinitionCache invalidation failed for ${table}: ${(err as any)?.message ?? err}`);
     }
   }
 

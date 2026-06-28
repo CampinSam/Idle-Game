@@ -100,8 +100,16 @@ function addStats(into: StatMap, add: Record<string, unknown> | null | undefined
  * equipped-stat overlay. Used by every code path that ships an entity to
  * the client (bootstrap, deltas, command patches) so the UI sees the
  * canonical shape everywhere.
+ *
+ * @param preloadedItems - Optional pre-fetched item instance map keyed by
+ *   itemInstanceId. When provided, skips the per-entity DB query entirely.
+ *   Pass this from bootstrap after batching all equipped item IDs in one query.
  */
-export async function serializeEntityFull(tx: any, entity: any): Promise<any> {
+export async function serializeEntityFull(
+  tx: any,
+  entity: any,
+  preloadedItems?: Map<string, any>,
+): Promise<any> {
   const progression = (entity.progression as any) || {};
   if (progression && typeof progression.xp === 'bigint') {
     progression.xp = Number(progression.xp);
@@ -116,14 +124,19 @@ export async function serializeEntityFull(tx: any, entity: any): Promise<any> {
   if (equipmentRows.length > 0) {
     const itemIds = equipmentRows.map((eq) => eq.itemInstanceId).filter(Boolean);
     if (itemIds.length > 0) {
-      const items = await tx.itemInstance.findMany({
-        where: { id: { in: itemIds } },
-        include: {
-          definition: {
-            select: { id: true, name: true, iconKey: true, rarity: true, equipData: true },
+      let items: any[];
+      if (preloadedItems) {
+        items = itemIds.map((id: string) => preloadedItems.get(id)).filter(Boolean);
+      } else {
+        items = await tx.itemInstance.findMany({
+          where: { id: { in: itemIds } },
+          include: {
+            definition: {
+              select: { id: true, name: true, iconKey: true, rarity: true, equipData: true },
+            },
           },
-        },
-      });
+        });
+      }
       for (const inst of items) {
         const equipData = inst.definition?.equipData as any;
         addStats(equippedStats, equipData?.stats);
@@ -149,19 +162,31 @@ export async function serializeEntityFull(tx: any, entity: any): Promise<any> {
  * have been loaded with `equipment: true`. Sums `equipData.stats` from each
  * equipped item instance on top of the entity's `stats` (base) — same math
  * `serializeEntityFull` runs, but without the wrapping serializer payload.
+ *
+ * @param preloadedItems - Optional pre-fetched item instance map keyed by
+ *   itemInstanceId. When provided, skips the per-entity DB query entirely.
  */
-export async function computeEquippedStats(tx: any, entity: any): Promise<StatMap> {
+export async function computeEquippedStats(
+  tx: any,
+  entity: any,
+  preloadedItems?: Map<string, any>,
+): Promise<StatMap> {
   const out = normalizeStats(entity?.stats);
   const equipmentRows: any[] = Array.isArray(entity?.equipment) ? entity.equipment : [];
   const itemIds = equipmentRows.map((eq) => eq.itemInstanceId).filter(Boolean);
   if (itemIds.length === 0) return out;
 
-  const items = await tx.itemInstance.findMany({
-    where: { id: { in: itemIds } },
-    include: {
-      definition: { select: { equipData: true } },
-    },
-  });
+  let items: any[];
+  if (preloadedItems) {
+    items = itemIds.map((id: string) => preloadedItems.get(id)).filter(Boolean);
+  } else {
+    items = await tx.itemInstance.findMany({
+      where: { id: { in: itemIds } },
+      include: {
+        definition: { select: { equipData: true } },
+      },
+    });
+  }
   for (const inst of items) {
     const equipData = inst.definition?.equipData as any;
     addStats(out, equipData?.stats);
@@ -173,6 +198,9 @@ export async function computeEquippedStats(tx: any, entity: any): Promise<StatMa
  * Loads the given entity ids and returns the elementwise sum of their
  * equipped stats. Used by location settlement to drive the stat-based
  * worker production / consumption multipliers.
+ *
+ * Batches all item instance lookups into a single query instead of one
+ * per entity to avoid N+1 DB hits when multiple workers are assigned.
  */
 export async function sumEquippedStatsForEntities(tx: any, entityIds: string[]): Promise<StatMap> {
   const total = emptyStats();
@@ -182,8 +210,26 @@ export async function sumEquippedStatsForEntities(tx: any, entityIds: string[]):
     where: { id: { in: entityIds } },
     include: { equipment: true },
   });
+
+  const allItemIds: string[] = entities.flatMap((entity: any) =>
+    (Array.isArray(entity.equipment) ? entity.equipment : [])
+      .map((eq: any) => eq.itemInstanceId)
+      .filter(Boolean),
+  );
+
+  const preloadedItems = new Map<string, any>();
+  if (allItemIds.length > 0) {
+    const items = await tx.itemInstance.findMany({
+      where: { id: { in: allItemIds } },
+      include: { definition: { select: { equipData: true } } },
+    });
+    for (const item of items) {
+      preloadedItems.set(item.id, item);
+    }
+  }
+
   for (const entity of entities) {
-    const stats = await computeEquippedStats(tx, entity);
+    const stats = await computeEquippedStats(tx, entity, preloadedItems);
     for (const k of STAT_KEYS) total[k] += stats[k];
   }
   return total;

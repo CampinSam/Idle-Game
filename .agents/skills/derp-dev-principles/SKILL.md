@@ -397,3 +397,56 @@ grep -rn "flex-1" apps/web/src/ | grep "overflow" | grep -v "min-h-0" | grep -v 
 ```
 
 Any line this returns (outside progress bars and text-truncation spans) is a bug.
+
+---
+
+## 20. No Serial Fan-Out on Per-User Loops
+
+Any loop that iterates over a collection of users (or any entity grouped by user) and performs `await serviceCall(userId, ...)` inside the loop is a **serial fan-out anti-pattern**. Each iteration blocks the next, turning O(N) independent operations into a single, growing critical path.
+
+**The fix:** convert all per-user (or per-entity) loops to `Promise.allSettled` so every user's work runs concurrently. Errors in one user's work are isolated — the settled results include both fulfilled and rejected outcomes.
+
+```typescript
+// Wrong — serial; latency grows linearly with user count
+for (const [userId, items] of byUser) {
+  await this.processForUser(userId, items);
+}
+
+// Correct — concurrent; total latency ≈ slowest single user
+await Promise.allSettled(
+  [...byUser].map(([userId, items]) =>
+    this.processForUser(userId, items).catch((err) =>
+      this.logger.warn(`Failed for user ${userId}: ${err}`),
+    ),
+  ),
+);
+```
+
+**Where this applies:**
+- `tick-event-processor.service.ts` — every `processBy*` method that groups work by userId.
+- Any service method that fans out to multiple players (mass notification, settlement pass, reward broadcast).
+- Do **not** apply this inside a Prisma transaction — those are inherently sequential.
+
+---
+
+## 21. Definitions Live in the Cache, Not in the DB Query Path
+
+Game definition tables (missionDef, itemDef, giftDef, lootboxDef, effectDef, etc.) are read-only during normal gameplay. Every per-request `prisma.missionDef.findFirst(...)` or equivalent is avoidable latency.
+
+**Rule:** Use `DefinitionCacheService` (globally available — no per-module import needed) for all definition lookups at gameplay time.
+
+```typescript
+// Wrong — per-request DB round-trip on every tick job
+const def = await this.prisma.missionDef.findFirst({ where: { id: job.defId } });
+
+// Correct — in-process cache; zero DB latency
+const def = await this.definitionCache.getById('missionDef', job.defId);
+```
+
+**When to add to DefinitionCacheService:**
+- Any service method that calls `findFirst` or `findUnique` on a definition table using an ID or key.
+- Any `findMany` on a definition table that returns the full table (no per-user filter).
+
+**The admin write paths (`createRecord`, `updateRecord`, `deleteRecord`) call `DefinitionCacheService.invalidate(table)` after every mutation**, so the cache is always fresh within milliseconds of a content change. Adding a new definition to the cache does not require touching admin code.
+
+**Do NOT cache instance data** (itemInstance, entity, job, locationInstance, etc.) — those change constantly and must be read from the DB.

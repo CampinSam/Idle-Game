@@ -18,6 +18,7 @@ import { ScreensModule } from '../screens/screens.module';
 import { SelectionModule } from '../selection/selection.module';
 import { TelemetryModule } from '../telemetry/telemetry.module';
 import { PaymentModule } from '../payment/payment.module';
+import { QueryModule } from '../query/query.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminAuthService } from './admin-auth.service';
@@ -50,6 +51,7 @@ import { SeedSyncService } from '../../seeds/seed-sync.service';
     SelectionModule,
     TelemetryModule,
     PaymentModule,
+    QueryModule,
   ],
   controllers: [AdminController, AdminAuthController],
   providers: [AdminService, AdminAuthService, AdminAuditService, AdminDraftService, ScreensService, AdminGuard, GameMetricsService, SeedSyncService],

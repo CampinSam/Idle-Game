@@ -7,6 +7,7 @@ import { BoostService } from './boost.service';
 import { GlobalPowerService } from '../global-power/global-power.service';
 import { createJobReadyNotifications } from '../job/job-notification.helper';
 import { LocationService } from '../location/location.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 import { PatchBuilder, buildLocationPatches } from '../commands/patch-builder';
 import { ANTI_WHALE_CAPS } from '@derp/shared';
 import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, SeededRng, durationSecondsToTicks, rollQualityFromCl, QUALITY_TIERS } from '@derp/math';
@@ -59,6 +60,7 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
     private readonly boostService: BoostService,
     @Inject(forwardRef(() => LocationService))
     private readonly locationService: LocationService,
+    private readonly definitionCache: DefinitionCacheService,
   ) {}
 
   onModuleInit() {
@@ -169,13 +171,13 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
       byUser.set(ent.ownerUserId, list);
     }
 
-    for (const [userId, entities] of byUser) {
-      try {
-        await this.recoverEntitiesForUser(userId, entities);
-      } catch (err) {
-        this.logger.warn(`Injury recovery failed for user ${userId}: ${err}`);
-      }
-    }
+    await Promise.allSettled(
+      [...byUser].map(([userId, entities]) =>
+        this.recoverEntitiesForUser(userId, entities).catch((err) =>
+          this.logger.warn(`Injury recovery failed for user ${userId}: ${err}`),
+        ),
+      ),
+    );
   }
 
   private async recoverEntitiesForUser(
@@ -249,13 +251,13 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
       byUser.set(job.userId, list);
     }
 
-    for (const [userId, jobs] of byUser) {
-      try {
-        await this.notifyJobsReadyForUser(userId, jobs, currentTick);
-      } catch (err) {
-        this.logger.warn(`Job readiness processing failed for user ${userId}: ${err}`);
-      }
-    }
+    await Promise.allSettled(
+      [...byUser].map(([userId, jobs]) =>
+        this.notifyJobsReadyForUser(userId, jobs, currentTick).catch((err) =>
+          this.logger.warn(`Job readiness processing failed for user ${userId}: ${err}`),
+        ),
+      ),
+    );
   }
 
   private async notifyJobsReadyForUser(userId: string, jobs: any[], currentTick: number): Promise<void> {
@@ -464,7 +466,7 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
     job: any,
     currentTick: number,
   ): Promise<{ patches: any[]; shouldNotify: boolean }> {
-    const def = await (this.prisma as any).missionDef.findFirst({ where: { OR: [{ id: job.defId }, { key: job.defId }] } });
+    const def = await (this.definitionCache as any).getById('missionDef', job.defId);
     if (!def) {
       this.logger.warn(`Multi-phase: missionDef not found for job ${job.id}`);
       const updated = await (this.prisma as any).job.update({

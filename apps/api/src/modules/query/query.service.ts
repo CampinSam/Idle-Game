@@ -7,6 +7,7 @@ import { GlobalPowerService } from '../global-power/global-power.service';
 import { PowerChargeService } from '../global-power/power-charge.service';
 import { QuestService } from '../quest/quest.service';
 import { CheckInService } from '../checkin/checkin.service';
+import { BootstrapCacheService } from './bootstrap-cache.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
 import { serializeEntityFull } from '../entity/entity-stats.util';
@@ -163,6 +164,7 @@ export class QueryService {
     private globalPowerService: GlobalPowerService,
     private questService: QuestService,
     private checkInService: CheckInService,
+    private bootstrapCache: BootstrapCacheService,
   ) {}
 
   /**
@@ -218,7 +220,6 @@ export class QueryService {
       user,
       entities,
       locations,
-      buildingJobs,
       currencyBalances,
       jobs,
       notifications,
@@ -295,13 +296,6 @@ export class QueryService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      (this.prisma as any).job.findMany({
-        where: {
-          userId,
-          type: 'BuildingJob',
-          status: { in: ['active', 'ready_notified'] },
-        },
-      }),
       this.prisma.userCurrencyBalance.findMany({
         where: { userId },
       }),
@@ -331,7 +325,7 @@ export class QueryService {
         orderBy: { id: 'desc' },
         select: { id: true },
       }),
-      this.prisma.currency.findMany({ select: { id: true } }),
+      this.bootstrapCache.get('currency'),
       this.prisma.job.findMany({
         where: {
           userId,
@@ -351,27 +345,14 @@ export class QueryService {
         where: { userId, status: 'UNCLAIMED' },
         orderBy: { createdAt: 'desc' },
       }),
-      // Visual tag catalog: small, slow-changing, ships in the bootstrap
-      // snapshot so `<Tag tagKey>` renders inline without a second fetch.
-      (this.prisma as any).tagDef.findMany({
-        where: { enabled: true },
-        orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }],
-      }),
-      (this.prisma as any).visualEffectDef.findMany({
-        where: { enabled: true },
-        orderBy: { sortOrder: 'asc' },
-      }),
-      // System icon registry: maps reward-type strings to icon keys.
-      // Ships in the bootstrap so components can resolve system icons
-      // without a code change when new types are added via the admin panel.
-      (this.prisma as any).systemIconDef.findMany({
-        orderBy: { id: 'asc' },
-      }),
+      // Bootstrap catalog: served from process-lifetime cache (BootstrapCacheService).
+      // Admin writes to tagDef/visualEffectDef/systemIconDef/currency/season invalidate
+      // the cache so the next bootstrap picks up the change without a process restart.
+      this.bootstrapCache.get('tagDef'),
+      this.bootstrapCache.get('visualEffectDef'),
+      this.bootstrapCache.get('systemIconDef'),
       this.homeBannerService.listActive(userId),
-      this.prisma.season.findFirst({
-        where: { status: 'active', startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
-        orderBy: { endsAt: 'asc' },
-      }),
+      this.bootstrapCache.get('season'),
       this.tickService.getTickInfo(),
       this.globalPowerService.getActivePowers(),
       // EntityPowerUsage: joined with PowerGrant (for powerKey + chargeConfig) via powerGrantId.
@@ -461,6 +442,9 @@ export class QueryService {
       locationPowerUsages[row.locationInstanceId][powerKey] = { grantId, chargeUnits, maxChargeUnits, costPerUse, readyAtMs };
     }
 
+    // Derive building jobs from the unified jobs array — no extra query needed.
+    const buildingJobs = jobs.filter((j: any) => j.type === 'BuildingJob');
+
     // Enrich each check-in def's rewards[] with the linked gift's iconKey so
     // the daily-login tracker shows the actual reward icon per day.
     try {
@@ -469,9 +453,31 @@ export class QueryService {
       this.logger.warn(`CheckIn reward icon enrichment failed for ${userId}: ${err}`);
     }
 
+    // Batch all equipped item instance IDs across all entities into a single
+    // query, then pass the resulting map to each serializeEntityFull call so
+    // there is at most one itemInstance.findMany regardless of entity count.
+    const allEquippedItemIds: string[] = (entities as any[]).flatMap((e: any) =>
+      (Array.isArray(e.equipment) ? e.equipment : [])
+        .map((eq: any) => eq.itemInstanceId)
+        .filter(Boolean),
+    );
+    const preloadedItems = new Map<string, any>();
+    if (allEquippedItemIds.length > 0) {
+      const allItems = await (this.prisma as any).itemInstance.findMany({
+        where: { id: { in: allEquippedItemIds } },
+        include: {
+          definition: {
+            select: { id: true, name: true, iconKey: true, rarity: true, equipData: true },
+          },
+        },
+      });
+      for (const item of allItems) {
+        preloadedItems.set(item.id, item);
+      }
+    }
 
     const serializedEntities = await Promise.all(
-      entities.map((e: any) => serializeEntityFull(this.prisma, e)),
+      entities.map((e: any) => serializeEntityFull(this.prisma, e, preloadedItems)),
     );
     const serializedLocations = locations.map((loc: any) =>
       serializeLocation(loc, buildingJobs, currencyIds),

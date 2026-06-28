@@ -44,6 +44,7 @@ import { SynergyModule } from './modules/synergy/synergy.module';
 import { SelectionModule } from './modules/selection/selection.module';
 import { ScreensModule } from './modules/screens/screens.module';
 import { ContentDocumentModule } from './modules/content-document/content-document.module';
+import { DefinitionCacheModule } from './modules/definition-cache/definition-cache.module';
 
 const isProductionLog = process.env.NODE_ENV === 'production';
 
@@ -174,6 +175,7 @@ const imports: any[] = [
   SelectionModule,
   ScreensModule,
   ContentDocumentModule,
+  DefinitionCacheModule,
 ];
 
 if (process.env.NODE_ENV === 'production') {
