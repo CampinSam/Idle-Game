@@ -33,36 +33,17 @@ import { mergeDisplayStyles, type DisplayStyle } from '@derp/shared';
 
 const EMPTY_TIER_BLOCK = { rewards: [] };
 
-function normaliseRewards(raw: any): any[] {
-  if (Array.isArray(raw)) return raw;
-  if (raw && typeof raw === 'object') {
-    // { rewards: [...] } wrapper shape
-    if (Array.isArray(raw.rewards)) return raw.rewards;
-    // { items: [...] } shape
-    if (Array.isArray(raw.items)) return raw.items;
-    // { type: 'bundle', entries: [...] } shape
-    if (raw.type === 'bundle' && Array.isArray(raw.entries)) return raw.entries;
-  }
-  return [];
-}
-
 function getRecipeTiers(recipe: any): Record<string, { rewards: any[]; clRequirement?: number }> {
   const tiers = (recipe?.tiers as any) || {};
-  // Legacy fallback: if tiers is empty and a top-level rewards value exists
-  const legacyRewards = normaliseRewards(recipe?.rewards);
-  const legacyCommon =
-    Object.keys(tiers).length === 0 && legacyRewards.length > 0
-      ? { rewards: legacyRewards }
-      : EMPTY_TIER_BLOCK;
 
   const build = (block: any): { rewards: any[]; clRequirement?: number } => {
     if (!block) return EMPTY_TIER_BLOCK;
-    return { ...block, rewards: normaliseRewards(block.rewards) };
+    return { ...block, rewards: Array.isArray(block.rewards) ? block.rewards : [] };
   };
 
   return {
     failure:   build(tiers.failure)   ?? EMPTY_TIER_BLOCK,
-    common:    build(tiers.common)    ?? legacyCommon,
+    common:    build(tiers.common)    ?? EMPTY_TIER_BLOCK,
     uncommon:  build(tiers.uncommon)  ?? EMPTY_TIER_BLOCK,
     scare:     build(tiers.scare)     ?? EMPTY_TIER_BLOCK,
     rare:      build(tiers.rare)      ?? EMPTY_TIER_BLOCK,
