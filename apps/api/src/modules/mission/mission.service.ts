@@ -1066,7 +1066,7 @@ export class MissionService {
         }
         if (phaseOutcomeItems.length === 0) continue;
         const phaseRng = new SeededRng(`${missionSeed}_reward_phase_${phaseResult.phaseIndex}`);
-        const { resolved: phaseResolved } = await this.gameRules.resolveOutcomes(phaseOutcomeItems, reqContext, phaseRng);
+        const { resolved: phaseResolved, flags: phaseFlags, unlocks: phaseUnlocks } = await this.gameRules.resolveOutcomes(phaseOutcomeItems, reqContext, phaseRng);
         for (const { entry: pe, amount: rawPa } of phaseResolved) {
           let pa = rawPa;
           if (!pa || pa <= 0) continue;
@@ -1125,6 +1125,20 @@ export class MissionService {
           } else {
             this.logger.warn(`Per-phase reward type '${pe.type}' skipped (unhandled type for phase rewards).`);
           }
+        }
+        if (phaseFlags.length > 0) {
+          try {
+            await (db as any).user.update({ where: { id: userId }, data: { flags: reqContext.userFlags as any } });
+          } catch (err) { this.logger.warn(`Per-phase flag persist failed: ${err}`); }
+        }
+        for (const { key } of phaseUnlocks) {
+          try {
+            await (db as any).userUnlock.upsert({
+              where: { userId_key: { userId, key } },
+              create: { userId, key },
+              update: {},
+            });
+          } catch (err) { this.logger.warn(`Per-phase unlock upsert failed (key=${key}): ${err}`); }
         }
       }
     }

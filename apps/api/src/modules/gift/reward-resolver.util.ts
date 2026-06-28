@@ -121,8 +121,8 @@ export async function resolveRewardSpec(
   const grants: any[] = [];
 
   // Entity grants create entity instances — this is outside the canonical
-  // resolveOutcomesAsync pipeline which only knows about currencies, items,
-  // XP, flags, and bundles. All other types route through the pipeline.
+  // resolveOutcomes pipeline which only knows about currencies, items,
+  // XP, flags, unlocks, and bundles. All other types route through the pipeline.
   const entityEntries = entries.filter((e: any) => e?.type === 'entity');
   const outcomeEntries = entries.filter((e: any) => e?.type !== 'entity');
 

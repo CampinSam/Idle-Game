@@ -177,6 +177,7 @@ function buildSharedDb() {
     // ── MissionDef table ───────────────────────────────────────────────────────
     missionDef: {
       findUnique: jest.fn(async ({ where }: any) => (where?.id === defRow.id ? defRow : null)),
+      findFirst: jest.fn(async () => defRow),
     },
 
     // ── Entity table ───────────────────────────────────────────────────────────
@@ -224,6 +225,10 @@ function buildSharedDb() {
     itemInstance: {
       findMany: jest.fn(async () => []),
     },
+    userUnlock: {
+      findMany: jest.fn(async () => []),
+      upsert: jest.fn(async () => ({})),
+    },
   };
 
   // $transaction simply calls the callback with the same db (no real DB needed)
@@ -268,10 +273,11 @@ function buildMissionService(db: any): MissionService {
     buildRequirementContext: jest.fn(() => ({ user: makeUser(), userFlags: {}, tempFlags: {} })),
     checkRequirements: jest.fn(() => true),
     checkVisibility: jest.fn(() => true),
-    resolveOutcomesAsync: jest.fn(async (items: any[]) => ({
+    resolveOutcomes: jest.fn(async (items: any[]) => ({
       resolved: items.map((item: any) => ({ entry: item, amount: item.min ?? 1 })),
       texts: [],
       flags: [],
+      unlocks: [],
     })),
     resolveName: jest.fn(async (_type: string, key: string) => key),
   };
