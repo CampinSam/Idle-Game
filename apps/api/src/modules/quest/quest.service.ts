@@ -7,6 +7,7 @@ import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { GameRulesService, RequirementContext } from '../game-rules/game-rules.service';
 import { SelectionResolverService } from '../selection/selection-resolver.service';
+import { SeededRng } from '@derp/math';
 import { getWindowStart } from '../../common/util/cadence';
 
 // A QuestDef.cadence value of 'daily' or 'weekly' means the quest auto-resets
@@ -31,13 +32,6 @@ function freshProgress(objectives: any[]): any[] {
   }));
 }
 
-function makeRng() {
-  return {
-    chance: (p: number) => Math.random() < p,
-    nextInt: (min: number, max: number) =>
-      Math.floor(Math.random() * (max - min + 1)) + min,
-  };
-}
 
 // Normalizes the editor's two top-level shapes into a flat array of outcome
 // entries. The OutcomeListEditor saves either `[ ...entries ]` directly or
@@ -322,7 +316,8 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     const reqContext: RequirementContext = user
       ? this.gameRules.buildRequirementContext(user as any)
       : { user: {}, userFlags: {} };
-    const { resolved, unlocks: resolvedUnlocks } = await this.gameRules.resolveOutcomes(items, reqContext, makeRng());
+    const rng = new SeededRng(`${instance.id}:reward`);
+    const { resolved, unlocks: resolvedUnlocks } = await this.gameRules.resolveOutcomes(items, reqContext, rng);
 
     const grants: any[] = [];
     for (const r of resolved) {
