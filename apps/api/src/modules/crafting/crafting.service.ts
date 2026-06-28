@@ -14,7 +14,7 @@ import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
 import { adoptLegacyCraftingJobLocations } from './legacy-job-adoption.util';
-import { EffectCategory, EffectTargetType, applyModifier, emptyResolvedModifier, type TraitPrimitive } from '@derp/shared';
+import { EffectCategory, applyModifier, type TraitPrimitive } from '@derp/shared';
 import {
   calculateCraftingLuck,
   effectiveCL,
@@ -432,18 +432,9 @@ export class CraftingService {
     const boostable = timer?.boostable ?? true;
     let durationTicks = boostable ? durationSecondsToTicks(durationSeconds) : durationSeconds;
 
-    const [timerMod, legacyTimerMod] = await Promise.all([
-      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.CRAFTING_TIMER_SPEED),
-      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
-    ]);
-    const combinedTimer = {
-      ...emptyResolvedModifier(),
-      flatAdd: timerMod.flatAdd + legacyTimerMod.flatAdd,
-      percentAdd: timerMod.percentAdd + legacyTimerMod.percentAdd,
-      multiplier: timerMod.multiplier * legacyTimerMod.multiplier,
-    };
-    if (combinedTimer.flatAdd !== 0 || combinedTimer.percentAdd !== 0 || combinedTimer.multiplier !== 1) {
-      durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, combinedTimer)));
+    const timerMod = await this.effectService.resolveTimerSpeed(userId, EffectCategory.CRAFTING_TIMER_SPEED);
+    if (timerMod.flatAdd !== 0 || timerMod.percentAdd !== 0 || timerMod.multiplier !== 1) {
+      durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, timerMod)));
     }
 
     {

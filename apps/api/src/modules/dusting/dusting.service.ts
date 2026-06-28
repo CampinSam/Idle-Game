@@ -8,7 +8,7 @@ import { GameRulesService } from '../game-rules/game-rules.service';
 import { EventService } from '../event/event.service';
 import { NotificationService } from '../notification/notification.service';
 import { rollPassFail, rollQualityFromCl, collapseQualityProbabilities, qualityProbabilities, SeededRng } from '@derp/math';
-import { EffectCategory, EffectTargetType, applyModifier, emptyResolvedModifier } from '@derp/shared';
+import { EffectCategory, applyModifier } from '@derp/shared';
 import type { StartDustingPayload, CollectDustingPayload, DustingData } from '@derp/shared';
 import { EffectService } from '../effect/effect.service';
 
@@ -149,18 +149,9 @@ export class DustingService {
       : baseDuration;
 
     if (!dustingData.instant && totalDurationTicks > 0) {
-      const [dustingTimerMod, legacyTimerMod] = await Promise.all([
-        this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.DUSTING_TIMER_SPEED),
-        this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
-      ]);
-      const combinedTimer = {
-        ...emptyResolvedModifier(),
-        flatAdd: dustingTimerMod.flatAdd + legacyTimerMod.flatAdd,
-        percentAdd: dustingTimerMod.percentAdd + legacyTimerMod.percentAdd,
-        multiplier: dustingTimerMod.multiplier * legacyTimerMod.multiplier,
-      };
-      if (combinedTimer.flatAdd !== 0 || combinedTimer.percentAdd !== 0 || combinedTimer.multiplier !== 1) {
-        totalDurationTicks = Math.max(0, Math.floor(applyModifier(totalDurationTicks, combinedTimer)));
+      const dustingTimerMod = await this.effectService.resolveTimerSpeed(userId, EffectCategory.DUSTING_TIMER_SPEED);
+      if (dustingTimerMod.flatAdd !== 0 || dustingTimerMod.percentAdd !== 0 || dustingTimerMod.multiplier !== 1) {
+        totalDurationTicks = Math.max(0, Math.floor(applyModifier(totalDurationTicks, dustingTimerMod)));
       }
     }
 

@@ -12,6 +12,7 @@ import {
   EffectSelection,
   EffectTargetContext,
   ResolvedModifier,
+  emptyResolvedModifier,
 } from '@derp/shared';
 import { resolveEffects, ActiveEffectRow, matchesSelection } from './effect-resolver';
 import { resolveRnd } from '../entity/rnd-resolver.util';
@@ -399,6 +400,31 @@ export class EffectService {
 
     const allEffects = [...effects, ...playerEffects, ...passiveRows, ...globalRows];
     return resolveEffects(allEffects, category);
+  }
+
+  /**
+   * Resolves the combined timer speed modifier for a domain-specific category
+   * stacked with the global legacy `TIMER_SPEED` category.
+   *
+   * All timer-speed call sites must use this helper instead of calling
+   * `resolveForTarget` twice and manually combining, so the stacking formula
+   * stays in one place.
+   */
+  async resolveTimerSpeed(
+    userId: string,
+    domainCategory: EffectCategory,
+    tx?: PrismaTx,
+  ): Promise<ResolvedModifier> {
+    const [domainMod, legacyMod] = await Promise.all([
+      this.resolveForTarget(userId, EffectTargetType.PLAYER, userId, domainCategory, tx),
+      this.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED, tx),
+    ]);
+    return {
+      ...emptyResolvedModifier(),
+      flatAdd: domainMod.flatAdd + legacyMod.flatAdd,
+      percentAdd: domainMod.percentAdd + legacyMod.percentAdd,
+      multiplier: domainMod.multiplier * legacyMod.multiplier,
+    };
   }
 
   /**

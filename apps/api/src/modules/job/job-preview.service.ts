@@ -14,7 +14,6 @@ import {
   EffectTargetType,
   applyModifier,
   applyStatModifiers,
-  emptyResolvedModifier,
   type TraitPrimitive,
 } from '@derp/shared';
 import {
@@ -279,18 +278,9 @@ export class JobPreviewService {
       ? durationSecondsToTicks(baseDurationSeconds)
       : baseDurationSeconds;
 
-    const [timerMod, legacyTimerMod] = await Promise.all([
-      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.CRAFTING_TIMER_SPEED),
-      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
-    ]);
-    const combinedTimer = {
-      ...emptyResolvedModifier(),
-      flatAdd: timerMod.flatAdd + legacyTimerMod.flatAdd,
-      percentAdd: timerMod.percentAdd + legacyTimerMod.percentAdd,
-      multiplier: timerMod.multiplier * legacyTimerMod.multiplier,
-    };
-    if (combinedTimer.flatAdd !== 0 || combinedTimer.percentAdd !== 0 || combinedTimer.multiplier !== 1) {
-      effectiveDurationTicks = Math.max(1, Math.floor(applyModifier(effectiveDurationTicks, combinedTimer)));
+    const timerMod = await this.effectService.resolveTimerSpeed(userId, EffectCategory.CRAFTING_TIMER_SPEED);
+    if (timerMod.flatAdd !== 0 || timerMod.percentAdd !== 0 || timerMod.multiplier !== 1) {
+      effectiveDurationTicks = Math.max(1, Math.floor(applyModifier(effectiveDurationTicks, timerMod)));
     }
 
     const recipeTier: number =
@@ -476,18 +466,9 @@ export class JobPreviewService {
     );
     let effectiveDurationTicks = baseDurationSeconds;
 
-    const [buildTimerMod, legacyBuildTimerMod] = await Promise.all([
-      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.BUILDING_BUILD_TIMER_SPEED),
-      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
-    ]);
-    const combinedBuildTimer = {
-      ...emptyResolvedModifier(),
-      flatAdd: buildTimerMod.flatAdd + legacyBuildTimerMod.flatAdd,
-      percentAdd: buildTimerMod.percentAdd + legacyBuildTimerMod.percentAdd,
-      multiplier: buildTimerMod.multiplier * legacyBuildTimerMod.multiplier,
-    };
-    if (combinedBuildTimer.flatAdd !== 0 || combinedBuildTimer.percentAdd !== 0 || combinedBuildTimer.multiplier !== 1) {
-      effectiveDurationTicks = Math.max(0, Math.floor(applyModifier(effectiveDurationTicks, combinedBuildTimer)));
+    const buildTimerMod = await this.effectService.resolveTimerSpeed(userId, EffectCategory.BUILDING_BUILD_TIMER_SPEED);
+    if (buildTimerMod.flatAdd !== 0 || buildTimerMod.percentAdd !== 0 || buildTimerMod.multiplier !== 1) {
+      effectiveDurationTicks = Math.max(0, Math.floor(applyModifier(effectiveDurationTicks, buildTimerMod)));
     }
 
     const canAfford = await this.checkCanAfford(userId, costs as any);
@@ -524,18 +505,9 @@ export class JobPreviewService {
         );
         let upgradeEffectiveTicks = upgradeBaseDuration;
 
-        const [upgradeTimerMod, legacyUpgradeTimerMod] = await Promise.all([
-          this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.BUILDING_UPGRADE_TIMER_SPEED),
-          this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
-        ]);
-        const combinedUpgradeTimer = {
-          ...emptyResolvedModifier(),
-          flatAdd: upgradeTimerMod.flatAdd + legacyUpgradeTimerMod.flatAdd,
-          percentAdd: upgradeTimerMod.percentAdd + legacyUpgradeTimerMod.percentAdd,
-          multiplier: upgradeTimerMod.multiplier * legacyUpgradeTimerMod.multiplier,
-        };
-        if (combinedUpgradeTimer.flatAdd !== 0 || combinedUpgradeTimer.percentAdd !== 0 || combinedUpgradeTimer.multiplier !== 1) {
-          upgradeEffectiveTicks = Math.max(0, Math.floor(applyModifier(upgradeEffectiveTicks, combinedUpgradeTimer)));
+        const upgradeTimerMod = await this.effectService.resolveTimerSpeed(userId, EffectCategory.BUILDING_UPGRADE_TIMER_SPEED);
+        if (upgradeTimerMod.flatAdd !== 0 || upgradeTimerMod.percentAdd !== 0 || upgradeTimerMod.multiplier !== 1) {
+          upgradeEffectiveTicks = Math.max(0, Math.floor(applyModifier(upgradeEffectiveTicks, upgradeTimerMod)));
         }
 
         upgrade = {

@@ -20,7 +20,7 @@ import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
-import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, emptyResolvedModifier, type TraitPrimitive } from '@derp/shared';
+import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, type TraitPrimitive } from '@derp/shared';
 import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, calculateEffectiveTeamSPD, calculateSpdTimerMultiplier, SeededRng, durationSecondsToTicks, rollQualityFromCl, QUALITY_TIERS } from '@derp/math';
 import { GameConstantsService, GAME_CONSTANT_KEYS } from '../game-constants/game-constants.service';
 import type { EntityForMP } from '@derp/math';
@@ -383,18 +383,9 @@ export class MissionService {
     const boostable = timer?.boostable ?? true;
     let durationTicks = boostable ? durationSecondsToTicks(durationSeconds) : durationSeconds;
 
-    const [timerMod, legacyTimerMod] = await Promise.all([
-      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.MISSION_TIMER_SPEED, db),
-      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED, db),
-    ]);
-    const combinedTimer = {
-      ...emptyResolvedModifier(),
-      flatAdd: timerMod.flatAdd + legacyTimerMod.flatAdd,
-      percentAdd: timerMod.percentAdd + legacyTimerMod.percentAdd,
-      multiplier: timerMod.multiplier * legacyTimerMod.multiplier,
-    };
-    if (combinedTimer.flatAdd !== 0 || combinedTimer.percentAdd !== 0 || combinedTimer.multiplier !== 1) {
-      durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, combinedTimer)));
+    const timerMod = await this.effectService.resolveTimerSpeed(userId, EffectCategory.MISSION_TIMER_SPEED, db);
+    if (timerMod.flatAdd !== 0 || timerMod.percentAdd !== 0 || timerMod.multiplier !== 1) {
+      durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, timerMod)));
     }
 
     // Call the synergy resolver at start time so the result can be persisted
