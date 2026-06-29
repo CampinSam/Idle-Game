@@ -49,6 +49,7 @@ const SEED_TABLE_ORDER = [
   'homeBannerDef',
   'systemIconDef',
   'synergyRule',
+  'selectionRuleDef',
   'powerDef',
   'soundDef',
   'tagDef',

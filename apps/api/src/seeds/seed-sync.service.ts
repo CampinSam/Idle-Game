@@ -31,6 +31,7 @@ export const SEED_TABLE_ORDER = [
   'homeBannerDef',
   'systemIconDef',
   'synergyRule',
+  'selectionRuleDef',
   // effectDef must come before powerDef so PowerDef.effectDefId slugs can be
   // resolved to UUID FK values during the seed pass (see upsertTable).
   'effectDef',
@@ -69,6 +70,7 @@ const ADMIN_TABLE_TO_MODEL: Record<string, SeedTableName> = {
   homeBannerDef: 'homeBannerDef',
   systemIconDef: 'systemIconDef',
   synergyRule: 'synergyRule',
+  selectionRuleDef: 'selectionRuleDef',
   powerDef: 'powerDef',
   soundDef: 'soundDef',
   tagDef: 'tagDef',
@@ -197,6 +199,12 @@ const TABLE_TRANSFORMS: Partial<Record<SeedTableName, RecordTransform>> = {
     if (c.endsAt) c.endsAt = new Date(c.endsAt);
     return c;
   },
+  /** SelectionRuleDef: strip generated id; key is the stable slug. */
+  selectionRuleDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
   /** UUID PK migration: EventDefinition.id is now a UUID; slug lives in key. */
   eventDefinition: (r) => {
     const { id, ...rest } = r;
@@ -272,6 +280,7 @@ const TABLE_WHERE: Partial<Record<SeedTableName, WhereBuilder>> = {
   homeBannerDef: (r) => ({ key: r.key }),
   systemIconDef: (r) => ({ key: r.key }),
   synergyRule: (r) => ({ key: r.key }),
+  selectionRuleDef: (r) => ({ key: r.key }),
   eventDefinition: (r) => ({ key: r.key }),
   nftCollectionDef: (r) => ({ key: r.key }),
   gameDefinition: (r) => ({ type_key_version: { type: r.type, key: r.key, version: r.version } }),
