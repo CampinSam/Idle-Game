@@ -1,26 +1,24 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChargeConfig } from './power-charge.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 @Injectable()
 export class PowerDefService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private definitionCache: DefinitionCacheService,
+  ) {}
 
-  private async resolveUuid(keyOrUuid: string): Promise<string> {
-    const def = await this.prisma.powerDef.findFirst({
-      where: { OR: [{ id: keyOrUuid }, { key: keyOrUuid }] },
-      select: { id: true },
-    });
+  private resolveUuid(keyOrUuid: string): string {
+    const def = this.definitionCache.get('powerDef', keyOrUuid);
     if (!def) throw new NotFoundException(`PowerDef "${keyOrUuid}" not found`);
     return def.id;
   }
 
-  private async resolveEffectDefUuid(effectDefId: string | null | undefined): Promise<string | null> {
+  private resolveEffectDefUuid(effectDefId: string | null | undefined): string | null {
     if (!effectDefId) return null;
-    const def = await (this.prisma as any).effectDef.findFirst({
-      where: { OR: [{ id: effectDefId }, { key: effectDefId }] },
-      select: { id: true },
-    });
+    const def = this.definitionCache.get('effectDef', effectDefId);
     if (!def) throw new NotFoundException(`EffectDef "${effectDefId}" not found`);
     return def.id;
   }
@@ -163,9 +161,7 @@ export class PowerDefService {
   }> {
     let def: any = null;
     if (powerRef.powerDefId) {
-      def = await this.prisma.powerDef.findFirst({
-        where: { OR: [{ id: powerRef.powerDefId }, { key: powerRef.powerDefId }] },
-      });
+      def = this.definitionCache.get('powerDef', powerRef.powerDefId);
       if (!def) throw new NotFoundException(`PowerDef "${powerRef.powerDefId}" not found`);
       if (!def.enabled) throw new BadRequestException(`PowerDef "${powerRef.powerDefId}" is disabled`);
     }

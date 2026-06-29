@@ -6,6 +6,7 @@ import { SynergyResolverService } from '../synergy/synergy-resolver.service';
 import { EffectService } from '../effect/effect.service';
 import { CurrencyService } from '../currency/currency.service';
 import { GameConstantsService, GAME_CONSTANT_KEYS } from '../game-constants/game-constants.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 import { computeEquippedStats } from '../entity/entity-stats.util';
 import {
   ANTI_WHALE_CAPS,
@@ -64,6 +65,7 @@ export class JobPreviewService {
     private effectService: EffectService,
     private currencyService: CurrencyService,
     private gameConstants: GameConstantsService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   async getPreview(userId: string, dto: JobPreviewDto): Promise<any> {
@@ -80,7 +82,7 @@ export class JobPreviewService {
   }
 
   private async getMissionPreview(userId: string, dto: JobPreviewDto): Promise<any> {
-    const def = await (this.prisma as any).missionDef.findFirst({ where: { OR: [{ id: dto.defId }, { key: dto.defId }] } });
+    const def = this.definitionCache.get('missionDef', dto.defId);
     if (!def) throw new NotFoundException('Mission not found');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -256,7 +258,7 @@ export class JobPreviewService {
   }
 
   private async getCraftingPreview(userId: string, dto: JobPreviewDto): Promise<any> {
-    const recipe = await (this.prisma as any).recipeDef.findFirst({ where: { OR: [{ id: dto.defId }, { key: dto.defId }] } });
+    const recipe = this.definitionCache.get('recipeDef', dto.defId);
     if (!recipe) throw new NotFoundException('Recipe not found');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -392,7 +394,7 @@ export class JobPreviewService {
   }
 
   private async getBuildingPreview(userId: string, dto: JobPreviewDto): Promise<any> {
-    const def = await (this.prisma as any).buildingDef.findFirst({ where: { OR: [{ id: dto.defId }, { key: dto.defId }] } });
+    const def = this.definitionCache.get('buildingDef', dto.defId);
     if (!def) throw new NotFoundException('Building definition not found');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });

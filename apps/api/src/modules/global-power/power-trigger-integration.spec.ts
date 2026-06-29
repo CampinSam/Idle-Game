@@ -290,11 +290,26 @@ function makeTx(prisma: any, entityOverride?: any, locationOverride?: any, isAdm
   };
 }
 
+function buildFakeDefinitionCache(prisma: any) {
+  return {
+    get: jest.fn((type: string, id: string) => {
+      const store: Map<string, any> | undefined = prisma._tables?.[type + 's'];
+      return store?.get(id) ?? null;
+    }),
+    getAll: jest.fn((type: string) => {
+      const store: Map<string, any> | undefined = prisma._tables?.[type + 's'];
+      return store ? Array.from(store.values()) : [];
+    }),
+    invalidate: jest.fn(),
+  };
+}
+
 function buildEntityHandler(prisma: any) {
   const pubsub: any = { publish: jest.fn(), publishBroadcast: jest.fn() };
-  const powerDefService = new PowerDefService(prisma as any);
-  const globalPowerService = new GlobalPowerService(prisma as any, pubsub);
-  const powerGrantService = new PowerGrantService(prisma as any);
+  const fakeDefCache: any = buildFakeDefinitionCache(prisma);
+  const powerDefService = new PowerDefService(prisma as any, fakeDefCache);
+  const globalPowerService = new GlobalPowerService(prisma as any, pubsub, fakeDefCache);
+  const powerGrantService = new PowerGrantService(prisma as any, fakeDefCache);
   const powerChargeService: any = new (PowerChargeService as any)();
   const tickService: any = { getCurrentTick: jest.fn().mockResolvedValue(100) };
   const notificationService: any = {
@@ -307,9 +322,10 @@ function buildEntityHandler(prisma: any) {
 
 function buildLocationHandler(prisma: any) {
   const pubsub: any = { publish: jest.fn(), publishBroadcast: jest.fn() };
-  const powerDefService = new PowerDefService(prisma as any);
-  const globalPowerService = new GlobalPowerService(prisma as any, pubsub);
-  const powerGrantService = new PowerGrantService(prisma as any);
+  const fakeDefCache: any = buildFakeDefinitionCache(prisma);
+  const powerDefService = new PowerDefService(prisma as any, fakeDefCache);
+  const globalPowerService = new GlobalPowerService(prisma as any, pubsub, fakeDefCache);
+  const powerGrantService = new PowerGrantService(prisma as any, fakeDefCache);
   const powerChargeService: any = new (PowerChargeService as any)();
   const tickService: any = { getCurrentTick: jest.fn().mockResolvedValue(100) };
   const notificationService: any = {

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 export interface HomeBannerSnapshot {
   id: string;
@@ -21,7 +22,10 @@ export interface HomeBannerSnapshot {
 export class HomeBannerService {
   private readonly logger = new Logger(HomeBannerService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private definitionCache: DefinitionCacheService,
+  ) {}
 
   /**
    * Resolves the list of active banners for the homescreen carousel.
@@ -41,10 +45,12 @@ export class HomeBannerService {
    */
   async listActive(_userId: string, now: Date = new Date()): Promise<HomeBannerSnapshot[]> {
     const [rows, activeSeason] = await Promise.all([
-      (this.prisma as any).homeBannerDef.findMany({
-        where: { status: 'active' },
-        orderBy: [{ priority: 'desc' }, { id: 'asc' }],
-      }),
+      Promise.resolve(
+        this.definitionCache
+          .getAll('homeBannerDef')
+          .filter((b: any) => b.status === 'active')
+          .sort((a: any, b: any) => (b.priority ?? 0) - (a.priority ?? 0) || a.id.localeCompare(b.id)),
+      ),
       this.prisma.season.findFirst({
         where: { status: 'active', startsAt: { lte: now }, endsAt: { gt: now } },
         orderBy: { endsAt: 'asc' },

@@ -178,6 +178,7 @@ function buildSharedDb() {
     missionDef: {
       findUnique: jest.fn(async ({ where }: any) => (where?.id === defRow.id ? defRow : null)),
       findFirst: jest.fn(async () => defRow),
+      findMany: jest.fn(async () => [defRow]),
     },
 
     // ── Entity table ───────────────────────────────────────────────────────────
@@ -237,6 +238,20 @@ function buildSharedDb() {
   return { db, jobRow, defRow, entityRow, userRow };
 }
 
+// ─── Shared definition cache helper ──────────────────────────────────────────
+
+function createDefCache(defRow: any): any {
+  const defMap = new Map<string, any>([
+    [defRow.id, defRow],
+    ...(defRow.key ? [[defRow.key, defRow] as [string, any]] : []),
+  ]);
+  return {
+    get: jest.fn((_t: string, id: string) => defMap.get(id) ?? null),
+    getAll: jest.fn(() => [...defMap.values()]),
+    invalidate: jest.fn(),
+  };
+}
+
 // ─── Dependency factories ─────────────────────────────────────────────────────
 
 const emptyMod = {
@@ -251,7 +266,7 @@ const emptyMod = {
   sources: [],
 };
 
-function buildMissionService(db: any): MissionService {
+function buildMissionService(db: any, cache?: any): MissionService {
   const tickService: any = {
     getCurrentTick: jest.fn(async () => CURRENT_TICK),
     getTickInfo: jest.fn(async () => ({ currentTick: CURRENT_TICK, currentRate: 1 })),
@@ -305,7 +320,7 @@ function buildMissionService(db: any): MissionService {
 
   const gameConstants: any = { get: jest.fn(async () => 300) };
 
-  const fakeDefinitionCache: any = { get: jest.fn(() => null), getAll: jest.fn(() => []), invalidate: jest.fn() };
+  const fakeDefinitionCache: any = cache ?? { get: jest.fn(() => null), getAll: jest.fn(() => []), invalidate: jest.fn() };
   return new MissionService(
     db,
     entityService,
@@ -325,7 +340,7 @@ function buildMissionService(db: any): MissionService {
   );
 }
 
-function buildTickProcessor(db: any): TickEventProcessorService {
+async function buildTickProcessor(db: any, cache?: any): Promise<TickEventProcessorService> {
   const tickService: any = { getCurrentTick: jest.fn(async () => CURRENT_TICK) };
   const pubsub: any = { publish: jest.fn(), publishBroadcast: jest.fn() };
   const notificationService: any = {
@@ -335,10 +350,20 @@ function buildTickProcessor(db: any): TickEventProcessorService {
   const boostService: any = {};
   const locationService: any = {};
 
-  const definitionCache: any = {
-    getById: jest.fn(async (_t: string, id: string) => db.missionDef.findFirst({ where: { OR: [{ id }, { key: id }] } })),
-    getAll: jest.fn(async () => []),
-  };
+  let definitionCache: any = cache;
+  if (!definitionCache) {
+    const missionDefs: any[] = await db.missionDef.findMany();
+    const defMap = new Map<string, any>();
+    for (const d of missionDefs) {
+      if (d.id) defMap.set(d.id, d);
+      if (d.key) defMap.set(d.key, d);
+    }
+    definitionCache = {
+      get: jest.fn((_t: string, id: string) => defMap.get(id) ?? null),
+      getAll: jest.fn(() => [...defMap.values()]),
+      invalidate: jest.fn(),
+    };
+  }
 
   return new TickEventProcessorService(
     db,
@@ -363,13 +388,14 @@ async function getJobSnapshot(db: any): Promise<any> {
 describe('Mission full multi-phase lifecycle (end-to-end)', () => {
 
   it('completes both phases and transitions through the expected statuses', async () => {
-    const { db, jobRow } = buildSharedDb();
-    const missionService = buildMissionService(db);
-    const tickProcessor = buildTickProcessor(db);
+    const { db, jobRow, defRow } = buildSharedDb();
+    const sharedCache = createDefCache(defRow);
+    const missionService = buildMissionService(db, sharedCache);
+    const tickProcessor = await buildTickProcessor(db, sharedCache);
     const notificationService: any = {
       upsertJobNotification: jest.fn(async () => ({ id: 'notif-e2e' })),
     };
-    const handler = new ContinueMissionHandler(missionService, notificationService);
+    const handler = new ContinueMissionHandler(missionService, notificationService, sharedCache);
 
     // ── Step 1: Start mission ─────────────────────────────────────────────────
     const startResult = await missionService.startMission(USER_ID, DEF_ID, [ENTITY_ID]);
@@ -455,13 +481,14 @@ describe('Mission full multi-phase lifecycle (end-to-end)', () => {
   });
 
   it('grants per_phase currency rewards for each successful phase', async () => {
-    const { db } = buildSharedDb();
-    const missionService = buildMissionService(db);
-    const tickProcessor = buildTickProcessor(db);
+    const { db, defRow } = buildSharedDb();
+    const sharedCache = createDefCache(defRow);
+    const missionService = buildMissionService(db, sharedCache);
+    const tickProcessor = await buildTickProcessor(db, sharedCache);
     const notificationService: any = {
       upsertJobNotification: jest.fn(async () => ({ id: 'notif-e2e' })),
     };
-    const handler = new ContinueMissionHandler(missionService, notificationService);
+    const handler = new ContinueMissionHandler(missionService, notificationService, sharedCache);
 
     await missionService.startMission(USER_ID, DEF_ID, [ENTITY_ID]);
 
@@ -489,13 +516,14 @@ describe('Mission full multi-phase lifecycle (end-to-end)', () => {
   });
 
   it('leaves entity in mission status mid-expedition and idle after completion', async () => {
-    const { db } = buildSharedDb();
-    const missionService = buildMissionService(db);
-    const tickProcessor = buildTickProcessor(db);
+    const { db, defRow } = buildSharedDb();
+    const sharedCache = createDefCache(defRow);
+    const missionService = buildMissionService(db, sharedCache);
+    const tickProcessor = await buildTickProcessor(db, sharedCache);
     const notificationService: any = {
       upsertJobNotification: jest.fn(async () => ({ id: 'notif-e2e' })),
     };
-    const handler = new ContinueMissionHandler(missionService, notificationService);
+    const handler = new ContinueMissionHandler(missionService, notificationService, sharedCache);
 
     await missionService.startMission(USER_ID, DEF_ID, [ENTITY_ID]);
 
@@ -525,13 +553,14 @@ describe('Mission full multi-phase lifecycle (end-to-end)', () => {
 describe('Mission lifecycle — phase state transition assertions', () => {
 
   async function runFullLifecycle() {
-    const { db, jobRow } = buildSharedDb();
-    const missionService = buildMissionService(db);
-    const tickProcessor = buildTickProcessor(db);
+    const { db, jobRow, defRow } = buildSharedDb();
+    const sharedCache = createDefCache(defRow);
+    const missionService = buildMissionService(db, sharedCache);
+    const tickProcessor = await buildTickProcessor(db, sharedCache);
     const notificationService: any = {
       upsertJobNotification: jest.fn(async () => ({ id: 'notif-e2e' })),
     };
-    const handler = new ContinueMissionHandler(missionService, notificationService);
+    const handler = new ContinueMissionHandler(missionService, notificationService, sharedCache);
 
     const statuses: string[] = [];
 

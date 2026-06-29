@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 import { EffectDefOverrides, EffectSelection, EffectValueMode } from '@derp/shared';
 import { getCurrentTick } from '@derp/math';
 
@@ -69,6 +70,7 @@ export class GlobalPowerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly pubsub: PubSubService,
+    private readonly definitionCache: DefinitionCacheService,
   ) {}
 
   async getActivePowers(): Promise<GlobalActivePowerRecord[]> {
@@ -134,10 +136,7 @@ export class GlobalPowerService {
   async triggerPower(dto: CreateGlobalPowerDto): Promise<GlobalActivePowerRecord> {
     if (dto.effectDefId !== null) {
       // Resolve slug → UUID so the findFirst correctly matches stored UUID values.
-      const resolvedDef = await (this.prisma as any).effectDef.findFirst({
-        where: { OR: [{ id: dto.effectDefId }, { key: dto.effectDefId }] },
-        select: { id: true },
-      });
+      const resolvedDef = this.definitionCache.get('effectDef', dto.effectDefId);
       const resolvedEffectDefId: string = resolvedDef?.id ?? dto.effectDefId;
       dto = { ...dto, effectDefId: resolvedEffectDefId };
 
@@ -189,10 +188,8 @@ export class GlobalPowerService {
     } else {
       if (!dto.effectDefId) throw new BadRequestException('effectDefId is required');
       // Validate effectDefId references a real EffectDef via Prisma (accepts UUID or slug key)
-      const def = await (this.prisma as any).effectDef.findFirst({
-        where: { OR: [{ id: dto.effectDefId }, { key: dto.effectDefId }], enabled: true },
-      });
-      if (!def) throw new NotFoundException(`EffectDef "${dto.effectDefId}" not found or disabled`);
+      const def = this.definitionCache.get('effectDef', dto.effectDefId);
+      if (!def || def.enabled === false) throw new NotFoundException(`EffectDef "${dto.effectDefId}" not found or disabled`);
       // Canonicalise to UUID so the stored record references the correct PK.
       dto = { ...dto, effectDefId: def.id };
     }
@@ -383,10 +380,7 @@ export class GlobalPowerService {
       valueMode = overrides.valueMode ?? EffectValueMode.PERCENT_ADD;
     } else {
       try {
-        const def = await (this.prisma as any).effectDef.findUnique({
-          where: { id: power.effectDefId },
-          select: { name: true, category: true, value: true, valueMode: true },
-        });
+        const def = power.effectDefId ? this.definitionCache.get('effectDef', power.effectDefId) : null;
         if (def) {
           effectDefName = def.name;
           effectCategory = def.category;

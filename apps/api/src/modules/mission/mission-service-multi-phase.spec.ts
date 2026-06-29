@@ -646,7 +646,13 @@ describe('ContinueMissionHandler integration', () => {
     jobOverrides: any = {},
   ) {
     const { ContinueMissionHandler } = await import('../commands/handlers/continue-mission.handler');
-    const handler = new ContinueMissionHandler(missionService, notificationService);
+    const fakeDef = makeDef({ phases: [{ name: 'P1', duration: 10 }, { name: 'P2', duration: 10 }] });
+    const fakeDefinitionCache: any = {
+      get: jest.fn((_t: string, id: string) => (id === fakeDef.id || id === fakeDef.key) ? fakeDef : null),
+      getAll: jest.fn(() => [fakeDef]),
+      invalidate: jest.fn(),
+    };
+    const handler = new ContinueMissionHandler(missionService, notificationService, fakeDefinitionCache);
 
     const tx = makeCompleteTx(jobOverrides);
 
@@ -700,7 +706,8 @@ describe('ContinueMissionHandler integration', () => {
 
   it('throws BadRequestException when jobId is not provided', async () => {
     const { ContinueMissionHandler } = await import('../commands/handlers/continue-mission.handler');
-    const handler = new ContinueMissionHandler({} as any, {} as any);
+    const fakeDefCache: any = { get: jest.fn(() => null), getAll: jest.fn(() => []), invalidate: jest.fn() };
+    const handler = new ContinueMissionHandler({} as any, {} as any, fakeDefCache);
 
     await expect(
       handler.execute({ userId: 'user-1', tx: {}, commandId: 'cmd-1' } as any, {}),
@@ -712,7 +719,8 @@ describe('ContinueMissionHandler integration', () => {
     const tx: any = {
       job: { findFirst: jest.fn(async () => null) },
     };
-    const handler = new ContinueMissionHandler({} as any, {} as any);
+    const fakeDefCache: any = { get: jest.fn(() => null), getAll: jest.fn(() => []), invalidate: jest.fn() };
+    const handler = new ContinueMissionHandler({} as any, {} as any, fakeDefCache);
 
     await expect(
       handler.execute({ userId: 'user-1', tx, commandId: 'cmd-1' } as any, { jobId: 'job-1' }),

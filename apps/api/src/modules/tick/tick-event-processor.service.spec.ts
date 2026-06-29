@@ -87,7 +87,7 @@ function makeService() {
     completeBuilding: jest.fn(async () => ({ id: 'b1', updatedNotification: null })),
   };
 
-  const definitionCache: any = { getById: jest.fn(async () => null), getAll: jest.fn(async () => []) };
+  const definitionCache: any = { get: jest.fn(() => null), getAll: jest.fn(() => []), invalidate: jest.fn() };
 
   const svc = new TickEventProcessorService(
     prisma as any,

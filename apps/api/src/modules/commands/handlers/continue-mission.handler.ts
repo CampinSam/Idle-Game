@@ -3,12 +3,14 @@ import { CommandHandler, CommandContext, CommandHandlerResult } from '../command
 import { PatchBuilder, buildCurrencyPatches, buildItemPatches, buildPlayerPatch, buildEntityPatch } from '../patch-builder';
 import { MissionService } from '../../mission/mission.service';
 import { NotificationService } from '../../notification/notification.service';
+import { DefinitionCacheService } from '../../definition-cache/definition-cache.service';
 
 @Injectable()
 export class ContinueMissionHandler implements CommandHandler {
   constructor(
     private missionService: MissionService,
     private notificationService: NotificationService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -20,7 +22,7 @@ export class ContinueMissionHandler implements CommandHandler {
     });
     if (!job) throw new NotFoundException('No phase_ready mission found with that id');
 
-    const def = await (ctx.tx as any).missionDef.findFirst({ where: { OR: [{ id: job.defId }, { key: job.defId }] } });
+    const def = this.definitionCache.get('missionDef', job.defId);
     const phases: any[] = Array.isArray(def?.phases) ? def.phases : [];
     const nextPhaseIndex = (job.currentPhase ?? 0) + 1;
 

@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 export interface CreateGrantDto {
   targetType: string;
@@ -17,7 +18,10 @@ export interface CreateGrantDto {
 export class PowerGrantService {
   private readonly logger = new Logger(PowerGrantService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private definitionCache: DefinitionCacheService,
+  ) {}
 
   /**
    * Find the first active PowerGrant for the given target + power key.
@@ -59,10 +63,7 @@ export class PowerGrantService {
     const db = tx ?? this.prisma;
 
     if (data.powerDefId) {
-      const def = await (this.prisma as any).powerDef.findFirst({
-        where: { OR: [{ id: data.powerDefId }, { key: data.powerDefId }] },
-        select: { id: true },
-      });
+      const def = this.definitionCache.get('powerDef', data.powerDefId);
       if (!def) throw new NotFoundException(`PowerDef "${data.powerDefId}" not found`);
       data = { ...data, powerDefId: def.id };
     }
@@ -165,13 +166,10 @@ export class PowerGrantService {
     return { updated, failed };
   }
 
-  private async _resolveGrantPowerDefId(db: any, powerRef: any): Promise<string | null> {
+  private _resolveGrantPowerDefId(_db: any, powerRef: any): string | null {
     const rawDefId = powerRef.powerDefId ?? null;
     if (!rawDefId) return null;
-    const def = await (db as any).powerDef.findFirst({
-      where: { OR: [{ id: rawDefId }, { key: rawDefId }] },
-      select: { id: true },
-    });
+    const def = this.definitionCache.get('powerDef', rawDefId);
     if (!def) {
       this.logger.warn(`PowerDef "${rawDefId}" referenced by powerRef not found — grant created without def link`);
       return null;
@@ -179,13 +177,10 @@ export class PowerGrantService {
     return def.id;
   }
 
-  private async _getInitialChargeUnits(db: any, powerDefId: string | null, powerRef: any): Promise<number> {
+  private _getInitialChargeUnits(powerDefId: string | null, powerRef: any): number {
     if (powerRef.initialChargeUnits != null) return powerRef.initialChargeUnits;
     if (!powerDefId) return 1;
-    const def = await (db as any).powerDef.findUnique({
-      where: { id: powerDefId },
-      select: { chargeConfig: true },
-    });
+    const def = this.definitionCache.get('powerDef', powerDefId);
     const cc = def?.chargeConfig as any;
     return cc?.initialChargeUnits ?? cc?.maxChargeUnits ?? 1;
   }
@@ -202,7 +197,7 @@ export class PowerGrantService {
       return;
     }
 
-    const powerDefId = await this._resolveGrantPowerDefId(db, powerRef);
+    const powerDefId = this._resolveGrantPowerDefId(db, powerRef);
 
     const overrides: Record<string, any> | null = (() => {
       const { key, powerType, effectDefId, powerDefId: _pd, ...rest } = powerRef;
@@ -243,7 +238,7 @@ export class PowerGrantService {
     });
     if (!grant) return;
 
-    const initialChargeUnits = await this._getInitialChargeUnits(db, powerDefId, powerRef);
+    const initialChargeUnits = this._getInitialChargeUnits(powerDefId, powerRef);
 
     await (db as any).entityPowerUsage.upsert({
       where: { powerGrantId: grant.id },
@@ -264,7 +259,7 @@ export class PowerGrantService {
       return;
     }
 
-    const powerDefId = await this._resolveGrantPowerDefId(db, powerRef);
+    const powerDefId = this._resolveGrantPowerDefId(db, powerRef);
 
     const overrides: Record<string, any> | null = (() => {
       const { key, powerType, effectDefId, powerDefId: _pd, ...rest } = powerRef;
@@ -305,7 +300,7 @@ export class PowerGrantService {
     });
     if (!grant) return;
 
-    const initialChargeUnits = await this._getInitialChargeUnits(db, powerDefId, powerRef);
+    const initialChargeUnits = this._getInitialChargeUnits(powerDefId, powerRef);
 
     await (db as any).locationPowerUsage.upsert({
       where: { powerGrantId: grant.id },

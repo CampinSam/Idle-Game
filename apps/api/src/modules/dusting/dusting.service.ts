@@ -11,6 +11,7 @@ import { rollPassFail, rollQualityFromCl, collapseQualityProbabilities, qualityP
 import { EffectCategory, applyModifier } from '@derp/shared';
 import type { StartDustingPayload, CollectDustingPayload, DustingData } from '@derp/shared';
 import { EffectService } from '../effect/effect.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 const EMPTY_TIER_BLOCK = { rewards: [] };
 
@@ -63,6 +64,7 @@ export class DustingService {
     private eventService: EventService,
     private notificationService: NotificationService,
     private effectService: EffectService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   private async removeSpecificInstanceTx(
@@ -220,7 +222,7 @@ export class DustingService {
       throw new BadRequestException('Dusting is not yet complete');
     }
 
-    const def = await (this.prisma as any).itemDefinition.findFirst({ where: { OR: [{ id: job.defId }, { key: job.defId }] } });
+    const def = this.definitionCache.get('itemDef', job.defId);
     if (!def) throw new NotFoundException('Item definition not found');
 
     const dustingData = def.dustingData as DustingData | null;

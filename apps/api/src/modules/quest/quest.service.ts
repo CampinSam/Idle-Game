@@ -355,9 +355,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     let permanentEffectId: string | null = null;
     const spec = def.permanentEffectSpec as any;
     if (spec?.effectDefId) {
-      const effectDef = await (db as any).effectDef.findFirst({
-        where: { OR: [{ id: spec.effectDefId }, { key: spec.effectDefId }] },
-      });
+      const effectDef = this.definitionCache.get('effectDef', spec.effectDefId);
       if (!effectDef) {
         this.logger.warn(
           `Quest ${def.id} references unknown effectDefId ${spec.effectDefId} — skipping permanent effect`,
