@@ -41,6 +41,7 @@ export default function LocationsContent() {
     ? (player.unlocks as string[]).filter(k => ['location_slot.1', 'location_slot.2', 'location_slot.3'].includes(k)).length
     : 0;
   const primaryLocationId: string | null = player?.primaryLocationId ?? null;
+  const bonusSlots = locationSlotUnlocks;
   const slotBudget = outpostSlotBudget(keeperLevel, locationSlotUnlocks);
 
   const activeLocations = allLocations.filter((l) => l.enabled !== false);
