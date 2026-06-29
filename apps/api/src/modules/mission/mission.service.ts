@@ -93,21 +93,16 @@ export class MissionService {
     private definitionCache: DefinitionCacheService,
   ) {}
 
-  private async isCategoryChainEnabled(categoryId: string, db?: any): Promise<boolean> {
-    const client = db || this.prisma;
+  private isCategoryChainEnabled(categoryId: string): boolean {
     const visited = new Set<string>();
     let currentId: string | null = categoryId;
     while (currentId) {
       if (visited.has(currentId)) return false;
       visited.add(currentId);
-      const cat: { enabled: boolean; parentId: string | null } | null =
-        await (client as any).missionCategoryDef.findUnique({
-          where: { id: currentId },
-          select: { enabled: true, parentId: true },
-        });
+      const cat = this.definitionCache.get('missionCategoryDef', currentId);
       if (!cat) return false;
       if (cat.enabled === false) return false;
-      currentId = cat.parentId;
+      currentId = cat.parentId ?? null;
     }
     return true;
   }
@@ -131,10 +126,12 @@ export class MissionService {
   }
 
   async getMissionCategoryDefs(userId?: string) {
-    const categories = await (this.prisma as any).missionCategoryDef.findMany({
-      include: { displayDef: true },
-      orderBy: { sortOrder: 'asc' },
-    });
+    const categories = this.definitionCache.getAll('missionCategoryDef')
+      .sort((a: any, b: any) => a.sortOrder - b.sortOrder)
+      .map((c: any) => ({
+        ...c,
+        displayDef: c.displayDefId ? this.definitionCache.get('displayDef', c.displayDefId) : null,
+      }));
 
     let filtered = categories;
     let reqContext: any = null;
@@ -180,10 +177,9 @@ export class MissionService {
   }
 
   async getMissionDefinitions(userId?: string) {
-    const allDefs = await (this.prisma as any).missionDef.findMany({
-      include: { displayDef: true, missionCategoryDef: { include: { displayDef: true } } },
-      orderBy: { sortOrder: 'asc' },
-    });
+    const allDefs = this.definitionCache.getAll('missionDef')
+      .sort((a: any, b: any) => a.sortOrder - b.sortOrder)
+      .map((d: any) => this.enrichMissionDef(d));
 
     if (!userId) return allDefs.map((d: any) => this.mapDefToLegacy(d));
 
@@ -196,6 +192,18 @@ export class MissionService {
     return allDefs
       .filter((d: any) => this.gameRules.checkVisibility(d.visibilityRequirements, user as any, undefined, undefined, `MissionDef[${d.id}].visibilityRequirements`))
       .map((d: any) => this.mapDefToLegacy(d, reqContext));
+  }
+
+  private enrichMissionDef(def: any): any {
+    if (!def) return null;
+    const displayDef = def.displayDefId ? this.definitionCache.get('displayDef', def.displayDefId) : null;
+    const missionCategoryDef = def.missionCategoryDefId ? this.definitionCache.get('missionCategoryDef', def.missionCategoryDefId) : null;
+    const categoryDisplayDef = missionCategoryDef?.displayDefId ? this.definitionCache.get('displayDef', missionCategoryDef.displayDefId) : null;
+    return {
+      ...def,
+      displayDef,
+      missionCategoryDef: missionCategoryDef ? { ...missionCategoryDef, displayDef: categoryDisplayDef } : null,
+    };
   }
 
   private mapDefToLegacy(def: any, reqContext?: any) {
@@ -296,7 +304,7 @@ export class MissionService {
     }
 
     if (dbDef.missionCategoryDefId) {
-      const categoryEnabled = await this.isCategoryChainEnabled(dbDef.missionCategoryDefId, db);
+      const categoryEnabled = this.isCategoryChainEnabled(dbDef.missionCategoryDefId);
       if (!categoryEnabled) {
         throw new BadRequestException('This mission\'s category is currently unavailable');
       }
@@ -586,10 +594,7 @@ export class MissionService {
     if (job.userId !== userId) throw new ForbiddenException();
     if (job.type !== 'MissionJob') throw new BadRequestException('Not a mission job');
 
-    const def = await (this.prisma as any).missionDef.findFirst({
-      where: { OR: [{ id: job.defId }, { key: job.defId }] },
-      include: { displayDef: true, missionCategoryDef: { include: { displayDef: true } } },
-    });
+    const def = this.enrichMissionDef(this.definitionCache.get('missionDef', job.defId));
     if (!def) throw new NotFoundException('Mission definition not found');
 
     const entityIds = (job.team as string[]) || [];
@@ -739,7 +744,7 @@ export class MissionService {
     }
 
     if (def.missionCategoryDefId) {
-      const categoryEnabled = await this.isCategoryChainEnabled(def.missionCategoryDefId, db);
+      const categoryEnabled = this.isCategoryChainEnabled(def.missionCategoryDefId);
       if (!categoryEnabled) {
         throw new BadRequestException('This mission\'s category is currently unavailable');
       }

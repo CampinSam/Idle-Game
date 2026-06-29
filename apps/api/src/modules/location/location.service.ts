@@ -80,10 +80,7 @@ export class LocationService {
    */
   async createStarterOutpost(userId: string): Promise<any> {
     const currentTick = await this.tickService.getCurrentTick();
-    const locationDef = await (this.prisma as any).locationDefinition.findUnique({
-      where: { key: 'derp_outpost' },
-      select: { id: true },
-    });
+    const locationDef = this.definitionCache.get('locationDefinition', 'derp_outpost');
     if (!locationDef) throw new NotFoundException('LocationDefinition "derp_outpost" not found');
     const loc = await (this.prisma as any).locationInstance.create({
       data: {
@@ -584,9 +581,8 @@ export class LocationService {
     }
 
     const allowedIds = allowedBuildings.map((a) => a.buildingDefId);
-    const buildingDefs = await (this.prisma as any).buildingDef.findMany({
-      where: { key: { in: allowedIds } },
-    });
+    const buildingDefs = this.definitionCache.getAll('buildingDef')
+      .filter((d: any) => allowedIds.includes(d.key));
     const defMap = new Map(buildingDefs.map((d: any) => [d.key, d]));
 
     const reqContext = await this.buildLocationRequirementContext(
@@ -672,9 +668,7 @@ export class LocationService {
 
     // Resolve definition first so we can compare by key (game rules use slugs)
     // and write by id (UUID FK column on location_building_instances).
-    const def = await (this.prisma as any).buildingDef.findFirst({
-      where: { OR: [{ id: buildingDefId }, { key: buildingDefId }] },
-    });
+    const def = this.definitionCache.get('buildingDef', buildingDefId);
     if (!def) throw new BadRequestException("Building definition not found");
 
     const locRules = (location.definition?.rules as LevelRules) || {};
@@ -1269,11 +1263,7 @@ export class LocationService {
       );
     }
 
-    const locationDef = await (
-      this.prisma as any
-    ).locationDefinition.findUnique({
-      where: { id: location.definitionId },
-    });
+    const locationDef = this.definitionCache.get('locationDefinition', location.definitionId);
     const locRules = (locationDef?.rules as LevelRules) || {};
     const locConfig = resolveLevelConfig(locRules, location.level);
 

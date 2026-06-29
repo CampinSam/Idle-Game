@@ -202,11 +202,9 @@ export class QueryService {
     }
 
     // Pre-fetch disabled NFT collection IDs so we can gate player game state.
-    const disabledCollectionRows = await (this.prisma as any).nftCollectionDef.findMany({
-      where: { active: false },
-      select: { id: true },
-    });
-    const disabledCollectionIds: string[] = disabledCollectionRows.map((c: any) => c.id as string);
+    const disabledCollectionIds: string[] = this.definitionCache.getAll('nftCollectionDef')
+      .filter((c: any) => c.active === false)
+      .map((c: any) => c.id as string);
 
     // Pre-fetch NFT asset IDs belonging to disabled collections for location filtering.
     let disabledNftAssetIds: string[] = [];
@@ -499,9 +497,7 @@ export class QueryService {
     // Welcome modal — shown exactly once on a user's first bootstrap.
     if (!userFlags.seenWelcomeModal) {
       try {
-        const welcomeRow = await (this.prisma as any).defaultModalDef.findUnique({
-          where: { id: 'default_welcome' },
-        });
+        const welcomeRow = this.definitionCache.get('defaultModalDef', 'default_welcome');
         if (welcomeRow?.enabled && welcomeRow.spec) {
           bootstrapUi.push({ type: 'modal', spec: welcomeRow.spec as any });
         }
@@ -514,9 +510,7 @@ export class QueryService {
     // Season intro — shown once per active season (keyed on season id).
     if (activeSeason && userFlags.seenSeasonIntroFor !== activeSeason.id) {
       try {
-        const seasonIntroRow = await (this.prisma as any).defaultModalDef.findUnique({
-          where: { id: 'default_season_intro' },
-        });
+        const seasonIntroRow = this.definitionCache.get('defaultModalDef', 'default_season_intro');
         if (seasonIntroRow?.enabled && seasonIntroRow.spec) {
           bootstrapUi.push({ type: 'modal', spec: seasonIntroRow.spec as any });
         }
