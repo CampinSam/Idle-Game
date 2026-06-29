@@ -1,5 +1,6 @@
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 const CANONICAL_TABS = [
   { key: 'featured',  name: 'Featured',    tabType: 'items',      layout: 'featured', ungroupedPlacement: 'before', sortOrder: 0, enabled: true },
@@ -11,7 +12,10 @@ const CANONICAL_TABS = [
 
 @Injectable()
 export class ShopService implements OnApplicationBootstrap {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private definitionCache: DefinitionCacheService,
+  ) {}
 
   async onApplicationBootstrap() {
     for (const tab of CANONICAL_TABS) {
@@ -154,32 +158,22 @@ export class ShopService implements OnApplicationBootstrap {
 
   async findAll() {
     const now = new Date();
-    const [tabs, sections, items, heroes] = await Promise.all([
-      this.prisma.shopTabDef.findMany({
-        where: { enabled: true },
-        orderBy: { sortOrder: 'asc' },
-      }),
-      this.prisma.shopSectionDef.findMany({
-        orderBy: [{ tabId: 'asc' }, { sortOrder: 'asc' }],
-      }),
-      this.prisma.shopItemDef.findMany({
-        where: {
-          enabled: true,
-          AND: [
-            { OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
-            { OR: [{ limitedUntil: null }, { limitedUntil: { gt: now } }] },
-          ],
-        },
-        orderBy: [{ tab: 'asc' }, { displayOrder: 'asc' }],
-      }),
-      this.prisma.shopHeroDef.findMany({
-        where: {
-          enabled: true,
-          OR: [{ limitedUntil: null }, { limitedUntil: { gt: now } }],
-        },
-        orderBy: { sortOrder: 'asc' },
-      }),
-    ]);
+    const tabs = this.definitionCache.getAll('shopTabDef')
+      .filter((t: any) => t.enabled)
+      .sort((a: any, b: any) => a.sortOrder - b.sortOrder);
+    const sections = this.definitionCache.getAll('shopSectionDef')
+      .sort((a: any, b: any) => a.tabId < b.tabId ? -1 : a.tabId > b.tabId ? 1 : a.sortOrder - b.sortOrder);
+    const items = this.definitionCache.getAll('shopItemDef')
+      .filter((i: any) => {
+        if (!i.enabled) return false;
+        if (i.availableFrom && new Date(i.availableFrom) > now) return false;
+        if (i.limitedUntil && new Date(i.limitedUntil) <= now) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => a.tab < b.tab ? -1 : a.tab > b.tab ? 1 : a.displayOrder - b.displayOrder);
+    const heroes = this.definitionCache.getAll('shopHeroDef')
+      .filter((h: any) => h.enabled && (!h.limitedUntil || new Date(h.limitedUntil) > now))
+      .sort((a: any, b: any) => a.sortOrder - b.sortOrder);
     return { tabs, sections, items, heroes };
   }
 

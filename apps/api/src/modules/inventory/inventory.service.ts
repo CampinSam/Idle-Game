@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 type TxClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
@@ -26,23 +27,21 @@ export interface RemoveItemParams {
 
 @Injectable()
 export class InventoryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private definitionCache: DefinitionCacheService,
+  ) {}
 
   /** Resolve a slug or UUID to the canonical UUID id of an ItemDefinition.
    *  Returns null if not found. */
-  private async tryResolveItemDefUuid(slugOrUuid: string, client?: any): Promise<string | null> {
-    const db = client ?? this.prisma;
-    const row = await (db as any).itemDefinition.findFirst({
-      where: { OR: [{ id: slugOrUuid }, { key: slugOrUuid }] },
-      select: { id: true },
-    });
-    return row?.id ?? null;
+  private tryResolveItemDefUuid(slugOrUuid: string, _client?: any): string | null {
+    return this.definitionCache.get('itemDef', slugOrUuid)?.id ?? null;
   }
 
   /** Resolve a slug or UUID to the canonical UUID id of an ItemDefinition.
    *  Throws NotFoundException if not found. */
-  async resolveItemDefUuid(slugOrUuid: string, client?: any): Promise<string> {
-    const id = await this.tryResolveItemDefUuid(slugOrUuid, client);
+  resolveItemDefUuid(slugOrUuid: string, _client?: any): string {
+    const id = this.tryResolveItemDefUuid(slugOrUuid);
     if (!id) throw new NotFoundException(`Item "${slugOrUuid}" not found`);
     return id;
   }
@@ -52,15 +51,13 @@ export class InventoryService {
   }
 
   async getItemDef(itemId: string) {
-    const item = await (this.prisma as any).itemDefinition.findFirst({
-      where: { OR: [{ id: itemId }, { key: itemId }] },
-    });
+    const item = this.definitionCache.get('itemDef', itemId);
     if (!item) throw new NotFoundException(`Item "${itemId}" not found`);
     return item;
   }
 
   async getBalance(userId: string, itemId: string): Promise<number> {
-    const uuid = await this.tryResolveItemDefUuid(itemId);
+    const uuid = this.tryResolveItemDefUuid(itemId);
     if (!uuid) return 0;
     const instance = await this.prisma.itemInstance.findFirst({
       where: { userId, definitionId: uuid },
@@ -84,10 +81,10 @@ export class InventoryService {
     const { userId, quantity, reason, sourceType, sourceId, metadata } = params;
     if (quantity <= 0) throw new BadRequestException('Quantity must be positive');
 
-    const itemId = await this.resolveItemDefUuid(params.itemId);
-    const itemDef = await this.prisma.itemDefinition.findUnique({ where: { id: itemId } });
+    const itemDef = this.definitionCache.get('itemDef', params.itemId);
     if (!itemDef) throw new NotFoundException(`Item "${params.itemId}" not found`);
     if (!itemDef.stackable) throw new BadRequestException(`Item "${params.itemId}" is not stackable — use unique instance creation instead`);
+    const itemId: string = itemDef.id;
 
     const result = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.itemInstance.findFirst({
@@ -138,9 +135,9 @@ export class InventoryService {
     const { userId, quantity, reason, sourceType, sourceId, metadata } = params;
     if (quantity <= 0) throw new BadRequestException('Quantity must be positive');
 
-    const itemId = await this.resolveItemDefUuid(params.itemId);
-    const itemDef = await this.prisma.itemDefinition.findUnique({ where: { id: itemId } });
+    const itemDef = this.definitionCache.get('itemDef', params.itemId);
     if (!itemDef) throw new NotFoundException(`Item "${params.itemId}" not found`);
+    const itemId: string = itemDef.id;
 
     const result = await this.prisma.$transaction(async (tx) => {
       const instance = await tx.itemInstance.findFirst({
@@ -184,9 +181,7 @@ export class InventoryService {
     const { userId, quantity, reason, sourceType, sourceId, metadata } = params;
     if (quantity <= 0) throw new BadRequestException('Quantity must be positive');
 
-    const itemDef = await (tx as any).itemDefinition.findFirst({
-      where: { OR: [{ id: params.itemId }, { key: params.itemId }] },
-    });
+    const itemDef = this.definitionCache.get('itemDef', params.itemId);
     if (!itemDef) throw new NotFoundException(`Item "${params.itemId}" not found`);
     if (!itemDef.stackable) throw new BadRequestException(`Item "${params.itemId}" is not stackable — use unique instance creation instead`);
     const itemId: string = itemDef.id;
@@ -236,9 +231,7 @@ export class InventoryService {
     const { userId, quantity, reason, sourceType, sourceId, metadata } = params;
     if (quantity <= 0) throw new BadRequestException('Quantity must be positive');
 
-    const itemDef = await (tx as any).itemDefinition.findFirst({
-      where: { OR: [{ id: params.itemId }, { key: params.itemId }] },
-    });
+    const itemDef = this.definitionCache.get('itemDef', params.itemId);
     if (!itemDef) throw new NotFoundException(`Item "${params.itemId}" not found`);
     const itemId: string = itemDef.id;
 

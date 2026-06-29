@@ -8,6 +8,7 @@ import { PowerChargeService } from '../global-power/power-charge.service';
 import { QuestService } from '../quest/quest.service';
 import { CheckInService } from '../checkin/checkin.service';
 import { BootstrapCacheService } from './bootstrap-cache.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
 import { serializeEntityFull } from '../entity/entity-stats.util';
@@ -102,7 +103,7 @@ function deriveIconFromRewardSpec(spec: any): string | null {
  * Pure addition — never overwrites an explicit iconKey already on the entry
  * (lets admins manually override per-day).
  */
-async function enrichCheckInRewardIcons(prisma: any, instances: any[]): Promise<void> {
+async function enrichCheckInRewardIcons(cache: DefinitionCacheService, instances: any[]): Promise<void> {
   const giftDefIds = new Set<string>();
   for (const inst of instances) {
     const rewards = inst?.checkInDef?.rewards;
@@ -115,11 +116,11 @@ async function enrichCheckInRewardIcons(prisma: any, instances: any[]): Promise<
 
   const byId = new Map<string, any>();
   if (giftDefIds.size > 0) {
-    const giftDefs = await prisma.giftDef.findMany({
-      where: { id: { in: Array.from(giftDefIds) } },
-      select: { id: true, name: true, presentation: true, rewardSpec: true },
-    });
-    for (const g of giftDefs) byId.set(g.id, g);
+    const allGiftDefs = cache.getAll('giftDef');
+    const matchedIds = Array.from(giftDefIds);
+    for (const g of allGiftDefs) {
+      if (matchedIds.includes(g.id)) byId.set(g.id, g);
+    }
   }
 
   for (const inst of instances) {
@@ -165,6 +166,7 @@ export class QueryService {
     private questService: QuestService,
     private checkInService: CheckInService,
     private bootstrapCache: BootstrapCacheService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   /**
@@ -448,7 +450,7 @@ export class QueryService {
     // Enrich each check-in def's rewards[] with the linked gift's iconKey so
     // the daily-login tracker shows the actual reward icon per day.
     try {
-      await enrichCheckInRewardIcons(this.prisma, checkInInstances as any[]);
+      await enrichCheckInRewardIcons(this.definitionCache, checkInInstances as any[]);
     } catch (err) {
       this.logger.warn(`CheckIn reward icon enrichment failed for ${userId}: ${err}`);
     }

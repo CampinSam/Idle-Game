@@ -430,7 +430,7 @@ export class JobPreviewService {
           },
         },
       }),
-      this.prisma.regionDefinition.findMany({ select: { id: true, key: true } }),
+      Promise.resolve(this.definitionCache.getAll('regionDefinition')),
     ]);
 
     const regionKeyById = new Map(regionDefs.map((r: any) => [r.id, r.key]));

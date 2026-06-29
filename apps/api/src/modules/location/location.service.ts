@@ -13,6 +13,7 @@ import { GameRulesService } from "../game-rules/game-rules.service";
 import { NotificationService } from "../notification/notification.service";
 import { EffectService } from "../effect/effect.service";
 import { TelemetryService } from "../telemetry/telemetry.service";
+import { DefinitionCacheService } from "../definition-cache/definition-cache.service";
 import { ANTI_WHALE_CAPS, EffectCategory, applyModifier } from "@derp/shared";
 import { PowerChargeService } from "../global-power/power-charge.service";
 import { serializeLocation } from "../commands/location-serializer.util";
@@ -68,6 +69,7 @@ export class LocationService {
     private notificationService: NotificationService,
     private effectService: EffectService,
     private telemetryService: TelemetryService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   /**
@@ -524,12 +526,12 @@ export class LocationService {
           },
         },
       }),
-      this.prisma.regionDefinition.findMany({ select: { id: true, key: true } }),
+      Promise.resolve(this.definitionCache.getAll('regionDefinition')),
     ]);
     if (!user) throw new NotFoundException("User not found");
 
     // UUID → slug maps for requirement context normalisation.
-    const regionKeyById = new Map(regionDefs.map((r) => [r.id, r.key]));
+    const regionKeyById = new Map(regionDefs.map((r: any) => [r.id, r.key]));
 
     const toLocationCtx = (loc: any) => ({
       buildings: (loc.buildings ?? []).map((b: any) => ({
