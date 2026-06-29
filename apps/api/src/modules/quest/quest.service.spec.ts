@@ -40,7 +40,8 @@ function makeFakes(rewardSpec: any, status: 'completed' | 'active' | 'claimed' =
     }),
   };
   const fakeSelectionResolver: any = { evaluate: jest.fn().mockReturnValue(true), evaluateAll: jest.fn().mockReturnValue(true) };
-  const gameRules = new GameRulesService(prisma, fakeSelectionResolver);
+  const fakeCache = { get: () => undefined, getAll: () => [] } as any;
+  const gameRules = new GameRulesService(prisma, fakeSelectionResolver, fakeCache);
 
   const fakeContextBuilder: any = { buildContext: jest.fn().mockResolvedValue({ player: {}, entities: [], inventory: { currencies: {}, items: {} }, locations: [] }) };
   const fakeDefinitionCache: any = { get: jest.fn(() => null), getAll: jest.fn(() => []), invalidate: jest.fn() };

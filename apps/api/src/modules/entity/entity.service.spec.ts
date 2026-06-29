@@ -79,7 +79,8 @@ function makeService(prismaApi: any, opts: { xpMultiplier?: number } = {}) {
   const settlementService: any = {
     recalcLocationsForWorkerEntity: jest.fn(async () => undefined),
   };
-  const svc = new EntityService(prismaApi as any, effectService, notificationService, settlementService);
+  const fakeCache = { get: () => undefined, getAll: () => [] } as any;
+  const svc = new EntityService(prismaApi as any, effectService, notificationService, settlementService, fakeCache);
   (svc as any).logger = { warn: jest.fn(), log: jest.fn(), debug: jest.fn(), error: jest.fn() } as unknown as Logger;
   return { svc, effectService, notificationService, notificationCalls };
 }

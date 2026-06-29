@@ -211,9 +211,7 @@ export class GiftService {
     let claimTx: any;
 
     if (!instant) {
-      const packageItemDef = await (db as any).itemDefinition.findFirst({
-        where: { type: 'GIFT_PACKAGE' },
-      });
+      const packageItemDef = this.definitionCache.getAll('itemDef').find((d: any) => d.type === 'GIFT_PACKAGE');
 
       if (!packageItemDef) {
         throw new BadRequestException('No GIFT_PACKAGE item definition found in the system');

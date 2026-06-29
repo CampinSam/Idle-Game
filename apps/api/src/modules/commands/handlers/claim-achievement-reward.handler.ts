@@ -12,6 +12,7 @@ import {
 } from '../patch-builder';
 import { QuestService } from '../../quest/quest.service';
 import { buildGrantsRewardsBlock } from './grant-label.util';
+import { DefinitionCacheService } from '../../definition-cache/definition-cache.service';
 
 /**
  * ClaimAchievementReward — thin alias over ClaimQuestReward.
@@ -25,7 +26,10 @@ import { buildGrantsRewardsBlock } from './grant-label.util';
  */
 @Injectable()
 export class ClaimAchievementRewardHandler implements CommandHandler {
-  constructor(private questService: QuestService) {}
+  constructor(
+    private questService: QuestService,
+    private definitionCache: DefinitionCacheService,
+  ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const questInstanceId = payload.achievementInstanceId ?? payload.questInstanceId;
@@ -54,7 +58,7 @@ export class ClaimAchievementRewardHandler implements CommandHandler {
       await buildActiveEffectPatches(pb, ctx.tx, ctx.userId);
     }
 
-    const rewardsBlock = await buildGrantsRewardsBlock(ctx.tx, grants);
+    const rewardsBlock = buildGrantsRewardsBlock(grants, this.definitionCache);
     const bodyBlock = rewardsBlock ?? {
       type: 'richText',
       doc: [{ t: 'p', c: [{ t: 'text', v: 'Achievement claimed.' }] }],

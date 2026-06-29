@@ -101,9 +101,10 @@ export class CraftingService {
   }
 
   async getRecipes(userId?: string) {
-    const allDefs = await (this.prisma as any).recipeDef.findMany({
-      include: { displayDef: true },
-    });
+    const allDefs = this.definitionCache.getAll('recipeDef').map((d: any) => ({
+      ...d,
+      displayDef: d.displayDefId ? this.definitionCache.get('displayDef', d.displayDefId) : null,
+    }));
 
     if (!userId) return allDefs.map((d: any) => this.mapDefToRecipeResponse(d));
 

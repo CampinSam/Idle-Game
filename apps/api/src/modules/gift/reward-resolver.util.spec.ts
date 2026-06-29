@@ -31,7 +31,8 @@ function makeFakes() {
   };
 
   const fakeSelectionResolver: any = { evaluate: jest.fn().mockReturnValue(true) };
-  const gameRules = new GameRulesService(prisma, fakeSelectionResolver);
+  const fakeCache = { get: () => undefined, getAll: () => [] } as any;
+  const gameRules = new GameRulesService(prisma, fakeSelectionResolver, fakeCache);
 
   return { prisma, currencyService, inventoryService, gameRules, bundleDefs, credited, items };
 }

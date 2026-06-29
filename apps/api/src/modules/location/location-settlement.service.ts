@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PrismaClient } from '@prisma/client';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 import {
   resolveLevelConfig,
   resolveProductionRates,
@@ -133,6 +134,7 @@ export class LocationSettlementService {
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
     private synergyResolver: SynergyResolverService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   async settleLocationTx(
@@ -446,10 +448,8 @@ export class LocationSettlementService {
     }
 
     if (itemIds.length > 0) {
-      const itemDefs = await (tx as any).itemDefinition.findMany({
-        where: { OR: itemIds.flatMap((s: string) => [{ id: s }, { key: s }]) },
-        select: { id: true, key: true },
-      });
+      const itemDefs = this.definitionCache.getAll('itemDef')
+        .filter((d: any) => itemIds.includes(d.id) || itemIds.includes(d.key));
       const uuidToSlug = new Map<string, string>(itemDefs.map((d: any) => [d.id, d.key]));
       const uuids: string[] = itemDefs.map((d: any) => d.id);
       const rows = await (tx as any).itemInstance.findMany({

@@ -325,6 +325,7 @@ export async function buildMissionDefStatusPatches(
   tx: any,
   userId: string,
   gameRules: any,
+  cache: import('../definition-cache/definition-cache.service').DefinitionCacheService,
 ): Promise<void> {
   const user = await (tx as any).user.findUnique({ where: { id: userId } });
   if (!user) return;
@@ -333,9 +334,7 @@ export async function buildMissionDefStatusPatches(
   const userUnlocks = unlockRows.map((u: { key: string }) => u.key);
   const reqContext = gameRules.buildRequirementContext(user, { userUnlocks });
 
-  const categories = await (tx as any).missionCategoryDef.findMany({
-    orderBy: { sortOrder: 'asc' },
-  });
+  const categories = cache.getAll('missionCategoryDef').sort((a: any, b: any) => a.sortOrder - b.sortOrder);
   for (const cat of categories) {
     const requirementStatus = cat.requirements
       ? evaluateTopLevelRules(cat.requirements, reqContext, gameRules)
@@ -343,9 +342,7 @@ export async function buildMissionDefStatusPatches(
     pb.upsert('categoryDef', cat.id, { requirementStatus });
   }
 
-  const missionDefs = await (tx as any).missionDef.findMany({
-    orderBy: { sortOrder: 'asc' },
-  });
+  const missionDefs = cache.getAll('missionDef').sort((a: any, b: any) => a.sortOrder - b.sortOrder);
   for (const def of missionDefs) {
     const requirementStatus = def.requirements
       ? evaluateTopLevelRules(def.requirements, reqContext, gameRules)

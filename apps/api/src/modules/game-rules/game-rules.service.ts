@@ -4,6 +4,7 @@ import type { EntityTraits, RichSelection, TraitPrimitive } from '@derp/shared';
 import { globToRegex, isGlobPattern } from '@derp/shared';
 import { SelectionResolverService } from '../selection/selection-resolver.service';
 import type { SelectionContext } from '../selection/selection.types';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 export interface GameUser {
   keeperLevel?: number;
@@ -47,6 +48,7 @@ export class GameRulesService {
   constructor(
     private prisma: PrismaService,
     private readonly selectionResolver: SelectionResolverService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   getRuleDefLabel(id: string): string | undefined {
@@ -471,12 +473,12 @@ export class GameRulesService {
     return { resolved, texts, flags, unlocks };
   }
 
-  async resolveName(type: string, key: string): Promise<string> {
+  resolveName(type: string, key: string): string {
     if (type === 'currency') {
-      const cur = await (this.prisma as any).currency.findFirst({ where: { OR: [{ id: key }, { key }] }, select: { name: true } }) as { name?: string } | null;
+      const cur = this.definitionCache.get('currency', key) as { name?: string } | null;
       if (cur?.name) return cur.name;
     } else if (type === 'item') {
-      const item = await (this.prisma as any).itemDefinition.findFirst({ where: { OR: [{ id: key }, { key }] }, select: { name: true } }) as { name?: string } | null;
+      const item = this.definitionCache.get('itemDef', key) as { name?: string } | null;
       if (item?.name) return item.name;
     }
     return key;

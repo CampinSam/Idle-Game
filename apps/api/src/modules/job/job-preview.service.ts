@@ -585,7 +585,7 @@ export class JobPreviewService {
         if (balance < cost.amount) return false;
       } else {
         const items = await this.prisma.itemInstance.findMany({
-          where: { userId, definitionId: (await (this.prisma as any).itemDefinition.findFirst({ where: { OR: [{ id: cost.id }, { key: cost.id }] }, select: { id: true } }))?.id ?? cost.id },
+          where: { userId, definitionId: this.definitionCache.get('itemDef', cost.id)?.id ?? cost.id },
         });
         const total = items.reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
         if (total < cost.amount) return false;

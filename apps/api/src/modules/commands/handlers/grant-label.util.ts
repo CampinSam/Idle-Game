@@ -3,7 +3,8 @@
  * reward grants.
  *
  * Grants produced by reward-resolver.util.ts only carry IDs; these helpers
- * batch-fetch definition data from the DB so callers don't have to.
+ * resolve definition data from the in-memory DefinitionCacheService so
+ * no DB round-trips are needed at grant-display time.
  *
  * Handles all three grant types:
  *   - currency: { type:'currency', key: currencyId, amount }
@@ -13,43 +14,28 @@
  * Falls back to the raw ID when a definition record cannot be found.
  */
 
-export async function formatGrantSummary(tx: any, grants: any[]): Promise<string> {
+import { DefinitionCacheService } from '../../definition-cache/definition-cache.service';
+
+export function formatGrantSummary(grants: any[], cache: DefinitionCacheService): string {
   if (!grants.length) return '';
-
-  const itemKeys = [...new Set(grants.filter((g) => g.type === 'item').map((g) => g.key).filter(Boolean))];
-  const currencyKeys = [...new Set(grants.filter((g) => g.type === 'currency').map((g) => g.key).filter(Boolean))];
-  const entityDefIds = [...new Set(grants.filter((g) => g.type === 'entity').map((g) => g.definitionId).filter(Boolean))];
-
-  const [itemDefs, currencies, entityDefs] = await Promise.all([
-    itemKeys.length
-      ? tx.itemDefinition.findMany({ where: { key: { in: itemKeys } }, select: { key: true, name: true } })
-      : [],
-    currencyKeys.length
-      ? tx.currency.findMany({ where: { key: { in: currencyKeys } }, select: { key: true, name: true } })
-      : [],
-    entityDefIds.length
-      ? tx.entityDefinition.findMany({ where: { key: { in: entityDefIds } }, select: { key: true, name: true } })
-      : [],
-  ]);
-
-  const itemNameMap = new Map<string, string>((itemDefs as any[]).map((d) => [d.key, d.name]));
-  const currencyNameMap = new Map<string, string>((currencies as any[]).map((d) => [d.key, d.name]));
-  const entityNameMap = new Map<string, string>((entityDefs as any[]).map((d) => [d.key, d.name]));
 
   return grants
     .map((g: any) => {
       if (g.type === 'item') {
-        const name = itemNameMap.get(g.key) ?? g.key;
+        const def = g.key ? cache.get('itemDef', g.key) : null;
+        const name = def?.name ?? g.key;
         const qty = g.amount ?? g.qty ?? 1;
         return `${qty}x ${name}`;
       }
       if (g.type === 'currency') {
-        const name = currencyNameMap.get(g.key) ?? g.key;
+        const def = g.key ? cache.get('currency', g.key) : null;
+        const name = def?.name ?? g.key;
         const qty = g.amount ?? g.qty ?? 1;
         return `${qty}x ${name}`;
       }
       if (g.type === 'entity') {
-        const name = entityNameMap.get(g.definitionId) ?? g.definitionId ?? 'Entity';
+        const def = g.definitionId ? cache.get('entityDefinition', g.definitionId) : null;
+        const name = def?.name ?? g.definitionId ?? 'Entity';
         return `1x ${name}`;
       }
       const qty = g.amount ?? g.qty ?? 1;
@@ -67,51 +53,16 @@ export async function formatGrantSummary(tx: any, grants: any[]): Promise<string
  * Returns `null` when grants is empty so callers can substitute a fallback
  * plain-text block.
  */
-export async function buildGrantsRewardsBlock(
-  tx: any,
+export function buildGrantsRewardsBlock(
   grants: any[],
+  cache: DefinitionCacheService,
   title = 'Rewards',
-): Promise<{ type: 'rewardsList'; title: string; items: any[] } | null> {
+): { type: 'rewardsList'; title: string; items: any[] } | null {
   if (!grants.length) return null;
-
-  const itemKeys = [...new Set(grants.filter((g) => g.type === 'item').map((g) => g.key).filter(Boolean))];
-  const currencyKeys = [...new Set(grants.filter((g) => g.type === 'currency').map((g) => g.key).filter(Boolean))];
-  const entityDefIds = [...new Set(grants.filter((g) => g.type === 'entity').map((g) => g.definitionId).filter(Boolean))];
-
-  const [itemDefs, currencies, entityDefs] = await Promise.all([
-    itemKeys.length
-      ? tx.itemDefinition.findMany({
-          where: { key: { in: itemKeys } },
-          select: { key: true, name: true, iconKey: true, rarity: true },
-        })
-      : [],
-    currencyKeys.length
-      ? tx.currency.findMany({
-          where: { key: { in: currencyKeys } },
-          select: { key: true, name: true, iconKey: true },
-        })
-      : [],
-    entityDefIds.length
-      ? tx.entityDefinition.findMany({
-          where: { key: { in: entityDefIds } },
-          select: { key: true, name: true },
-        })
-      : [],
-  ]);
-
-  const itemDefMap = new Map<string, { name: string; iconKey: string | null; rarity: string | null }>(
-    (itemDefs as any[]).map((d) => [d.key, { name: d.name, iconKey: d.iconKey ?? null, rarity: d.rarity ?? null }]),
-  );
-  const currencyMap = new Map<string, { name: string; iconKey: string | null }>(
-    (currencies as any[]).map((d) => [d.key, { name: d.name, iconKey: d.iconKey ?? null }]),
-  );
-  const entityDefMap = new Map<string, string>(
-    (entityDefs as any[]).map((d) => [d.key, d.name]),
-  );
 
   const items = grants.map((g: any) => {
     if (g.type === 'item') {
-      const def = itemDefMap.get(g.key);
+      const def = g.key ? cache.get('itemDef', g.key) : null;
       return {
         name: def?.name ?? g.key ?? 'Item',
         qty: g.amount ?? g.qty ?? 1,
@@ -120,7 +71,7 @@ export async function buildGrantsRewardsBlock(
       };
     }
     if (g.type === 'currency') {
-      const def = currencyMap.get(g.key);
+      const def = g.key ? cache.get('currency', g.key) : null;
       return {
         name: def?.name ?? g.key ?? 'Currency',
         qty: g.amount ?? g.qty ?? 1,
@@ -128,7 +79,8 @@ export async function buildGrantsRewardsBlock(
       };
     }
     if (g.type === 'entity') {
-      const name = entityDefMap.get(g.definitionId) ?? g.definitionId ?? 'Entity';
+      const def = g.definitionId ? cache.get('entityDefinition', g.definitionId) : null;
+      const name = def?.name ?? g.definitionId ?? 'Entity';
       return { name, qty: 1 };
     }
     const qty = g.amount ?? g.qty ?? 1;

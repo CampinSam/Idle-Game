@@ -3,10 +3,14 @@ import { CommandHandler, CommandContext, CommandHandlerResult } from '../command
 import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildEntityPatch, buildPlayerPatch } from '../patch-builder';
 import { GiftService } from '../../gift/gift.service';
 import { buildGrantsRewardsBlock } from './grant-label.util';
+import { DefinitionCacheService } from '../../definition-cache/definition-cache.service';
 
 @Injectable()
 export class ClaimGiftHandler implements CommandHandler {
-  constructor(private giftService: GiftService) {}
+  constructor(
+    private giftService: GiftService,
+    private definitionCache: DefinitionCacheService,
+  ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { giftId } = payload;
@@ -33,7 +37,7 @@ export class ClaimGiftHandler implements CommandHandler {
     const snapshot = (gift.snapshot as any) ?? {};
     const presentation = snapshot.presentation ?? {};
 
-    const rewardsBlock = await buildGrantsRewardsBlock(ctx.tx, grants);
+    const rewardsBlock = buildGrantsRewardsBlock(grants, this.definitionCache);
     const bodyBlock = rewardsBlock ?? {
       type: 'richText',
       doc: [{ t: 'p', c: [{ t: 'text', v: 'Your rewards have been added.' }] }],

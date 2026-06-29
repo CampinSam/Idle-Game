@@ -187,9 +187,7 @@ export class OpenLootBoxHandler implements CommandHandler {
     // via the admin panel. When the template has pages (e.g. rewardsList with revealOptions),
     // it is resolved against a context built from the actual grants so `from:` expressions work.
     try {
-      const templateRow = await (this.prisma as any).defaultModalDef.findUnique({
-        where: { id: 'default_lootbox_reveal' },
-      });
+      const templateRow = this.definitionCache.get('defaultModalDef', 'default_lootbox_reveal');
       if (templateRow?.enabled && templateRow.spec && typeof templateRow.spec === 'object') {
         const tpl = templateRow.spec as any;
         if (tpl.header && typeof tpl.header === 'object') {
@@ -200,10 +198,8 @@ export class OpenLootBoxHandler implements CommandHandler {
           const itemKeys = allGrants.filter((g: any) => g.type === 'item' && g.itemDefId).map((g: any) => g.itemDefId as string);
           const itemRarityMap = new Map<string, string>();
           if (itemKeys.length > 0) {
-            const itemDefs = await (this.prisma as any).itemDefinition.findMany({
-              where: { id: { in: itemKeys } },
-              select: { id: true, rarity: true },
-            });
+            const itemDefs = this.definitionCache.getAll('itemDef')
+              .filter((d: any) => itemKeys.includes(d.id));
             for (const d of itemDefs as { id: string; rarity: string | null }[]) {
               if (d.rarity) itemRarityMap.set(d.id, d.rarity);
             }

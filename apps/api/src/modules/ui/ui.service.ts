@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { CurrencyService } from '../currency/currency.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 import { resolveSpec } from './modal-def-resolver.util';
 import { calcXpForLevel, diffLocationLevelUnlocks, type LocationLevelUnlocks } from '../game-rules/level-config.util';
 import { DEFAULT_XP_DEPOSIT_COST } from '../location/location-xp.constants';
@@ -80,6 +81,7 @@ export class UiService {
     private tickService: TickService,
     private gameRulesService: GameRulesService,
     private currencyService: CurrencyService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   async buildModalForJob(userId: string, jobId: string): Promise<any> {
@@ -331,7 +333,7 @@ export class UiService {
     const giftDefId = snapshot?.giftDefId;
     if (giftDefId) {
       try {
-        const giftDef = await (this.prisma as any).giftDef.findUnique({ where: { id: giftDefId }, select: { modalDefId: true } });
+        const giftDef = this.definitionCache.get('giftDef', giftDefId);
         if (giftDef?.modalDefId) {
           const spec = await this.resolveModalDef(giftDef.modalDefId);
           if (spec) return this.mergeModalDefSpec(generated, spec, ctx);
@@ -451,14 +453,8 @@ export class UiService {
       const currencyKeys = merged.filter(r => r.type === 'currency' && r.key).map(r => r.key as string);
       const itemKeys = merged.filter(r => r.type === 'item' && r.key).map(r => r.key as string);
 
-      const [currencyDefs, itemDefs] = await Promise.all([
-        currencyKeys.length > 0
-          ? (this.prisma as any).currencyDef.findMany({ where: { id: { in: currencyKeys } }, select: { id: true, sortOrder: true } })
-          : Promise.resolve([]),
-        itemKeys.length > 0
-          ? (this.prisma as any).itemDefinition.findMany({ where: { key: { in: itemKeys } }, select: { key: true, rarity: true } })
-          : Promise.resolve([]),
-      ]);
+      const currencyDefs = currencyKeys.map((id: string) => this.definitionCache.get('currency', id)).filter(Boolean);
+      const itemDefs = this.definitionCache.getAll('itemDef').filter((d: any) => itemKeys.includes(d.key));
 
       const currencySortOrder = new Map<string, number>((currencyDefs as any[]).map((c: any) => [c.id, c.sortOrder ?? 0]));
       const itemRarityOrder = new Map<string, number>((itemDefs as any[]).map((d: any) => [d.key, RARITY_ORDER[d.rarity] ?? 0]));
@@ -507,10 +503,7 @@ export class UiService {
     const categoryDefId = (def as any)?.missionCategoryDefId;
     if (categoryDefId) {
       try {
-        const cat = await (this.prisma as any).missionCategoryDef.findUnique({
-          where: { id: categoryDefId },
-          select: { name: true },
-        });
+        const cat = this.definitionCache.get('missionCategoryDef', categoryDefId);
         defCategory = cat?.name ?? null;
       } catch {}
     }
@@ -900,36 +893,41 @@ export class UiService {
     return job.defId || 'Unknown';
   }
 
-  private async fetchJobDef(job: any): Promise<any | null> {
+  private fetchJobDef(job: any): any | null {
     const defId = job.defId;
     if (!defId) return null;
     try {
+      let def: any = null;
       if (job.type === 'MissionJob') {
-        return await (this.prisma as any).missionDef.findFirst({ where: { OR: [{ id: defId }, { key: defId }] }, include: { displayDef: true } });
+        def = this.definitionCache.get('missionDef', defId);
       } else if (job.type === 'CraftingJob') {
-        return await (this.prisma as any).recipeDef.findFirst({ where: { OR: [{ id: defId }, { key: defId }] }, include: { displayDef: true } });
+        def = this.definitionCache.get('recipeDef', defId);
       } else if (job.type === 'BuildingJob') {
-        return await (this.prisma as any).buildingDef.findFirst({ where: { OR: [{ id: defId }, { key: defId }] }, include: { displayDef: true } });
+        def = this.definitionCache.get('buildingDef', defId);
       } else if (job.type === 'DustingJob') {
-        return await (this.prisma as any).itemDefinition.findFirst({ where: { OR: [{ id: defId }, { key: defId }] } });
+        def = this.definitionCache.get('itemDef', defId);
       }
+      if (def?.displayDefId) {
+        return { ...def, displayDef: this.definitionCache.get('displayDef', def.displayDefId) };
+      }
+      return def ?? null;
     } catch {}
     return null;
   }
 
-  private async resolveModalDef(id: string | null | undefined): Promise<ModalSpecV1 | null> {
+  private resolveModalDef(id: string | null | undefined): ModalSpecV1 | null {
     if (!id) return null;
     try {
-      const modalDef = await (this.prisma as any).modalDef.findFirst({ where: { OR: [{ id }, { key: id }] } });
+      const modalDef = this.definitionCache.get('modalDef', id);
       if (!modalDef || !modalDef.enabled) return null;
       return modalDef.spec && typeof modalDef.spec === 'object' ? (modalDef.spec as ModalSpecV1) : null;
     } catch {}
     return null;
   }
 
-  private async resolveDefaultModalDef(systemId: string): Promise<ModalSpecV1 | null> {
+  private resolveDefaultModalDef(systemId: string): ModalSpecV1 | null {
     try {
-      const row = await (this.prisma as any).defaultModalDef.findFirst({ where: { OR: [{ id: systemId }, { key: systemId }] } });
+      const row = this.definitionCache.get('defaultModalDef', systemId);
       if (!row) {
         this.logger.warn(`DefaultModalDef missing for system ID "${systemId}" — no fallback spec available`);
         return null;
@@ -1109,10 +1107,8 @@ export class UiService {
       // Sum across stacks per definition — a player may hold multiple
       // ItemInstance rows for the same item, so taking just one would
       // wrongly mark options as unaffordable.
-      const itemDefRows = await (this.prisma as any).itemDefinition.findMany({
-        where: { OR: itemIds.flatMap((s: string) => [{ id: s }, { key: s }]) },
-        select: { id: true, key: true },
-      });
+      const itemDefRows = this.definitionCache.getAll('itemDef')
+        .filter((d: any) => itemIds.includes(d.id) || itemIds.includes(d.key));
       const uuidToSlug = new Map<string, string>(itemDefRows.map((d: any) => [d.id, d.key]));
       const itemUuids: string[] = itemDefRows.map((d: any) => d.id);
       const rows = await (this.prisma as any).itemInstance.findMany({
@@ -1268,20 +1264,12 @@ export class UiService {
 
     const buildingIds = unlocks.newAllowedBuildings;
     const roomIds = unlocks.newAllowedRooms;
-    const [buildingDefs, roomDefs] = await Promise.all([
-      buildingIds.length > 0
-        ? (this.prisma as any).buildingDef.findMany({
-            where: { key: { in: buildingIds } },
-            select: { key: true, name: true },
-          })
-        : Promise.resolve([] as any[]),
-      roomIds.length > 0
-        ? (this.prisma as any).roomDef.findMany({
-            where: { key: { in: roomIds } },
-            select: { key: true, name: true },
-          })
-        : Promise.resolve([] as any[]),
-    ]);
+    const buildingDefs = buildingIds.length > 0
+      ? this.definitionCache.getAll('buildingDef').filter((d: any) => buildingIds.includes(d.key))
+      : [];
+    const roomDefs = roomIds.length > 0
+      ? this.definitionCache.getAll('roomDef').filter((d: any) => roomIds.includes(d.key))
+      : [];
     const buildingNameById = new Map<string, string>(
       (buildingDefs as any[]).map((b) => [b.key, b.name || b.key]),
     );
@@ -1389,7 +1377,7 @@ export class UiService {
   }
 
   async buildLeadInModalForMission(userId: string, missionDefId: string): Promise<ModalSpecV1> {
-    const def = await (this.prisma as any).missionDef.findFirst({ where: { OR: [{ id: missionDefId }, { key: missionDefId }] } });
+    const def = this.definitionCache.get('missionDef', missionDefId);
     if (!def) throw new NotFoundException('Mission definition not found');
 
     const leadInModalDefId = (def as any).leadInModalDefId as string | null | undefined;

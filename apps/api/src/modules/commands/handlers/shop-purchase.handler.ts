@@ -5,6 +5,7 @@ import { CurrencyService } from '../../currency/currency.service';
 import { InventoryService } from '../../inventory/inventory.service';
 import { TelemetryService } from '../../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../../telemetry/telemetry-context-builder.service';
+import { DefinitionCacheService } from '../../definition-cache/definition-cache.service';
 
 const PAYMENT_COST_TYPES = ['usd', 'ada', 'cnt'] as const;
 type PaymentCostType = typeof PAYMENT_COST_TYPES[number];
@@ -35,13 +36,14 @@ export class ShopPurchaseHandler implements CommandHandler {
     private inventoryService: InventoryService,
     private telemetryService: TelemetryService,
     private telemetryContextBuilder: TelemetryContextBuilderService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { shopItemDefId } = payload;
     if (!shopItemDefId) throw new BadRequestException('shopItemDefId is required');
 
-    const item = await (ctx.tx as any).shopItemDef.findUnique({ where: { id: shopItemDefId } });
+    const item = this.definitionCache.get('shopItemDef', shopItemDefId);
     if (!item) throw new NotFoundException(`Shop item "${shopItemDefId}" not found`);
     if (!item.enabled) throw new BadRequestException('This item is currently unavailable');
     if (item.availableFrom && new Date(item.availableFrom) > new Date()) {

@@ -3,10 +3,14 @@ import { CommandHandler, CommandContext, CommandHandlerResult } from '../command
 import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildActiveEffectPatches, buildPlayerPatch } from '../patch-builder';
 import { QuestService } from '../../quest/quest.service';
 import { buildGrantsRewardsBlock } from './grant-label.util';
+import { DefinitionCacheService } from '../../definition-cache/definition-cache.service';
 
 @Injectable()
 export class ClaimQuestRewardHandler implements CommandHandler {
-  constructor(private questService: QuestService) {}
+  constructor(
+    private questService: QuestService,
+    private definitionCache: DefinitionCacheService,
+  ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { questInstanceId } = payload;
@@ -33,7 +37,7 @@ export class ClaimQuestRewardHandler implements CommandHandler {
       await buildActiveEffectPatches(pb, ctx.tx, ctx.userId);
     }
 
-    const rewardsBlock = await buildGrantsRewardsBlock(ctx.tx, grants);
+    const rewardsBlock = buildGrantsRewardsBlock(grants, this.definitionCache);
     const bodyBlock = rewardsBlock ?? {
       type: 'richText',
       doc: [{ t: 'p', c: [{ t: 'text', v: 'Rewards collected.' }] }],

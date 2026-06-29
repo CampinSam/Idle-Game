@@ -4,7 +4,8 @@ import { GameRulesService } from './game-rules.service';
 function makeService(): GameRulesService {
   const fakePrisma: any = { user: { findUnique: jest.fn() }, bundleDef: { findMany: jest.fn().mockResolvedValue([]) }, unlockDef: { findMany: jest.fn().mockResolvedValue([]) } };
   const fakeSelectionResolver: any = { evaluate: jest.fn().mockReturnValue(true) };
-  const svc = new GameRulesService(fakePrisma, fakeSelectionResolver);
+  const fakeCache = { get: () => undefined, getAll: () => [] } as any;
+  const svc = new GameRulesService(fakePrisma, fakeSelectionResolver, fakeCache);
   (svc as any).logger = { warn: jest.fn(), log: jest.fn(), debug: jest.fn(), error: jest.fn() } as unknown as Logger;
   return svc;
 }

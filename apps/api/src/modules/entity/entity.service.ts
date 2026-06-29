@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EffectService } from '../effect/effect.service';
 import { NotificationService } from '../notification/notification.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 import { EffectCategory, EffectTargetType, EffectTargetContext, applyModifier } from '@derp/shared';
 import { getProgressionRules, xpForNextLevel } from './entity-progression-rules.util';
 import { applyWeightedLevelUp } from '@derp/math';
@@ -47,6 +48,7 @@ export class EntityService {
     private effectService: EffectService,
     private notificationService: NotificationService,
     private settlementService: LocationSettlementService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   async getEntities(userId: string) {
@@ -344,10 +346,7 @@ export class EntityService {
     // Batch-fetch mission names to avoid N+1
     const defIds = [...new Set(jobs.map((j: any) => j.defId as string))];
     const defs = defIds.length > 0
-      ? await (this.prisma as any).missionDef.findMany({
-          where: { id: { in: defIds } },
-          select: { id: true, name: true },
-        })
+      ? this.definitionCache.getAll('missionDef').filter((d: any) => defIds.includes(d.id))
       : [];
     const defNameById = new Map<string, string>(defs.map((d: any) => [d.id, d.name]));
 

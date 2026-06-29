@@ -4,6 +4,7 @@ import { PatchBuilder, buildCurrencyPatches, buildItemPatches, buildPlayerPatch,
 import { MissionService } from '../../mission/mission.service';
 import { NotificationService } from '../../notification/notification.service';
 import { GameRulesService } from '../../game-rules/game-rules.service';
+import { DefinitionCacheService } from '../../definition-cache/definition-cache.service';
 
 @Injectable()
 export class CompleteMissionHandler implements CommandHandler {
@@ -11,6 +12,7 @@ export class CompleteMissionHandler implements CommandHandler {
     private missionService: MissionService,
     private notificationService: NotificationService,
     private gameRules: GameRulesService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -36,7 +38,7 @@ export class CompleteMissionHandler implements CommandHandler {
     // status for all category/mission defs so the client can unlock gated
     // content in the same render cycle — no separate HTTP refetch needed.
     if ((result.missionResult as any)?.resolvedFlagCount > 0 || (result.missionResult as any)?.resolvedUnlockCount > 0) {
-      await buildMissionDefStatusPatches(pb, ctx.tx, ctx.userId, this.gameRules);
+      await buildMissionDefStatusPatches(pb, ctx.tx, ctx.userId, this.gameRules, this.definitionCache);
     }
 
     const removedEffectIds: string[] = result.missionResult?.removedEffectIds || [];
