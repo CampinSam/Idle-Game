@@ -278,6 +278,7 @@ function OutcomeEntryEditor({
                 <option value="entity_xp">entity_xp</option>
                 <option value="keeper_xp">keeper_xp</option>
                 <option value="flag">flag</option>
+                <option value="grant_unlock">grant unlock</option>
                 <option value="text">text</option>
                 <option value="effect">effect</option>
                 <option value="nothing">nothing</option>
