@@ -8,8 +8,25 @@ on:
 
 jobs:
   build-and-test:
-    name: Build, typecheck, test
+    name: Build, lint, test, migrate
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: derp_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d derp_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # A throwaway service database, never a development or production URL.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/derp_ci?schema=public
 
     steps:
       - name: Checkout
@@ -35,5 +52,19 @@ jobs:
       - name: Build all packages
         run: pnpm -r build
 
+      - name: Lint all packages
+        run: pnpm -r lint
+
       - name: Run unit tests
         run: pnpm -r test --if-present
+
+      # Do not run prisma/seed.ts or scripts/prisma-deploy.js here: both have
+      # production-oriented seed/baseline behavior. A new DB must migrate as-is.
+      - name: Apply historical migrations to clean database
+        run: pnpm prisma migrate deploy --schema=prisma/schema.prisma
+
+      - name: Check migration history
+        run: pnpm prisma migrate status --schema=prisma/schema.prisma
+
+      - name: Compare migrated database with Prisma schema
+        run: pnpm prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
