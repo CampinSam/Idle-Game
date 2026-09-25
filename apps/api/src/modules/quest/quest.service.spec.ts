@@ -60,11 +60,11 @@ describe('QuestService.claimReward — canonical reward shape via shared resolve
     expect(grants).toEqual([{ type: 'currency', key: 'arcanium', amount: 25 }]);
   });
 
-  it('rolls within min..max for an item via Math.random when no rng is wired in', async () => {
+  it('uses the deterministic quest reward RNG to roll within min..max for an item', async () => {
     (Math.random as jest.Mock).mockReturnValue(0.999);
     const f = makeFakes({ type: 'item', key: 'wood', min: 1, max: 5 });
     await f.svc.claimReward('user-1', 'qi-1');
-    expect(f.items).toEqual([{ itemId: 'wood', quantity: 5 }]);
+    expect(f.items).toEqual([{ itemId: 'wood', quantity: 4 }]);
   });
 
   it('grants every entry of a top-level { rewards: [...] } block', async () => {

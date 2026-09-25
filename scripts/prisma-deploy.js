@@ -31,6 +31,18 @@ const { execSync } = require('child_process');
 const MIGRATIONS_DIR = path.resolve(__dirname, '..', 'prisma', 'migrations');
 const SCHEMA_PATH = path.resolve(__dirname, '..', 'prisma', 'schema.prisma');
 
+// These additive replay migrations must execute: the drift heuristic can see
+// conflicts from only part of their DDL and incorrectly baseline the remainder.
+const MUST_EXECUTE_REPLAY_MIGRATIONS = new Set([
+  '20260209000000_replay_prerequisite_tables',
+  '20260516060100_replay_global_active_power_effect_fields',
+  '20260629000000_add_safe_schema_gaps',
+]);
+
+function shouldAutoBaselineMigration(name) {
+  return !MUST_EXECUTE_REPLAY_MIGRATIONS.has(name);
+}
+
 function listMigrations() {
   return fs
     .readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
@@ -250,14 +262,19 @@ async function main() {
       const nonEmpty = await hasAnyUserTables(client);
       if (nonEmpty) {
         // Schema exists (e.g. copied from dev via db push) but has no migration
-        // history. Baseline every migration as applied so migrate deploy doesn't
-        // hit P3005 ("schema is not empty").
+        // history. Baseline historical migrations so migrate deploy doesn't hit
+        // P3005, but leave additive replay migrations pending so their remaining
+        // DDL is applied.
         const all = listMigrations();
+        const toBaseline = all.filter(shouldAutoBaselineMigration);
         console.log(
-          `[prisma-deploy] No _prisma_migrations table but schema is non-empty — baselining all ${all.length} migrations`,
+          `[prisma-deploy] No _prisma_migrations table but schema is non-empty — baselining ${toBaseline.length} historical migrations; leaving ${all.length - toBaseline.length} replay migration(s) for deploy`,
         );
-        for (const name of all) {
+        for (const name of toBaseline) {
           resolveAsApplied(name);
+        }
+        for (const name of all.filter((migration) => !shouldAutoBaselineMigration(migration))) {
+          console.log(`[prisma-deploy] ${name}: protected replay migration — leaving for migrate deploy`);
         }
       } else {
         console.log(
@@ -285,6 +302,13 @@ async function main() {
         );
 
         for (const name of unapplied) {
+          if (!shouldAutoBaselineMigration(name)) {
+            console.log(
+              `[prisma-deploy] ${name}: protected replay migration — leaving for migrate deploy`,
+            );
+            continue;
+          }
+
           const sqlPath = path.join(MIGRATIONS_DIR, name, 'migration.sql');
           if (!fs.existsSync(sqlPath)) continue;
           const sql = fs.readFileSync(sqlPath, 'utf8');
@@ -333,7 +357,11 @@ async function main() {
   runSeed();
 }
 
-main().catch((err) => {
-  console.error('[prisma-deploy] failed:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error('[prisma-deploy] failed:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = { shouldAutoBaselineMigration };

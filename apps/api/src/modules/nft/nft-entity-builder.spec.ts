@@ -12,6 +12,7 @@ function makeDef(initOverrides: any = {}) {
       defaultBody: { slotStats: { body: { ATK: 1 } }, scaling: { ATK: 1 }, rarityMultiplier: 1.0 },
     },
     init: {
+      baseStats: { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0 },
       nft: {
         attributeMap: { body: 'body', head: 'head' },
         missingSlotPolicy: 'skip',
@@ -24,7 +25,7 @@ function makeDef(initOverrides: any = {}) {
 
 function makePrisma(def: any) {
   return {
-    entityDefinition: { findUnique: jest.fn(async () => def) },
+    entityDefinition: { findFirst: jest.fn(async () => def) },
   } as any;
 }
 

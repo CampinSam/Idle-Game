@@ -205,6 +205,16 @@ export function normalizeOutcomeFieldsForModel(modelName: string, data: any): nu
   let total = 0;
   for (const f of fields) {
     if (data[f] === undefined) continue;
+    // Mission outcomes are keyed by tier (e.g. common/failure); each tier
+    // contains its own rewards array rather than being an outcomeSpec itself.
+    if (modelName === 'missionDef' && f === 'tiers' && data[f] && typeof data[f] === 'object' && !Array.isArray(data[f])) {
+      for (const [tier, spec] of Object.entries(data[f])) {
+        const { value, changed } = normalizeOutcomeSpec(spec);
+        data[f][tier] = value;
+        total += changed;
+      }
+      continue;
+    }
     // Gift rewardSpec gets a gift-specific migration pass first:
     // lootTable → item conversion and single-object → array wrapping.
     if (modelName === 'giftDef' && f === 'rewardSpec') {

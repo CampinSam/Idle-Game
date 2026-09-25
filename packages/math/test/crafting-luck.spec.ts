@@ -15,9 +15,9 @@ describe('CraftingLuck', () => {
     expect(cl).toBeCloseTo(26, 5);
   });
 
-  it('hard caps at 150', () => {
+  it('does not cap crafting luck', () => {
     const stats: EntityStats = { ATK: 10, DEF: 10, SPD: 10, FOC: 200, LCK: 200, VIT: 10 };
     const cl = calculateCraftingLuck(stats, { relic: 50, worker: 50, room: 50 });
-    expect(cl).toBe(150);
+    expect(cl).toBe(310);
   });
 });

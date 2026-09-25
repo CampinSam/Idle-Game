@@ -95,14 +95,18 @@ function makeInMemoryPrisma() {
           if (where.AND) {
             for (const cond of where.AND) {
               if (cond.OR) {
-                const expOk = cond.OR.some((c: any) =>
-                  (c.expiresAt === null && g.expiresAt == null) ||
-                  (c.expiresAt?.gt && g.expiresAt != null && new Date(g.expiresAt) > now),
-                );
-                if (!expOk) match = false;
-              }
-              if (cond.NOT?.remainingChargeUnits !== undefined) {
-                if (g.remainingChargeUnits === cond.NOT.remainingChargeUnits) match = false;
+                const conditionOk = cond.OR.some((c: any) => {
+                  const expirationOk = c.expiresAt === undefined ||
+                    (c.expiresAt === null && g.expiresAt == null) ||
+                    (c.expiresAt?.gt && g.expiresAt != null && new Date(g.expiresAt) > now);
+                  const chargesOk = c.remainingChargeUnits === undefined ||
+                    (c.remainingChargeUnits === null && g.remainingChargeUnits == null) ||
+                    (c.remainingChargeUnits?.gt !== undefined &&
+                      g.remainingChargeUnits != null &&
+                      g.remainingChargeUnits > c.remainingChargeUnits.gt);
+                  return expirationOk && chargesOk;
+                });
+                if (!conditionOk) match = false;
               }
             }
           }

@@ -23,9 +23,9 @@ function makeDef(slotFill: any, opts: { traits?: any; slots?: any } = {}) {
       },
     },
     init: {
+      baseStats: { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0 },
       scratch: {
         startingLevel: 1,
-        baseStats: { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0 },
         slotFill,
       },
     },
@@ -34,7 +34,7 @@ function makeDef(slotFill: any, opts: { traits?: any; slots?: any } = {}) {
 
 function makePrisma(def: any) {
   return {
-    entityDefinition: { findUnique: jest.fn(async () => def) },
+    entityDefinition: { findFirst: jest.fn(async () => def) },
   } as any;
 }
 

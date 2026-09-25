@@ -306,6 +306,7 @@ function buildMissionService(db: any, cache?: any): MissionService {
   const telemetryService: any = { record: jest.fn(async () => {}) };
   const effectService: any = {
     resolve: jest.fn(() => emptyMod),
+    resolveTimerSpeed: jest.fn(async () => emptyMod),
     resolveForTarget: jest.fn(async () => emptyMod),
     getActiveEffectsForUser: jest.fn(async () => []),
     getGlobalPowerRows: jest.fn(async () => []),

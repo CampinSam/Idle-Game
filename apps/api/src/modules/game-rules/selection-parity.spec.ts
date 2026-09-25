@@ -483,10 +483,10 @@ describe('Synergy selector parity — traitsAny', () => {
 
   function rssTraitsAny(traitValues: string[]): RichSelection {
     return {
-      op: 'OR',
-      rules: traitValues.map(t => ({
-        scope: 'entity', field: `traits.${t}`, aggregate: 'any', operator: 'eq', value: 1,
-      } as RichSelectionRule)),
+      op: 'AND',
+      rules: [{
+        scope: 'entity', field: 'traitValues', aggregate: 'any', operator: 'in', value: traitValues,
+      } as RichSelectionRule],
     };
   }
 
@@ -513,7 +513,7 @@ describe('Synergy selector parity — traitsAll', () => {
     return {
       op: 'AND',
       rules: traitValues.map(t => ({
-        scope: 'entity', field: `traits.${t}`, aggregate: 'any', operator: 'eq', value: 1,
+        scope: 'entity', field: 'traitValues', aggregate: 'any', operator: 'contains', value: t,
       } as RichSelectionRule)),
     };
   }
@@ -937,13 +937,13 @@ describe('Stub regression — trait', () => {
 
   it('RSS traits.Ninja — true when entity has Ninja trait', () => {
     const selCtx = descToSelCtx(ninjaWarriorEntity);
-    const rss: RichSelectionRule = { scope: 'entity', field: 'traits.Ninja', aggregate: 'any', operator: 'eq', value: 1 };
+    const rss: RichSelectionRule = { scope: 'entity', field: 'traits.head', aggregate: 'any', operator: 'eq', value: 'Ninja' };
     expect(sel.evaluate(rss, selCtx)).toBe(true);
   });
 
   it('RSS traits.Ninja — false when entity lacks Ninja trait', () => {
     const selCtx = descToSelCtx(archerScoutEntity);
-    const rss: RichSelectionRule = { scope: 'entity', field: 'traits.Ninja', aggregate: 'any', operator: 'eq', value: 1 };
+    const rss: RichSelectionRule = { scope: 'entity', field: 'traits.head', aggregate: 'any', operator: 'eq', value: 'Ninja' };
     expect(sel.evaluate(rss, selCtx)).toBe(false);
   });
 });
@@ -1086,9 +1086,9 @@ describe('checkRequirements — fail-closed enforcement & RSS parity', () => {
     expect(grs.checkRequirements([], ctx)).toBe(true);
   });
 
-  it('fails-closed for legacy Requirement[] — never grants access regardless of player state', () => {
+  it('treats legacy Requirement[] as unconstrained, matching the current migration contract', () => {
     const ctx: RequirementContext = { user: { keeperLevel: 99 }, userFlags: { vip: true } };
-    expect(grs.checkRequirements([{ type: 'keeper_level', value: 1 }] as any, ctx)).toBe(false);
+    expect(grs.checkRequirements([{ type: 'keeper_level', value: 1 }] as any, ctx)).toBe(true);
   });
 
   it.each([

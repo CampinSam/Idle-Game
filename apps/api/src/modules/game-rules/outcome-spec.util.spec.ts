@@ -114,13 +114,15 @@ describe('normalizeOutcomeSpec', () => {
 describe('normalizeOutcomeFieldsForModel', () => {
   it('rewrites every outcomeSpec field for the given model in-place', () => {
     const data: any = {
-      success: [{ type: 'currency', key: 'gold', amount: 5 }],
-      failure: [{ type: 'item', key: 'gem', amount: 1 }],
+      tiers: {
+        common: { rewards: [{ type: 'currency', key: 'gold', amount: 5 }] },
+        failure: { rewards: [{ type: 'item', key: 'gem', amount: 1 }] },
+      },
     };
     const changed = normalizeOutcomeFieldsForModel('missionDef', data);
     expect(changed).toBe(2);
-    expect(data.success).toEqual([{ type: 'currency', key: 'gold', min: 5, max: 5 }]);
-    expect(data.failure).toEqual([{ type: 'item', key: 'gem', min: 1, max: 1 }]);
+    expect(data.tiers.common.rewards).toEqual([{ type: 'currency', key: 'gold', min: 5, max: 5 }]);
+    expect(data.tiers.failure.rewards).toEqual([{ type: 'item', key: 'gem', min: 1, max: 1 }]);
   });
 
   it('is a no-op for unknown models', () => {
@@ -188,7 +190,7 @@ describe('migrateGiftRewardSpec', () => {
 describe('OUTCOME_SPEC_FIELDS_BY_MODEL pinning', () => {
   it('pins the full set of model→field mappings', () => {
     expect(OUTCOME_SPEC_FIELDS_BY_MODEL).toEqual({
-      missionDef: ['success', 'failure'],
+      missionDef: ['tiers'],
       recipeDef: ['rewards'],
       giftDef: ['rewardSpec'],
       lootboxDef: ['outcomes'],

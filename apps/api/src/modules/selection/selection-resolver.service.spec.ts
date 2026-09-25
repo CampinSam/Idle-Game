@@ -204,16 +204,16 @@ describe('SelectionResolverService', () => {
       expect(svc.evaluate(rule, makeCtx({ entities: baseEntities as any }))).toBe(true);
     });
 
-    it('team traits.Ninja sum — counts entities with Ninja trait', () => {
+    it('team trait any — matches an entity whose head trait is Ninja', () => {
       const rule: RichSelectionRule = {
-        scope: 'team', field: 'traits.Ninja', aggregate: 'sum', operator: 'gte', value: 2,
+        scope: 'team', field: 'traits.head', aggregate: 'any', operator: 'eq', value: 'Ninja',
       };
       expect(svc.evaluate(rule, makeCtx({ entities: baseEntities as any }))).toBe(true);
     });
 
     it('team traits.Ninja sum — fails when not enough Ninja entities', () => {
       const rule: RichSelectionRule = {
-        scope: 'team', field: 'traits.Ninja', aggregate: 'sum', operator: 'gte', value: 3,
+        scope: 'team', field: 'traits.head', aggregate: 'all', operator: 'eq', value: 'Ninja',
       };
       expect(svc.evaluate(rule, makeCtx({ entities: baseEntities as any }))).toBe(false);
     });
@@ -248,21 +248,21 @@ describe('SelectionResolverService', () => {
 
     it('entity scope any — any entity is Ninja', () => {
       const rule: RichSelectionRule = {
-        scope: 'entity', field: 'traits.Ninja', aggregate: 'any', operator: 'eq', value: 1,
+        scope: 'entity', field: 'traits.head', aggregate: 'any', operator: 'eq', value: 'Ninja',
       };
       expect(svc.evaluate(rule, makeCtx({ entities: baseEntities as any }))).toBe(true);
     });
 
     it('entity scope all — all entities are Ninja fails', () => {
       const rule: RichSelectionRule = {
-        scope: 'entity', field: 'traits.Ninja', aggregate: 'all', operator: 'eq', value: 1,
+        scope: 'entity', field: 'traits.head', aggregate: 'all', operator: 'eq', value: 'Ninja',
       };
       expect(svc.evaluate(rule, makeCtx({ entities: baseEntities as any }))).toBe(false);
     });
 
     it('entity scope none — no entity is Ninja fails', () => {
       const rule: RichSelectionRule = {
-        scope: 'entity', field: 'traits.Ninja', aggregate: 'none', operator: 'eq', value: 1,
+        scope: 'entity', field: 'traits.head', aggregate: 'none', operator: 'eq', value: 'Ninja',
       };
       expect(svc.evaluate(rule, makeCtx({ entities: baseEntities as any }))).toBe(false);
     });
@@ -270,10 +270,10 @@ describe('SelectionResolverService', () => {
     it('where filter narrows entities before aggregation', () => {
       const rule: RichSelectionRule = {
         scope: 'team',
-        field: 'traits.Warrior',
-        aggregate: 'sum',
-        operator: 'gte',
-        value: 1,
+        field: 'traits.body',
+        aggregate: 'any',
+        operator: 'eq',
+        value: 'Warrior',
         where: {
           op: 'AND',
           rules: [
@@ -552,7 +552,7 @@ describe('SelectionResolverService', () => {
   // ─── stub scopes ─────────────────────────────────────────────────────────
 
   describe('stub scopes', () => {
-    const stubScopes = ['season', 'event', 'recipe', 'job', 'room', 'inventory', 'mission', 'entity_slot'] as const;
+    const stubScopes = ['season', 'recipe', 'job', 'room', 'inventory', 'mission', 'entity_slot'] as const;
 
     for (const scope of stubScopes) {
       it(`${scope} scope always returns true (stub)`, () => {
@@ -562,6 +562,15 @@ describe('SelectionResolverService', () => {
         expect(svc.evaluate(rule, makeCtx())).toBe(true);
       });
     }
+
+    it('event scope evaluates against the supplied event context', () => {
+      const rule: RichSelectionRule = {
+        scope: 'event', field: 'type', operator: 'eq', value: 'mission_complete',
+      };
+      expect(svc.evaluate(rule, makeCtx({
+        event: { type: 'mission_complete', amount: 1, data: {} },
+      }))).toBe(true);
+    });
   });
 
   // ─── operator coverage ───────────────────────────────────────────────────

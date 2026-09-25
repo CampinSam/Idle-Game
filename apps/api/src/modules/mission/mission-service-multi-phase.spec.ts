@@ -258,7 +258,11 @@ function makeDeps(dbOverrides: any = {}) {
 
 function buildService(deps: ReturnType<typeof makeDeps>): MissionService {
   const gameConstants: any = { get: jest.fn(async () => 300) };
-  const fakeDefinitionCache: any = { get: jest.fn(() => null), getAll: jest.fn(() => []), invalidate: jest.fn() };
+  const fakeDefinitionCache: any = {
+    get: jest.fn((_table: string, id: string) => id === deps.defRow.id ? deps.defRow : null),
+    getAll: jest.fn(() => [deps.defRow]),
+    invalidate: jest.fn(),
+  };
   return new MissionService(
     deps.prisma as any,
     deps.entityService as any,

@@ -13,7 +13,9 @@ This repository is a pnpm monorepo. Keep the web application in `apps/web`, the 
 
 ## Pull-request checks
 
-CI uses a clean checkout and an isolated PostgreSQL service. It installs the lockfile, generates Prisma, builds and type-checks workspaces, lints, runs unit tests, applies migrations to an empty database, checks migration status, and compares the migrated database with the Prisma schema. It never runs the production deploy/baselining script or seed, and needs no production credentials.
+CI uses a clean checkout and an isolated PostgreSQL service. It installs the lockfile, generates Prisma, builds and type-checks workspaces, lints, runs unit tests, applies migrations to an empty database, checks migration status, and checks its remaining schema differences against a reviewed fingerprint. It never runs the production deploy/baselining script or seed, and needs no production credentials.
+
+**Known schema difference:** Fresh replay includes all application tables and required columns, but it also preserves legacy tables/fields and some historical defaults and constraints that differ from `schema.prisma`. The fingerprint check fails on *new* differences and prints the actual SQL; it does not claim the residual differences have been fixed. Do not update the fingerprint without reviewing the complete generated diff, testing on a disposable database, and documenting whether existing player data is affected. Reconciling the remaining tables/fields and constraints requires a separate data-safety decision; see [migration replay notes](./migration-replay-notes.md).
 
 For changes that touch the sync protocol, include tests for both server serialization/patch generation and client patch consumption. For schema and content work, describe how a fresh database and existing data are affected; production migration approval remains a separate release decision.
 

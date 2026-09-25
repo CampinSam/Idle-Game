@@ -66,5 +66,13 @@ jobs:
       - name: Check migration history
         run: pnpm prisma migrate status --schema=prisma/schema.prisma
 
-      - name: Compare migrated database with Prisma schema
-        run: pnpm prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+      # The historical schema still has documented extra legacy structures.
+      # Pin the exact residual diff so a new mismatch cannot pass unnoticed.
+      - name: Detect unexpected migration/schema divergence
+        run: |
+          pnpm prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script > "$RUNNER_TEMP/replay-diff.sql"
+          if ! printf '%s  %s\n' '90ac7d41b0a77b459e489c07694a80aa7a4f51195f05115a4b68442ba4dd14ba' "$RUNNER_TEMP/replay-diff.sql" | sha256sum --check --status; then
+            echo 'Fresh replay differs from the reviewed legacy schema gap. Inspect the SQL below; do not baseline it silently.'
+            cat "$RUNNER_TEMP/replay-diff.sql"
+            exit 1
+          fi

@@ -9,8 +9,13 @@ function makeFakes() {
   const prisma: any = {
     bundleDef: {
       findMany: jest.fn(({ where }: any) => {
-        const ids: string[] = where?.id?.in ?? [];
-        return Promise.resolve(ids.map(id => bundleDefs.get(id)).filter(Boolean));
+        const ids = new Set<string>();
+        for (const clause of where?.OR ?? []) {
+          for (const id of clause?.id?.in ?? clause?.key?.in ?? []) ids.add(id);
+        }
+        return Promise.resolve(
+          [...ids].map(id => bundleDefs.get(id)).filter(Boolean),
+        );
       }),
     },
     user: {
@@ -34,7 +39,7 @@ function makeFakes() {
   const fakeCache = { get: () => undefined, getAll: () => [] } as any;
   const gameRules = new GameRulesService(prisma, fakeSelectionResolver, fakeCache);
 
-  return { prisma, currencyService, inventoryService, gameRules, bundleDefs, credited, items };
+  return { prisma, currencyService, inventoryService, gameRules, bundleDefs, credited, items, fakeSelectionResolver };
 }
 
 describe('resolveRewardSpec — top-level currency / item (canonical key/min/max)', () => {
@@ -280,13 +285,19 @@ describe('resolveRewardSpec — bundle_ref (consolidated via GameRulesService)',
 
   it('gates entries with requirements out of gift claims (empty user/flags context)', async () => {
     const f = makeFakes();
+    f.fakeSelectionResolver.evaluate.mockReturnValue(false);
     f.bundleDefs.set('b.gated', {
       id: 'b.gated', enabled: true,
       bundle: [
         { type: 'currency', key: 'free', min: 1, max: 1, odds: 100 },
         {
           type: 'currency', key: 'gated', min: 1, max: 1, odds: 100,
-          requirements: [{ type: 'flag', key: 'has_pass', value: true }],
+          requirements: {
+            op: 'AND',
+            rules: [{
+              scope: 'player', field: 'flags.has_pass', operator: 'eq', value: true,
+            }],
+          },
         },
       ],
     });
