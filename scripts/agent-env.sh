@@ -43,7 +43,7 @@ for utility in pg_ctl initdb createdb pg_isready psql; do
 done
 
 if [[ "$command" == stop ]]; then
-  if [[ -f "$state/pgdata/PG_VERSION" ]]; then
+  if [[ -f "$state/pgdata/PG_VERSION" ]] && "$pg_bin/pg_ctl" -D "$state/pgdata" status >/dev/null 2>&1; then
     "$pg_bin/pg_ctl" -D "$state/pgdata" -m fast stop
   fi
   exit
