@@ -13,3 +13,4 @@ prisma/*.db
 # TypeScript incremental build artifacts
 *.tsbuildinfo
 .tsbuild/
+/.agent-local/

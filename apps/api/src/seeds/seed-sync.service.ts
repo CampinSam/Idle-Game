@@ -446,7 +446,7 @@ export class SeedSyncService {
         continue;
       }
       try {
-        await this.upsertTable(modelName, records);
+        await this.upsertTable(modelName, records, seedData);
         results[modelName] = `ok (${records.length})`;
       } catch (err: any) {
         results[modelName] = `error: ${err?.message ?? String(err)}`;
@@ -471,7 +471,7 @@ export class SeedSyncService {
     return out;
   }
 
-  private async upsertTable(modelName: SeedTableName, records: any[]): Promise<void> {
+  private async upsertTable(modelName: SeedTableName, records: any[], seedData?: any): Promise<void> {
     const model = (this.prisma as any)[modelName];
     if (!model) {
       this.logger.warn(`upsertTable: Prisma model "${modelName}" not found`);
@@ -486,7 +486,33 @@ export class SeedSyncService {
 
       // Build displayDef key → UUID map for displayDefId resolution.
       const displayDefs = await (this.prisma as any).displayDef.findMany({ select: { id: true, key: true } });
-      const displayDefByKey = new Map(displayDefs.map((d: any) => [d.key, d.id]));
+      const displayDefByKey = new Map<string, string>(
+        displayDefs.map((d: any): [string, string] => [d.key, d.id]),
+      );
+      const displayIds = new Set<string>(displayDefs.map((d: any) => d.id));
+      const displaySnapshotKeyById = new Map<string, string>(
+        (Array.isArray(seedData?.displayDef) ? seedData.displayDef : [])
+          .filter((r: any) => typeof r.id === 'string' && UUID_V4.test(r.id))
+          .map((r: any): [string, string] => [r.id, r.key ?? r.id]),
+      );
+      const resolveCategoryReference = (
+        rawId: string,
+        relationName: string,
+        keyToId: Map<string, string>,
+        snapshotKeyById: Map<string, string>,
+        currentIds: Set<string>,
+        categoryKey: string,
+      ): string => {
+        const resolved = UUID_V4.test(rawId)
+          ? (snapshotKeyById.has(rawId) ? keyToId.get(snapshotKeyById.get(rawId)!) : currentIds.has(rawId) ? rawId : undefined)
+          : keyToId.get(rawId);
+        if (resolved === undefined) {
+          throw new Error(
+            `upsertTable(missionCategoryDef): cannot resolve ${relationName} reference "${rawId}" for category "${categoryKey}"`,
+          );
+        }
+        return resolved;
+      };
 
       const parents = records.filter((r) => !r.parentId);
       const children = records.filter((r) => r.parentId);
@@ -496,11 +522,15 @@ export class SeedSyncService {
         const base = transform ? transform(raw) : raw;
         const record = this.normalizeDates(base);
         const rawDisplayId: string | null = raw.displayDefId ?? null;
-        if (rawDisplayId !== null && !UUID_V4.test(rawDisplayId)) {
-          record.displayDefId = displayDefByKey.get(rawDisplayId) ?? null;
-          if (record.displayDefId === null) {
-            this.logger.warn(`upsertTable(missionCategoryDef): displayDefId slug "${rawDisplayId}" not found — setting null`);
-          }
+        if (rawDisplayId !== null) {
+          record.displayDefId = resolveCategoryReference(
+            rawDisplayId,
+            'displayDefId',
+            displayDefByKey,
+            displaySnapshotKeyById,
+            displayIds,
+            raw.key ?? raw.id,
+          );
         }
         const where = buildWhere(record);
         const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
@@ -509,27 +539,41 @@ export class SeedSyncService {
 
       // Build key → UUID map so child parentId slugs can be resolved.
       const categoryRows = await model.findMany({ select: { id: true, key: true } });
-      const categoryUuidByKey = new Map(categoryRows.map((r: any) => [r.key, r.id]));
+      const categoryUuidByKey = new Map<string, string>(
+        categoryRows.map((r: any): [string, string] => [r.key, r.id]),
+      );
+      const categoryIds = new Set<string>(categoryRows.map((r: any) => r.id));
+      const categorySnapshotKeyById = new Map<string, string>(
+        (Array.isArray(seedData?.missionCategoryDef) ? seedData.missionCategoryDef : [])
+          .filter((r: any) => typeof r.id === 'string' && UUID_V4.test(r.id))
+          .map((r: any): [string, string] => [r.id, r.key ?? r.id]),
+      );
 
       for (const raw of children) {
         const base = transform ? transform(raw) : raw;
         const record = this.normalizeDates(base);
         // parentId may arrive as slug; after UUID migration it must be UUID.
         const rawParentId: string | null = raw.parentId ?? null;
-        if (rawParentId !== null && !UUID_V4.test(rawParentId)) {
-          record.parentId = categoryUuidByKey.get(rawParentId) ?? null;
-          if (record.parentId === null) {
-            this.logger.warn(
-              `upsertTable(missionCategoryDef): parentId slug "${rawParentId}" not found — setting null`,
-            );
-          }
+        if (rawParentId !== null) {
+          record.parentId = resolveCategoryReference(
+            rawParentId,
+            'parentId',
+            categoryUuidByKey,
+            categorySnapshotKeyById,
+            categoryIds,
+            raw.key ?? raw.id,
+          );
         }
         const rawDisplayId2: string | null = raw.displayDefId ?? null;
-        if (rawDisplayId2 !== null && !UUID_V4.test(rawDisplayId2)) {
-          record.displayDefId = displayDefByKey.get(rawDisplayId2) ?? null;
-          if (record.displayDefId === null) {
-            this.logger.warn(`upsertTable(missionCategoryDef): displayDefId slug "${rawDisplayId2}" not found — setting null`);
-          }
+        if (rawDisplayId2 !== null) {
+          record.displayDefId = resolveCategoryReference(
+            rawDisplayId2,
+            'displayDefId',
+            displayDefByKey,
+            displaySnapshotKeyById,
+            displayIds,
+            raw.key ?? raw.id,
+          );
         }
         const where = buildWhere(record);
         const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
@@ -544,28 +588,72 @@ export class SeedSyncService {
       const missionCategories = await (this.prisma as any).missionCategoryDef.findMany({
         select: { id: true, key: true },
       });
-      const categoryUuidByKey = new Map(missionCategories.map((r: any) => [r.key, r.id]));
+      const categoryUuidByKey = new Map<string, string>(
+        missionCategories.map((r: any): [string, string] => [r.key, r.id]),
+      );
       const displayDefs = await (this.prisma as any).displayDef.findMany({ select: { id: true, key: true } });
-      const displayDefByKey = new Map(displayDefs.map((d: any) => [d.key, d.id]));
+      const displayDefByKey = new Map<string, string>(
+        displayDefs.map((d: any): [string, string] => [d.key, d.id]),
+      );
+
+      // UUID PKs are generated locally after migration, so the IDs stored in a
+      // seed snapshot can differ from those in a freshly migrated database.
+      // Retain direct-UUID support for references already present in this DB,
+      // but remap snapshot UUIDs through their stable key before upserting.
+      const snapshotIdToKey = (table: string): Map<string, string> => new Map(
+        (Array.isArray(seedData?.[table]) ? seedData[table] : [])
+          .filter((r: any) => typeof r.id === 'string' && UUID_V4.test(r.id))
+          .map((r: any) => [r.id, r.key ?? r.id]),
+      );
+      const categorySnapshotKeyById = snapshotIdToKey('missionCategoryDef');
+      const displaySnapshotKeyById = snapshotIdToKey('displayDef');
+      const categoryIds = new Set<string>(missionCategories.map((r: any) => r.id));
+      const displayIds = new Set<string>(displayDefs.map((r: any) => r.id));
+
+      const resolveReference = (
+        rawId: string | null,
+        relationName: string,
+        keyToId: Map<string, any>,
+        snapshotKeyById: Map<string, string>,
+        currentIds: Set<string>,
+        missionKey: string,
+      ): string | null => {
+        if (rawId === null) return null;
+        const resolved = UUID_V4.test(rawId)
+          ? (snapshotKeyById.has(rawId) ? keyToId.get(snapshotKeyById.get(rawId)!) : currentIds.has(rawId) ? rawId : undefined)
+          : keyToId.get(rawId);
+        if (resolved === undefined) {
+          throw new Error(
+            `upsertTable(missionDef): cannot resolve ${relationName} reference "${rawId}" for mission "${missionKey}"`,
+          );
+        }
+        return resolved;
+      };
 
       for (const raw of records) {
         const base = transform ? transform(raw) : raw;
         const record = this.normalizeDates(base);
         const rawCatId: string | null = raw.missionCategoryDefId ?? null;
-        if (rawCatId !== null && !UUID_V4.test(rawCatId)) {
-          record.missionCategoryDefId = categoryUuidByKey.get(rawCatId) ?? null;
-          if (record.missionCategoryDefId === null) {
-            this.logger.warn(
-              `upsertTable(missionDef): missionCategoryDefId slug "${rawCatId}" not found — setting null`,
-            );
-          }
+        if (rawCatId !== null) {
+          record.missionCategoryDefId = resolveReference(
+            rawCatId,
+            'missionCategoryDefId',
+            categoryUuidByKey,
+            categorySnapshotKeyById,
+            categoryIds,
+            raw.key ?? raw.id,
+          );
         }
         const rawDisplayId: string | null = raw.displayDefId ?? null;
-        if (rawDisplayId !== null && !UUID_V4.test(rawDisplayId)) {
-          record.displayDefId = displayDefByKey.get(rawDisplayId) ?? null;
-          if (record.displayDefId === null) {
-            this.logger.warn(`upsertTable(missionDef): displayDefId slug "${rawDisplayId}" not found — setting null`);
-          }
+        if (rawDisplayId !== null) {
+          record.displayDefId = resolveReference(
+            rawDisplayId,
+            'displayDefId',
+            displayDefByKey,
+            displaySnapshotKeyById,
+            displayIds,
+            raw.key ?? raw.id,
+          );
         }
         const where = buildWhere(record);
         const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;

@@ -200,17 +200,18 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5000,
+    port: Number(process.env.AGENT_WEB_PORT || 5000),
+    strictPort: true,
     host: '0.0.0.0',
     allowedHosts: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3001',
+        target: `http://127.0.0.1:${process.env.AGENT_API_PORT || 3001}`,
         changeOrigin: true,
         rewrite: (path: string) => path.replace(/^\/api/, ''),
       },
       '/media': {
-        target: 'http://127.0.0.1:3001',
+        target: `http://127.0.0.1:${process.env.AGENT_API_PORT || 3001}`,
         changeOrigin: true,
       },
     },

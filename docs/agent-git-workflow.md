@@ -4,6 +4,17 @@ This repository is a pnpm monorepo. Keep the web application in `apps/web`, the 
 
 ## Isolation and integration
 
+- Prerequisites: Node.js 20, pnpm 9, PostgreSQL 16 command-line tools (`initdb`, `pg_ctl`, `psql`, `createdb`), and Git. From a **clean, committed** integration checkout:
+  ```bash
+  bash scripts/agent-env.sh create alice
+  cd ../agent-worktrees/alice
+  bash scripts/agent-env.sh setup
+  bash scripts/agent-env.sh check
+  bash scripts/agent-env.sh start
+  ```
+  `create` branches `agent/alice` from the current HEAD and creates a sibling worktree. `setup` initializes a PostgreSQL cluster under that worktree's ignored `.agent-local/`, bound only to its private Unix socket. `check` installs from the lockfile, generates Prisma, builds/type-checks, lints, runs unit tests, deploys **every tracked migration** to its own empty database, then checks migration status. `start` runs the dev API and web server on worktree-specific ports (printed in the terminal). Use `bash scripts/agent-env.sh run <command...>` for additional commands with the same isolated environment. `stop` stops that worktree's database; it does not delete data. Never use `pnpm prisma ...` directly when working in an agent worktree: that could inherit the parent workspace's `DATABASE_URL`.
+- The wrapper clears inherited environment variables, including database and Object Storage settings. Runtime seed sync therefore uses the committed `prisma/seed-data.json` fallback locally and cannot fetch or upload shared Object Storage content. No production credentials are needed. The local passwordless PostgreSQL server accepts connections only through the checkout-private socket. If `check` fails, leave the database and logs in `.agent-local/` for diagnosis; do not point it at another agent's database.
+- To finish: stop the app, run `bash scripts/agent-env.sh stop`, commit the branch, and merge normally. Remove a **disposable** agent worktree with `git worktree remove` only after its local data and branch are no longer needed. Do not force-remove someone else's worktree.
 - Use **one branch and one worktree per agent**. Branch from an up-to-date integration branch, keep changes scoped, and merge through reviewed pull requests. Do not have two agents editing the same checkout.
 - Give each agent a **separate disposable development PostgreSQL database**. Branches do not isolate a shared database; never point test or migration commands at production or another agent's DB. Do not use `prisma db push` to deliver schema changes.
 - Serialize ownership of `prisma/schema.prisma`, `prisma/migrations/`, `packages/shared/`, the root lockfile, the web/API app shells and sync plumbing, and canonical content exports. Assign one integrator to a cross-cutting change, or sequence dependent branches after the upstream change merges. Regenerate Prisma and rebuild shared packages when switching branches.
