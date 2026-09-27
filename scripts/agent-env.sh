@@ -49,7 +49,7 @@ if [[ "$command" == stop ]]; then
   exit
 fi
 
-mkdir -p "$state/socket"
+mkdir -p "$state/socket" "$state/home" "$state/tmp" "$state/cache" "$state/data" "$state/config" "$state/pnpm-store"
 chmod 700 "$state/socket"
 if [[ ! -f "$state/pgdata/PG_VERSION" ]]; then
   [[ ! -e "$state/pgdata" ]] || { echo "Incomplete local cluster at $state/pgdata; inspect it before retrying." >&2; exit 1; }
@@ -78,8 +78,11 @@ fi
 db_url="postgresql://$owner@localhost:$pg_port/$db_name?host=$state/socket"
 isolated() {
   # Never pass the parent's database URL, cloud storage paths, Stripe keys, or
-  # other workspace credentials into an agent's tools or app process.
-  env -i HOME="$HOME" PATH="$PATH" USER="$owner" LOGNAME="$owner" \
+  # other workspace credentials into an agent's tools or app process. Keep
+  # package, engine, and temp caches private to this checkout too.
+  env -i HOME="$state/home" PATH="$PATH" USER="$owner" LOGNAME="$owner" \
+    XDG_CACHE_HOME="$state/cache" XDG_DATA_HOME="$state/data" XDG_CONFIG_HOME="$state/config" \
+    TMPDIR="$state/tmp" npm_config_store_dir="$state/pnpm-store" \
     DATABASE_URL="$db_url" NODE_ENV=development \
     JWT_SECRET=local-agent-only-jwt-key \
     SESSION_SECRET=local-agent-only-session-key \
