@@ -180,6 +180,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,woff,woff2,ttf}'],
+        // Admin editor bundle exceeds Workbox's 2 MiB default on a clean build.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: '/index.html',
         navigateFallbackDenylist: buildNavigateFallbackDenylist(),
         cleanupOutdatedCaches: true,
