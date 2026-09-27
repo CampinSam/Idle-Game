@@ -37,8 +37,9 @@ export const SEED_TABLE_ORDER = [
   'effectDef',
   'powerDef',
   'soundDef',
-  'tagDef',
   'visualEffectDef',
+  // TagDef.effectKey references VisualEffectDef.key.
+  'tagDef',
   'nftCollectionDef',
   'gameDefinition',
 ] as const;
@@ -471,6 +472,39 @@ export class SeedSyncService {
     return out;
   }
 
+  private resolveSnapshotReference(
+    rawId: string,
+    referenceField: string,
+    ownerTable: string,
+    ownerKey: string,
+    referencedTable: string,
+    keyToId: Map<string, string>,
+    currentIds: Set<string>,
+    seedData: any,
+  ): string {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let resolved: string | undefined;
+    if (UUID_RE.test(rawId)) {
+      const snapshotRows: any[] = Array.isArray(seedData?.[referencedTable]) ? seedData[referencedTable] : [];
+      const snapshotRecord = snapshotRows.find((row) => row.id === rawId);
+      if (snapshotRecord) {
+        resolved = keyToId.get(snapshotRecord.key ?? snapshotRecord.id);
+        if (resolved === undefined && currentIds.has(rawId)) resolved = rawId;
+      } else if (currentIds.has(rawId)) {
+        resolved = rawId;
+      }
+    } else {
+      resolved = keyToId.get(rawId);
+    }
+
+    if (resolved === undefined) {
+      throw new Error(
+        `upsertTable(${ownerTable}): cannot resolve ${referenceField} reference "${rawId}" for "${ownerKey}"`,
+      );
+    }
+    return resolved;
+  }
+
   private async upsertTable(modelName: SeedTableName, records: any[], seedData?: any): Promise<void> {
     const model = (this.prisma as any)[modelName];
     if (!model) {
@@ -664,19 +698,27 @@ export class SeedSyncService {
 
     if (modelName === 'recipeDef') {
       // displayDefId FK may arrive as slug; after UUID migration it must be UUID.
-      const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const displayDefs = await (this.prisma as any).displayDef.findMany({ select: { id: true, key: true } });
-      const displayDefByKey = new Map(displayDefs.map((d: any) => [d.key, d.id]));
+      const displayDefByKey = new Map<string, string>(
+        displayDefs.map((d: any): [string, string] => [d.key, d.id]),
+      );
+      const displayIds = new Set<string>(displayDefs.map((d: any) => d.id));
 
       for (const raw of records) {
         const base = transform ? transform(raw) : raw;
         const record = this.normalizeDates(base);
         const rawDisplayId: string | null = raw.displayDefId ?? null;
-        if (rawDisplayId !== null && !UUID_V4.test(rawDisplayId)) {
-          record.displayDefId = displayDefByKey.get(rawDisplayId) ?? null;
-          if (record.displayDefId === null) {
-            this.logger.warn(`upsertTable(recipeDef): displayDefId slug "${rawDisplayId}" not found — setting null`);
-          }
+        if (rawDisplayId !== null) {
+          record.displayDefId = this.resolveSnapshotReference(
+            rawDisplayId,
+            'displayDefId',
+            modelName,
+            raw.key ?? raw.id,
+            'displayDef',
+            displayDefByKey,
+            displayIds,
+            seedData,
+          );
         }
         const where = buildWhere(record);
         const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
@@ -692,19 +734,27 @@ export class SeedSyncService {
 
     if (modelName === 'buildingDef') {
       // displayDefId FK may arrive as slug; after UUID migration it must be UUID.
-      const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const displayDefs = await (this.prisma as any).displayDef.findMany({ select: { id: true, key: true } });
-      const displayDefByKey = new Map(displayDefs.map((d: any) => [d.key, d.id]));
+      const displayDefByKey = new Map<string, string>(
+        displayDefs.map((d: any): [string, string] => [d.key, d.id]),
+      );
+      const displayIds = new Set<string>(displayDefs.map((d: any) => d.id));
 
       for (const raw of records) {
         const base = transform ? transform(raw) : raw;
         const record = this.normalizeDates(base);
         const rawDisplayId: string | null = raw.displayDefId ?? null;
-        if (rawDisplayId !== null && !UUID_V4.test(rawDisplayId)) {
-          record.displayDefId = displayDefByKey.get(rawDisplayId) ?? null;
-          if (record.displayDefId === null) {
-            this.logger.warn(`upsertTable(buildingDef): displayDefId slug "${rawDisplayId}" not found — setting null`);
-          }
+        if (rawDisplayId !== null) {
+          record.displayDefId = this.resolveSnapshotReference(
+            rawDisplayId,
+            'displayDefId',
+            modelName,
+            raw.key ?? raw.id,
+            'displayDef',
+            displayDefByKey,
+            displayIds,
+            seedData,
+          );
         }
         const where = buildWhere(record);
         const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
@@ -722,22 +772,28 @@ export class SeedSyncService {
       // UUID PK migration: LocationDefinition.regionId may arrive as a slug.
       // regionDefinition is seeded before locationDefinition (see SEED_TABLE_ORDER),
       // so we can resolve slug → UUID via a single DB query.
-      const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const regionDefs = await this.prisma.regionDefinition.findMany({ select: { id: true, key: true } });
-      const regionDefByKey = new Map(regionDefs.map((r) => [r.key, r.id]));
+      const regionDefByKey = new Map<string, string>(
+        regionDefs.map((r): [string, string] => [r.key, r.id]),
+      );
+      const regionIds = new Set<string>(regionDefs.map((r) => r.id));
 
       for (const raw of records) {
         const base = transform ? transform(raw) : raw;
         const record = this.normalizeDates(base);
 
         const rawRegionId: string | null = raw.regionId ?? null;
-        if (rawRegionId !== null && !UUID_V4.test(rawRegionId)) {
-          record.regionId = regionDefByKey.get(rawRegionId) ?? null;
-          if (record.regionId === null) {
-            this.logger.warn(
-              `upsertTable(locationDefinition): regionId slug "${rawRegionId}" not found in region_definitions — setting null`,
-            );
-          }
+        if (rawRegionId !== null) {
+          record.regionId = this.resolveSnapshotReference(
+            rawRegionId,
+            'regionId',
+            modelName,
+            raw.key ?? raw.id,
+            'regionDefinition',
+            regionDefByKey,
+            regionIds,
+            seedData,
+          );
         }
 
         const where = buildWhere(record);
@@ -796,9 +852,11 @@ export class SeedSyncService {
       //  1. Resolve effectDefId slug → UUID (effectDef is seeded before powerDef).
       //  2. Strip stale fields that no longer exist in the schema (defaultDailyLimit).
       //  3. Use Prisma relation syntax for effectDef to avoid checked-input conflicts.
-      const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const effectDefs = await this.prisma.effectDef.findMany({ select: { id: true, key: true } });
-      const effectDefByKey = new Map(effectDefs.map((e) => [e.key, e.id]));
+      const effectDefByKey = new Map<string, string>(
+        effectDefs.map((e): [string, string] => [e.key, e.id]),
+      );
+      const effectDefIds = new Set<string>(effectDefs.map((e) => e.id));
 
       for (const raw of records) {
         const base = transform ? transform(raw) : raw;
@@ -806,13 +864,17 @@ export class SeedSyncService {
 
         // Resolve slug effectDefId → UUID.  If already a UUID, leave it as-is.
         let resolvedEffectDefId: string | null = normalized.effectDefId ?? null;
-        if (resolvedEffectDefId !== null && !UUID_V4.test(resolvedEffectDefId)) {
-          resolvedEffectDefId = effectDefByKey.get(resolvedEffectDefId) ?? null;
-          if (resolvedEffectDefId === null) {
-            this.logger.warn(
-              `upsertTable(powerDef): effectDefId slug "${normalized.effectDefId}" not found in effect_defs — setting null`,
-            );
-          }
+        if (resolvedEffectDefId !== null) {
+          resolvedEffectDefId = this.resolveSnapshotReference(
+            resolvedEffectDefId,
+            'effectDefId',
+            modelName,
+            raw.key ?? raw.id,
+            'effectDef',
+            effectDefByKey,
+            effectDefIds,
+            seedData,
+          );
         }
 
         // Build a clean record: strip stale fields, keep valid scalars.
@@ -873,6 +935,25 @@ export class SeedSyncService {
           );
           throw err;
         }
+      }
+      return;
+    }
+
+    if (modelName === 'tagDef') {
+      const visualEffects = await (this.prisma as any).visualEffectDef.findMany({ select: { key: true } });
+      const visualEffectKeys = new Set<string>(visualEffects.map((effect: any) => effect.key));
+      for (const raw of records) {
+        const base = transform ? transform(raw) : raw;
+        const record = this.normalizeDates(base);
+        const effectKey: string | null = raw.effectKey ?? null;
+        if (effectKey !== null && !visualEffectKeys.has(effectKey)) {
+          throw new Error(
+            `upsertTable(tagDef): cannot resolve effectKey reference "${effectKey}" for tag "${raw.key ?? raw.id}"`,
+          );
+        }
+        const where = buildWhere(record);
+        const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+        await model.upsert({ where, update: rest, create: record });
       }
       return;
     }

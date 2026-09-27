@@ -81,6 +81,7 @@ isolated() {
   # other workspace credentials into an agent's tools or app process.
   env -i HOME="$HOME" PATH="$PATH" USER="$owner" LOGNAME="$owner" \
     DATABASE_URL="$db_url" NODE_ENV=development \
+    JWT_SECRET=local-agent-only-jwt-key \
     SESSION_SECRET=local-agent-only-session-key \
     PORT="$api_port" AGENT_API_PORT="$api_port" AGENT_WEB_PORT="$web_port" \
     "$@"

@@ -1,4 +1,4 @@
-import { SeedSyncService } from './seed-sync.service';
+import { SeedSyncService, SEED_TABLE_ORDER } from './seed-sync.service';
 
 const SNAPSHOT_DISPLAY_ID = '11111111-1111-4111-8111-111111111111';
 const SNAPSHOT_CHILD_DISPLAY_ID = '12121212-1212-4121-8121-121212121212';
@@ -30,7 +30,7 @@ function definitionModel(
   };
 }
 
-describe('SeedSyncService missionDef FK resolution', () => {
+describe('SeedSyncService seed FK resolution', () => {
   it('remaps snapshot UUID references in category and mission records to fresh database IDs', async () => {
     const liveDisplayIds = new Set([DATABASE_DISPLAY_ID, DATABASE_CHILD_DISPLAY_ID]);
     const liveCategoryIds = new Set([DATABASE_CATEGORY_ID, DATABASE_CHILD_CATEGORY_ID]);
@@ -162,5 +162,160 @@ describe('SeedSyncService missionDef FK resolution', () => {
 
     expect(result.missionDef).toContain('error: upsertTable(missionDef): cannot resolve missionCategoryDefId');
     expect(missionDef.upsert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      ownerTable: 'locationDefinition',
+      ownerField: 'regionId',
+      referencedTable: 'regionDefinition',
+      referencedKey: 'region-a',
+    },
+    {
+      ownerTable: 'buildingDef',
+      ownerField: 'displayDefId',
+      referencedTable: 'displayDef',
+      referencedKey: 'display-a',
+    },
+    {
+      ownerTable: 'recipeDef',
+      ownerField: 'displayDefId',
+      referencedTable: 'displayDef',
+      referencedKey: 'display-a',
+    },
+    {
+      ownerTable: 'powerDef',
+      ownerField: 'effectDefId',
+      referencedTable: 'effectDef',
+      referencedKey: 'effect-a',
+    },
+  ])('remaps snapshot UUID $ownerField for $ownerTable', async ({
+    ownerTable,
+    ownerField,
+    referencedTable,
+    referencedKey,
+  }) => {
+    const snapshotReferenceId = '55555555-5555-4555-8555-555555555555';
+    const databaseReferenceId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+    const referenceModel = {
+      findMany: jest.fn().mockResolvedValue([{ id: databaseReferenceId, key: referencedKey }]),
+    };
+    const ownerModel = { upsert: jest.fn(async ({ create }: any) => {
+      if (ownerField === 'effectDefId') return;
+      if (create[ownerField] !== databaseReferenceId) throw new Error(`FK violation: ${create[ownerField]}`);
+    }) };
+    const prisma: any = { [referencedTable]: referenceModel, [ownerTable]: ownerModel };
+    if (ownerTable === 'powerDef') {
+      prisma.$executeRaw = jest.fn((...args: any[]) => {
+        if (!args.includes(databaseReferenceId)) throw new Error('effectDef FK violation');
+        return Promise.resolve();
+      });
+    }
+    const service = new SeedSyncService(prisma);
+    const sourceRecord = { id: snapshotReferenceId, key: referencedKey };
+    const ownerRecord: any = {
+      id: '66666666-6666-4666-8666-666666666666',
+      key: 'owner-a',
+      name: 'Owner A',
+      [ownerField]: snapshotReferenceId,
+    };
+    if (ownerTable === 'powerDef') ownerRecord.powerType = 'effect_backed';
+
+    const result = await service.applySeedData({
+      [referencedTable]: [sourceRecord],
+      [ownerTable]: [ownerRecord],
+    }, [ownerTable]);
+
+    expect(result[ownerTable]).toBe('ok (1)');
+    if (ownerTable === 'powerDef') {
+      expect(prisma.$executeRaw.mock.calls[0]).toContain(databaseReferenceId);
+    } else {
+      expect(ownerModel.upsert).toHaveBeenCalledWith(expect.objectContaining({
+        create: expect.objectContaining({ [ownerField]: databaseReferenceId }),
+      }));
+    }
+  });
+
+  it.each([
+    ['locationDefinition', 'regionId', 'regionDefinition'],
+    ['buildingDef', 'displayDefId', 'displayDef'],
+    ['recipeDef', 'displayDefId', 'displayDef'],
+    ['powerDef', 'effectDefId', 'effectDef'],
+  ])('fails explicitly when %s.%s cannot resolve its reference', async (
+    ownerTable,
+    ownerField,
+    referencedTable,
+  ) => {
+    const snapshotReferenceId = '55555555-5555-4555-8555-555555555555';
+    const referenceModel = { findMany: jest.fn().mockResolvedValue([]) };
+    const ownerModel = { upsert: jest.fn() };
+    const prisma: any = { [referencedTable]: referenceModel, [ownerTable]: ownerModel };
+    if (ownerTable === 'powerDef') prisma.$executeRaw = jest.fn();
+    const service = new SeedSyncService(prisma);
+    const ownerRecord: any = {
+      id: '66666666-6666-4666-8666-666666666666',
+      key: 'owner-a',
+      name: 'Owner A',
+      [ownerField]: snapshotReferenceId,
+    };
+    if (ownerTable === 'powerDef') ownerRecord.powerType = 'effect_backed';
+
+    const result = await service.applySeedData({
+      [referencedTable]: [{ id: snapshotReferenceId, key: 'reference-a' }],
+      [ownerTable]: [ownerRecord],
+    }, [ownerTable]);
+
+    expect(result[ownerTable]).toContain(`error: upsertTable(${ownerTable}): cannot resolve ${ownerField}`);
+    expect(ownerModel.upsert).not.toHaveBeenCalled();
+    if (ownerTable === 'powerDef') expect(prisma.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('seeds visual effects before tags and accepts tag effectKey slugs', async () => {
+    const visualEffects: any[] = [];
+    const visualEffectDef = {
+      findMany: jest.fn(async () => visualEffects),
+      upsert: jest.fn(async ({ where, create }: any) => {
+        const row = { ...create, key: where.key };
+        visualEffects.push(row);
+        return row;
+      }),
+    };
+    const tagDef = { upsert: jest.fn() };
+    const service = new SeedSyncService({ visualEffectDef, tagDef } as any);
+
+    const result = await service.applySeedData({
+      visualEffectDef: [{
+        id: '77777777-7777-4777-8777-777777777777',
+        key: 'pulse-soft',
+        name: 'Pulse Soft',
+      }],
+      tagDef: [{
+        id: '88888888-8888-4888-8888-888888888888',
+        key: 'rarity-unique',
+        label: 'Unique',
+        effectKey: 'pulse-soft',
+      }],
+    });
+
+    expect(SEED_TABLE_ORDER.indexOf('visualEffectDef')).toBeLessThan(SEED_TABLE_ORDER.indexOf('tagDef'));
+    expect(result.tagDef).toBe('ok (1)');
+    expect(tagDef.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ effectKey: 'pulse-soft' }),
+    }));
+  });
+
+  it('reports unresolved tag effectKey slugs without nulling or upserting them', async () => {
+    const tagDef = { upsert: jest.fn() };
+    const service = new SeedSyncService({
+      visualEffectDef: { findMany: jest.fn().mockResolvedValue([]) },
+      tagDef,
+    } as any);
+
+    const result = await service.applySeedData({
+      tagDef: [{ id: '88888888-8888-4888-8888-888888888888', key: 'rarity-unique', effectKey: 'missing-effect' }],
+    }, ['tagDef']);
+
+    expect(result.tagDef).toContain('error: upsertTable(tagDef): cannot resolve effectKey');
+    expect(tagDef.upsert).not.toHaveBeenCalled();
   });
 });
