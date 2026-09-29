@@ -1,4 +1,5 @@
 import { resolveAssetUrl } from '../utils/iconResolver';
+import { audioApi } from './audioApi';
 
 const STORAGE_KEY = 'audio_volumes';
 
@@ -62,7 +63,7 @@ class AudioEngine {
     if (this.loaded || this.loading) return;
     this.loading = true;
     try {
-      const res = await fetch('/api/audio/config');
+      const res = await audioApi.getConfig();
       if (res.ok) {
         this.config = await res.json();
       }
