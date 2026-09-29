@@ -9,3 +9,4 @@
 - [Prisma NOT filter excludes NULLs](prisma-not-null-pitfall.md) — NOT: { field: 0 } in Prisma silently drops NULL rows; use OR [{ field: null }, { field: { gt: 0 } }] instead.
 - [Bootstrap + definition cache architecture](bootstrap-definition-cache.md) — two in-process cache layers eliminate per-request DB hits on definition and catalog tables; admin CRUD auto-invalidates both.
 - [Migration replay safety](migration-replay-safety.md) — clean replay success does not prove a partially baselined populated DB can deploy safely; verify both paths separately.
+- [Isolated local PostgreSQL](isolated-local-postgres.md) — the Replit shell reaps untracked child daemons; isolated database smoke checks need a managed background task and a writable socket directory.
