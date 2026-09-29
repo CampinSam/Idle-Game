@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { assertDeltaResponse } from '@derp/shared';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { TickService } from '../tick/tick.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -703,10 +704,20 @@ export class QueryService {
     const ui: UiIntent[] = [];
 
     for (const delta of deltas) {
-      const dp = delta.patches as any;
-      const du = delta.ui as any;
-      if (Array.isArray(dp)) patches.push(...dp);
-      if (Array.isArray(du)) ui.push(...du);
+      try {
+        assertDeltaResponse({
+          from: since.toString(),
+          to: delta.id.toString(),
+          patches: delta.patches,
+          ui: delta.ui,
+        });
+      } catch (error) {
+        throw new InternalServerErrorException(
+          `Persisted delta ${delta.id.toString()} is invalid: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+      patches.push(...(delta.patches as Patch[]));
+      ui.push(...(delta.ui as UiIntent[]));
     }
 
     const lastId =

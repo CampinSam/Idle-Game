@@ -120,6 +120,9 @@ export const adminApi = {
 
   getMe: () => adminRequest<AdminMe>('/me'),
 
+  getEnumMetadata: () =>
+    fetch('/api/meta/enums', { headers: authHeaders() }).then((res) => res.json()),
+
   changeOwnPassword: (currentPassword: string, newPassword: string) =>
     adminRequest<{ success: boolean }>('/me/password', {
       method: 'POST',
@@ -253,6 +256,13 @@ export const adminApi = {
   },
 
   listIcons: () => adminRequest<any[]>('/media/icons'),
+  listMedia: () => adminRequest<Array<{
+    assetKey: string;
+    name: string;
+    url: string;
+    contentType: string;
+    size: number;
+  }>>('/media/list'),
   listSystemIcons: () => adminRequest<any[]>('/media/system-icons'),
   createSystemIconDef: (data: { id: string; name: string }) =>
     adminRequest<any>('/media/system-icons', { method: 'POST', body: JSON.stringify(data) }),

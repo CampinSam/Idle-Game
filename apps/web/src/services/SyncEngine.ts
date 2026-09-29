@@ -1,6 +1,8 @@
 import { Store } from '@reduxjs/toolkit';
+import { assertStreamEvent } from '@derp/shared';
+import type { StreamEventName, UiIntent } from '@derp/shared';
 import { api } from './api';
-import type { DeltaResponse } from './api';
+import type { DeltaResponse } from '@derp/shared';
 import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickSync, setHomeBanners, setGlobalPowers } from '../store/syncSlice';
 import { setSystemIconRegistry } from '../utils/iconResolver';
 import { applyServerTime } from './clockSync';
@@ -16,7 +18,7 @@ export type BoostChangeHandler = (data: {
   combinedPercent: number;
 }) => void;
 
-export type BootstrapUiIntentHandler = (intents: Array<{ type: string; spec: any }>) => void;
+export type BootstrapUiIntentHandler = (intents: UiIntent[]) => void;
 
 const HEARTBEAT_TIMEOUT_MS = 45_000;
 const RECONNECT_BASE_MS = 1_000;
@@ -66,7 +68,7 @@ export class SyncEngine {
     }
   }
 
-  private emitBootstrapUiIntents(intents: Array<{ type: string; spec: any }>) {
+  private emitBootstrapUiIntents(intents: UiIntent[]) {
     for (const handler of this.bootstrapUiIntentHandlers) {
       try { handler(intents); } catch { /* ignore */ }
     }
@@ -141,82 +143,66 @@ export class SyncEngine {
     const es = new EventSource(url);
     this.eventSource = es;
 
-    es.addEventListener('hello', (e) => {
+    const listen = (eventName: StreamEventName, handler: (data: any) => void) => {
+      es.addEventListener(eventName, (event: Event) => {
+        let data: unknown;
+        try {
+          data = JSON.parse((event as MessageEvent).data);
+          assertStreamEvent(eventName, data);
+        } catch (err: any) {
+          this.handleInvalidStreamEvent(eventName, err);
+          return;
+        }
+        handler(data);
+      });
+    };
+
+    listen('hello', () => {
       this.reconnectAttempts = 0;
       this.store.dispatch(setStatus('connected'));
       this.store.dispatch(setError(null));
       this.resetHeartbeat();
     });
 
-    es.addEventListener('ping', () => {
+    listen('ping', () => {
       this.resetHeartbeat();
     });
 
-    es.addEventListener('delta.available', (e) => {
+    listen('delta.available', () => {
       this.resetHeartbeat();
       this.fetchAndApplyDelta();
     });
 
-    es.addEventListener('tick.sync', (e: MessageEvent) => {
-      try {
-        const msg = JSON.parse(e.data);
-        applyServerTime(Date.parse(msg.serverTime));
-        this.store.dispatch(setTickSync({
-          currentTick: msg.currentTick,
-          tickRate: msg.tickRate,
-          serverTime: msg.serverTime,
-          boosts: msg.boosts ?? [],
-          receivedAt: Date.now(),
-        }));
-      } catch {
-        console.warn('[SyncEngine] Failed to parse tick.sync event');
-      }
+    listen('tick.sync', (msg) => {
+      applyServerTime(Date.parse(msg.serverTime));
+      this.store.dispatch(setTickSync({
+        currentTick: msg.currentTick,
+        tickRate: msg.tickRate,
+        serverTime: msg.serverTime,
+        boosts: msg.boosts,
+        receivedAt: Date.now(),
+      }));
     });
 
-    es.addEventListener('home_banners.updated', (e: MessageEvent) => {
+    listen('home_banners.updated', (msg) => {
       // Whole-list replacement broadcast emitted by the admin service after
       // any HomeBannerDef create/update/delete. Clients refresh the carousel
       // without waiting for a re-bootstrap.
-      try {
-        const msg = JSON.parse(e.data);
-        if (Array.isArray(msg?.banners)) {
-          this.store.dispatch(setHomeBanners(msg.banners));
-        }
-      } catch {
-        console.warn('[SyncEngine] Failed to parse home_banners.updated event');
+      this.store.dispatch(setHomeBanners(msg.banners));
+    });
+
+    listen('global_power.changed', (msg) => {
+      this.store.dispatch(setGlobalPowers(msg.active));
+      for (const change of msg.changes) {
+        this.emitGlobalPowerChange(change.event, change);
       }
     });
 
-    es.addEventListener('global_power.changed', (e: MessageEvent) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (Array.isArray(msg?.active)) {
-          this.store.dispatch(setGlobalPowers(msg.active));
-        }
-        if (Array.isArray(msg?.changes)) {
-          for (const change of msg.changes) {
-            if (change?.event && change?.id) {
-              this.emitGlobalPowerChange(change.event, change);
-            }
-          }
-        }
-      } catch {
-        console.warn('[SyncEngine] Failed to parse global_power.changed event');
-      }
+    listen('boost.changed', (msg) => {
+      this.emitBoostChange(msg);
     });
 
-    es.addEventListener('boost.changed', (e: MessageEvent) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (typeof msg?.combinedPercent === 'number') {
-          this.emitBoostChange(msg);
-        }
-      } catch {
-        console.warn('[SyncEngine] Failed to parse boost.changed event');
-      }
-    });
-
-    es.addEventListener('reset.required', () => {
+    listen('reset.required', () => {
       console.warn('[SyncEngine] Server requested reset, re-bootstrapping...');
       this.closeStream();
       this.start();
@@ -229,6 +215,16 @@ export class SyncEngine {
       this.store.dispatch(setStatus('reconnecting'));
       this.scheduleReconnect();
     };
+  }
+
+  private handleInvalidStreamEvent(eventName: StreamEventName, error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error);
+    const errorMessage = `Invalid ${eventName} stream event: ${message}`;
+    console.error(`[SyncEngine] ${errorMessage}`);
+    this.closeStream();
+    this.store.dispatch(setError(errorMessage));
+    this.store.dispatch(setStatus('reconnecting'));
+    this.scheduleReconnect();
   }
 
   private closeStream(): void {

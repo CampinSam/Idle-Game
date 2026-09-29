@@ -1,19 +1,9 @@
 import { Prisma } from '@prisma/client';
-import type { ModalSpecV1 } from '@derp/shared';
+import type { CommandHandlerResult as SharedCommandHandlerResult, Patch, UiIntent } from '@derp/shared';
 
-export type Patch =
-  | { op: 'upsert'; entity: string; id: string; data: any }
-  | { op: 'delete'; entity: string; id: string };
+export type { Patch, UiIntent };
 
-export type UiIntent =
-  | { type: 'modal'; spec: ModalSpecV1 }
-  | { type: 'notification'; notificationId: string }
-  | { type: 'local_toast'; tone: 'success' | 'error' | 'info'; title: string; body: string; durationMs?: number }
-  | { type: 'navigate'; deepLink: string };
-
-export interface CommandHandlerResult {
-  patches: Patch[];
-  ui: UiIntent[];
+export interface CommandHandlerResult extends SharedCommandHandlerResult {
   meta?: Record<string, any>;
 }
 

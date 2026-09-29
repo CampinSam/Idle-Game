@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { Patch, BootstrapResponse } from '../services/api';
+import { assertPatch } from '@derp/shared';
+import type { Patch, BootstrapResponse } from '@derp/shared';
 
 export type SyncStatus = 'disconnected' | 'bootstrapping' | 'connected' | 'reconnecting';
 
@@ -190,7 +191,7 @@ const syncSlice = createSlice({
     },
 
     setSnapshot(state, action: PayloadAction<BootstrapResponse>) {
-      const { snapshot, cursor, serverTime } = action.payload;
+      const { snapshot, cursor, serverTime } = action.payload as any;
       state.serverTime = serverTime;
       state.cursor = cursor.delta;
       state.player = snapshot.player;
@@ -308,6 +309,11 @@ const syncSlice = createSlice({
     applyPatches(state, action: PayloadAction<{ patches: Patch[]; cursor?: string }>) {
       const { patches, cursor } = action.payload;
 
+      // Validate the entire batch before touching state (including its cursor),
+      // so a malformed later patch cannot leave a partially-applied delta.
+      if (!Array.isArray(patches)) throw new TypeError('patches must be an array');
+      patches.forEach((patch, index) => assertPatch(patch, `patches[${index}]`));
+
       for (const patch of patches) {
         if (patch.entity === 'player') {
           if (patch.op === 'upsert') {
@@ -330,7 +336,7 @@ const syncSlice = createSlice({
           // table — the active set is small and ordering matters. The
           // server emits a single upsert with `data` as the full new list.
           if (patch.op === 'upsert' && Array.isArray(patch.data)) {
-            state.homeBanners = patch.data as HomeBannerSnapshot[];
+            state.homeBanners = patch.data as unknown as HomeBannerSnapshot[];
           } else if (patch.op === 'delete') {
             state.homeBanners = [];
           }
@@ -339,7 +345,7 @@ const syncSlice = createSlice({
 
         if (patch.entity === 'currencyBalance') {
           if (patch.op === 'upsert' && patch.data) {
-            state.currencyBalances = { ...state.currencyBalances, ...patch.data };
+            state.currencyBalances = { ...state.currencyBalances, ...(patch.data as any) };
           }
           continue;
         }
@@ -367,6 +373,13 @@ const syncSlice = createSlice({
           } else if (patch.op === 'delete' && patch.id) {
             delete state.locationPowerUsages[patch.id];
           }
+          continue;
+        }
+
+        // Definition patches are valid protocol entities but are intentionally
+        // not represented in gameplay sync state; definitions use their own
+        // catalog loading path.
+        if (patch.entity === 'categoryDef' || patch.entity === 'missionDef') {
           continue;
         }
 

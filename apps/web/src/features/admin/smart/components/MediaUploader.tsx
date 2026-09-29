@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { getAdminToken } from '../../adminApi';
+import { adminApi } from '../../adminApi';
 import { resolveAssetUrl } from '../../../../utils/iconResolver';
 
 interface MediaAsset {
@@ -16,13 +16,6 @@ interface Props {
   onClose: () => void;
 }
 
-function adminAuthHeader(): Record<string, string> {
-  const token = getAdminToken();
-  if (token) return { Authorization: `Bearer ${token}` };
-  if (import.meta.env.DEV) return { 'X-Admin-Key': import.meta.env.VITE_ADMIN_KEY || 'derp-admin-2026' };
-  return {};
-}
-
 function getFileBaseName(filename: string): string {
   const parts = filename.split('.');
   if (parts.length > 1) parts.pop();
@@ -32,14 +25,6 @@ function getFileBaseName(filename: string): string {
 function getFileExtension(filename: string): string {
   const parts = filename.split('.');
   return parts.length > 1 ? parts[parts.length - 1] : '';
-}
-
-async function listMedia(): Promise<MediaAsset[]> {
-  const res = await fetch('/api/admin/media/list', {
-    headers: { ...adminAuthHeader(), 'Content-Type': 'application/json' },
-  });
-  if (!res.ok) return [];
-  return res.json();
 }
 
 function formatBytes(b: number) {
@@ -68,7 +53,7 @@ export default function MediaUploader({ fieldName, onInsert, onClose }: Props) {
   const loadAssets = useCallback(async () => {
     setAssetsLoading(true);
     try {
-      const data = await listMedia();
+      const data = await adminApi.listMedia();
       setAssets(data);
     } catch { setAssets([]); }
     finally { setAssetsLoading(false); }
@@ -105,18 +90,7 @@ export default function MediaUploader({ fieldName, onInsert, onClose }: Props) {
       const fileToUpload = filename !== selectedFile.name
         ? new File([selectedFile], filename, { type: selectedFile.type })
         : selectedFile;
-      const formData = new FormData();
-      formData.append('file', fileToUpload);
-      const res = await fetch(`/api/admin/media/upload?targetDir=${encodeURIComponent(targetDir)}`, {
-        method: 'POST',
-        headers: adminAuthHeader(),
-        body: formData,
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message || `Upload failed: ${res.status}`);
-      }
-      const result = await res.json();
+      const result = await adminApi.uploadMedia(fileToUpload, targetDir);
       const val = isCssField ? `url('${resolveAssetUrl(result.assetKey)}')` : result.assetKey;
       onInsert(val);
       onClose();

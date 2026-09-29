@@ -4,6 +4,7 @@ import { serverNow } from '../../services/clockSync';
 import type { ModalSpecV1 } from '@derp/shared';
 import { useAppSelector } from '../../store';
 import { useModal } from '../../context/ModalContext';
+import { commerceApi } from '../../services/commerceApi';
 import GameIcon from '../../components/GameIcon';
 import ItemQty from '../../components/ItemQty';
 import { resolveName } from '../../utils/iconResolver';
@@ -263,12 +264,6 @@ const BADGE_CLASS =
 const CONTENT_CHIP_CLASS =
   'inline-flex items-center gap-1 bg-black/25 border border-[rgba(139,92,246,0.15)] ' +
   'rounded-[6px] px-[7px] py-[3px] text-[12px] font-bold text-[#d8b4fe]';
-
-function authHeaders() {
-  return {
-    Authorization: `Bearer ${localStorage.getItem('derp_token') || ''}`,
-  };
-}
 
 function useCountdown(limitedUntil?: string) {
   const now = useNow(60_000);
@@ -609,9 +604,7 @@ function CryptoPayModal({
 
   const poll = useCallback(async () => {
     try {
-      const resp = await fetch(`/api/v1/purchases/${state.purchaseId}`, {
-        headers: authHeaders(),
-      });
+      const resp = await commerceApi.getPurchase(state.purchaseId);
       if (!resp.ok) return;
       const data = await resp.json();
       if (data.status === 'CONFIRMED') {
@@ -654,11 +647,7 @@ function CryptoPayModal({
       if (!rawUtxos?.length) throw new Error('No UTXOs found in your wallet');
 
       setGuidedStep('building');
-      const buildResp = await fetch('/api/v1/crypto/build-purchase-tx', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ purchaseId: state.purchaseId, utxosCborHex: rawUtxos }),
-      });
+      const buildResp = await commerceApi.buildPurchaseTransaction(state.purchaseId, rawUtxos);
       const buildData = await buildResp.json();
       if (!buildResp.ok) {
         // If the server says this purchase can't use the guided flow (e.g. ADA-priced
@@ -678,11 +667,7 @@ function CryptoPayModal({
       const signedTxCborHex: string = await walletApi.signTx(buildData.unsignedTxCborHex, true);
 
       setGuidedStep('submitting');
-      const submitResp = await fetch('/api/v1/crypto/submit-purchase-tx', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ purchaseId: state.purchaseId, signedTxCborHex }),
-      });
+      const submitResp = await commerceApi.submitPurchaseTransaction(state.purchaseId, signedTxCborHex);
       const submitData = await submitResp.json();
       if (!submitResp.ok) throw new Error(submitData?.message ?? 'Failed to submit transaction');
 
@@ -1032,7 +1017,7 @@ export default function StoreContent() {
   const hasBothChains = hasEvmWallet && hasCardanoWallet;
 
   useEffect(() => {
-    fetch('/api/shop/items', { headers: authHeaders() })
+    commerceApi.getShopItems()
       .then((r) => r.json())
       .then((data) => {
         if (data && Array.isArray(data.items)) {
@@ -1054,7 +1039,7 @@ export default function StoreContent() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/player/wallets', { headers: authHeaders() })
+    commerceApi.getPlayerWallets()
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setWallets(data); })
       .catch(() => {});
@@ -1068,7 +1053,7 @@ export default function StoreContent() {
     setGemPacksLoading(true);
     setGemPacksError(null);
 
-    const packsPromise = fetch('/api/v1/payments/packs')
+    const packsPromise = commerceApi.getPaymentPacks()
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setGemPacks(data);
@@ -1076,7 +1061,7 @@ export default function StoreContent() {
       })
       .catch(() => setGemPacksError('Could not load gem packs.'));
 
-    const ratePromise = fetch('/api/v1/payments/ada-rate')
+    const ratePromise = commerceApi.getAdaRate()
       .then((r) => r.json())
       .then((data: AdaRateStatus) => { setAdaRate(data); })
       .catch(() => {});
@@ -1087,11 +1072,7 @@ export default function StoreContent() {
   const handleBuyGemPack = useCallback(async (pack: GemPack) => {
     setBuyingPackId(pack.id);
     try {
-      const resp = await fetch('/api/v1/purchases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ packId: pack.id, paymentMethod: 'stripe' }),
-      });
+      const resp = await commerceApi.createPurchase(pack.id, 'stripe');
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.message ?? 'Purchase failed');
       if (data?.comingSoon || data?.action?.type === 'coming_soon') {
@@ -1123,11 +1104,7 @@ export default function StoreContent() {
     setBuyingPackId(pack.id);
     setChainSelectPack(null);
     try {
-      const resp = await fetch('/api/v1/purchases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ packId: pack.id, paymentMethod }),
-      });
+      const resp = await commerceApi.createPurchase(pack.id, paymentMethod);
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.message ?? 'Purchase failed');
       if (data?.action?.type === 'payment_address') {
@@ -1155,10 +1132,7 @@ export default function StoreContent() {
   const handleDerpPassCta = useCallback(async () => {
     setPassLoading(true);
     try {
-      const resp = await fetch('/api/v1/subscriptions/derp-pass', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      });
+      const resp = await commerceApi.createDerpPassSubscription();
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.message ?? 'Request failed');
       if (data?.comingSoon || data?.action?.type === 'coming_soon') {

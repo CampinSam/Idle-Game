@@ -243,7 +243,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
 
   useEffect(() => {
     adminApi.getTables().then(setTables).catch(() => {});
-    fetch('/api/meta/enums').then(r => r.json()).then(setEnumOptions).catch(() => {});
+    adminApi.getEnumMetadata().then(setEnumOptions).catch(() => {});
     adminApi.getMe().then(setMe).catch(() => {});
     const onResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', onResize);

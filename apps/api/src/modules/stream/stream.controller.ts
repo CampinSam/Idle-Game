@@ -8,6 +8,7 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { assertStreamEvent } from '@derp/shared';
 import { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { PubSubService, PubSubMessage, BroadcastMessage } from '../infrastructure/pubsub.service';
@@ -109,13 +110,30 @@ export class StreamController {
     data: any,
     id?: string,
   ): void {
+    let serializedData: string;
+    try {
+      serializedData = JSON.stringify(data, (_key, value) =>
+        typeof value === 'bigint' ? value.toString() : value,
+      );
+      if (serializedData === undefined) throw new TypeError('SSE data is not JSON serializable');
+      assertStreamEvent(event, JSON.parse(serializedData));
+    } catch (error) {
+      this.logger.error(
+        `Refusing to emit invalid or unserializable SSE event "${event}": ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return;
+    }
+
     try {
       if (id) {
         res.write(`id: ${id}\n`);
       }
       res.write(`event: ${event}\n`);
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-    } catch {
+      res.write(`data: ${serializedData}\n\n`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to emit SSE event "${event}": ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

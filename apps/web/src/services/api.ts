@@ -1,3 +1,30 @@
+import {
+  assertBootstrapResponse,
+  assertCommandRequest,
+  assertCommandResponse,
+  assertDeltaResponse,
+  assertDeltaResetResponse,
+} from '@derp/shared';
+import type {
+  BootstrapResponse,
+  CommandRequest,
+  CommandResponse,
+  DeltaResetResponse,
+  DeltaResponse,
+  SynergyPreview,
+} from '@derp/shared';
+
+export type {
+  BootstrapResponse,
+  CommandRequest,
+  CommandResponse,
+  DeltaResetResponse,
+  DeltaResponse,
+  Patch,
+  SynergyPreview,
+  UiIntent,
+} from '@derp/shared';
+
 const _rawApiUrl = import.meta.env.VITE_API_URL as string | undefined;
 const API_BASE = _rawApiUrl ? _rawApiUrl.replace(/\/$/, '') : '/api';
 
@@ -443,25 +470,39 @@ class ApiClient {
   }
 
   bootstrap() {
-    return this.requestV1<BootstrapResponse>('/v1/bootstrap');
+    return this.requestV1<BootstrapResponse>('/v1/bootstrap', assertBootstrapResponse);
   }
 
   sendCommand(input: CommandRequest) {
-    return this.requestV1<CommandResponse>('/v1/commands', {
+    assertCommandRequest(input);
+    return this.requestV1<CommandResponse>('/v1/commands', assertCommandResponse, {
       method: 'POST',
       body: JSON.stringify(input),
     });
   }
 
   fetchDelta(sinceCursor: string) {
-    return this.requestV1<DeltaResponse | DeltaResetResponse>(`/v1/delta?since=${sinceCursor}`);
+    return this.requestV1<DeltaResponse | DeltaResetResponse>(
+      `/v1/delta?since=${encodeURIComponent(sinceCursor)}`,
+      (value) => {
+        if (value !== null && typeof value === 'object' && (value as Record<string, unknown>).resetRequired === true) {
+          assertDeltaResetResponse(value);
+        } else {
+          assertDeltaResponse(value);
+        }
+      },
+    );
   }
 
   getToken() {
     return this.token;
   }
 
-  private async requestV1<T>(path: string, options: RequestInit = {}): Promise<T> {
+  private async requestV1<T>(
+    path: string,
+    validate: (value: unknown) => void,
+    options: RequestInit = {},
+  ): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...((options.headers as Record<string, string>) || {}),
@@ -482,7 +523,7 @@ class ApiClient {
     }
 
     if (res.status === 204 || res.headers.get('content-length') === '0') {
-      return undefined as unknown as T;
+      throw new Error(`Server returned an empty response for ${path}`);
     }
 
     const contentType = res.headers.get('content-type') || '';
@@ -490,7 +531,9 @@ class ApiClient {
       throw new Error(`Server returned non-JSON response (${res.status})`);
     }
 
-    return res.json();
+    const body: unknown = await res.json();
+    validate(body);
+    return body as T;
   }
 
   // Wallet auth
@@ -634,93 +677,5 @@ class ApiClient {
     return this.request<any[]>(`/crypto/deposits?limit=${limit}`);
   }
 }
-
-export interface ActivePowerSummary {
-  id: string;
-  label: string;
-  powerType: string;
-  value: number;
-  valueMode: string;
-  endTime: string;
-}
-
-export interface BootstrapResponse {
-  serverTime: number;
-  tickAnchor?: {
-    currentTick: number;
-    tickRate: number;
-    serverTime: string;
-    activeBoosts?: Array<{ id: string; name: string; multiplier: number; endTime: string }>;
-  };
-  snapshot: {
-    player: any;
-    state: any;
-    inventory?: any;
-    jobs?: any;
-    notifications?: any;
-    currencies?: any;
-    activeEffects?: any;
-    activeSeason?: { id: string; name?: string; [key: string]: unknown } | null;
-    activePowers?: ActivePowerSummary[];
-    entityPowerUsages?: Record<string, Record<string, import('../store/syncSlice').PowerChargeStatus>>;
-    locationPowerUsages?: Record<string, Record<string, import('../store/syncSlice').PowerChargeStatus>>;
-  };
-  cursor: { delta: string };
-  ui?: Array<{ type: string; spec: any }>;
-}
-
-export interface CommandRequest {
-  type: string;
-  payload: Record<string, any>;
-  idempotencyKey: string;
-}
-
-export interface SynergyMatchedRule {
-  ruleId: string;
-  name: string;
-  applications: number;
-  scoreContrib: number;
-  mpBonusContrib: number;
-  durationBonusContrib: number;
-  isPenalty: boolean;
-}
-
-export interface SynergyPreview {
-  matchedRules: SynergyMatchedRule[];
-  synergyScore: number;
-  missionPowerBonus: number;
-  durationBonus: number;
-}
-
-export interface CommandResponse {
-  patches: Patch[];
-  ui: UiIntent[];
-  cursor: { delta: string };
-  meta?: {
-    synergyPreview?: SynergyPreview;
-  };
-}
-
-export interface DeltaResponse {
-  from: string;
-  to: string;
-  patches: Patch[];
-  ui: UiIntent[];
-}
-
-export interface DeltaResetResponse {
-  resetRequired: true;
-}
-
-export type Patch =
-  | { op: 'upsert'; entity: string; id: string; data: any }
-  | { op: 'delete'; entity: string; id: string };
-
-export type UiIntent =
-  | { type: 'modal'; spec: import('@derp/shared').ModalSpecV1 }
-  | { type: 'notification'; notificationId: string }
-  | { type: 'local_toast'; tone: 'success' | 'error' | 'info'; title: string; body: string; durationMs?: number }
-  | { type: 'navigate'; deepLink: string }
-  | { type: 'full_reset' };
 
 export const api = new ApiClient();

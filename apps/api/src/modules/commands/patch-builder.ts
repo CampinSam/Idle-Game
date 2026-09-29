@@ -1,3 +1,5 @@
+import { InternalServerErrorException } from '@nestjs/common';
+import { assertPatch } from '@derp/shared';
 import { Patch } from './command.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { serializeLocation } from './location-serializer.util';
@@ -172,17 +174,39 @@ export class PatchBuilder {
   }
 
   upsert(entity: string, id: string, data: any): this {
-    this.patches.push({ op: 'upsert', entity, id, data });
+    this.patches.push({ op: 'upsert', entity: entity as Patch['entity'], id, data });
     return this;
   }
 
   delete(entity: string, id: string): this {
-    this.patches.push({ op: 'delete', entity, id });
+    this.patches.push({ op: 'delete', entity: entity as Patch['entity'], id });
     return this;
   }
 
   build(): Patch[] {
-    return this.patches;
+    let wirePatches: unknown;
+    try {
+      const json = JSON.stringify(this.patches, (_key, value) =>
+        typeof value === 'bigint' ? value.toString() : value,
+      );
+      if (json === undefined) throw new TypeError('Patch array is not JSON serializable');
+      wirePatches = JSON.parse(json);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `PatchBuilder output could not be serialized: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    (wirePatches as unknown[]).forEach((patch, index) => {
+      try {
+        assertPatch(patch, `patches[${index}]`);
+      } catch (error) {
+        throw new InternalServerErrorException(
+          `PatchBuilder produced an invalid patch: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    });
+    return wirePatches as Patch[];
   }
 }
 

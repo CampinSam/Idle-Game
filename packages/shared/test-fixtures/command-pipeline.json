@@ -1,0 +1,282 @@
+{
+  "bootstrap": {
+    "serverTime": 1700000000000,
+    "tickAnchor": {
+      "currentTick": 8400,
+      "tickRate": 1,
+      "serverTime": "2023-11-14T22:13:20.000Z",
+      "activeBoosts": [
+        {
+          "id": "boost-weekend",
+          "name": "Weekend boost",
+          "multiplier": 1.25,
+          "endTime": "2023-11-15T22:13:20.000Z"
+        }
+      ]
+    },
+    "snapshot": {
+      "player": {
+        "id": "player-1",
+        "username": "Aster",
+        "keeperLevel": 8,
+        "keeperXp": "1250",
+        "prestigeTokens": 2,
+        "flags": {},
+        "primaryLocationId": "location-1",
+        "unlocks": ["outpost"],
+        "createdAt": "2023-10-01T12:00:00.000Z",
+        "updatedAt": "2023-11-14T22:00:00.000Z"
+      },
+      "state": {
+        "entities": [
+          {
+            "id": "entity-1",
+            "definitionId": "entity-def-1",
+            "speciesId": "fox",
+            "role": "player_unit",
+            "display": { "name": "Ember" },
+            "progression": { "level": 4, "xp": 125 },
+            "stats": { "VIT": 12, "FOC": 8 },
+            "traits": {},
+            "archetypeVector": {},
+            "affinities": {},
+            "state": { "status": "idle" },
+            "version": 1,
+            "createdAt": "2023-10-02T12:00:00.000Z",
+            "updatedAt": "2023-11-14T22:00:00.000Z",
+            "name": "Ember",
+            "level": 4,
+            "xp": 125,
+            "status": "idle",
+            "baseStats": { "VIT": 12, "FOC": 8 },
+            "equippedStats": { "VIT": 12, "FOC": 8 }
+          }
+        ],
+        "locations": [],
+        "buildings": [],
+        "rooms": [],
+        "quests": [],
+        "achievements": [],
+        "checkins": [
+          {
+            "id": "checkin-instance-1",
+            "checkInDefId": "daily-checkin",
+            "streak": 3,
+            "lastClaimedAt": "2023-11-13T09:00:00.000Z",
+            "totalClaimed": 12,
+            "createdAt": "2023-10-01T09:00:00.000Z",
+            "updatedAt": "2023-11-13T09:00:00.000Z"
+          }
+        ],
+        "gifts": [],
+        "missions": []
+      },
+      "inventory": [
+        {
+          "id": "item-instance-1",
+          "userId": "player-1",
+          "definitionId": "item-def-1",
+          "quantity": 3,
+          "state": {},
+          "equippedToId": null,
+          "bound": false,
+          "tradeLocked": false,
+          "data": {},
+          "createdAt": "2023-11-10T10:00:00.000Z",
+          "updatedAt": "2023-11-14T21:00:00.000Z",
+          "definition": {
+            "id": "item-def-1",
+            "key": "healing-herb",
+            "type": "CONSUMABLE",
+            "rarity": "COMMON",
+            "name": "Healing Herb",
+            "iconKey": "healing-herb",
+            "category": "CONSUMABLE",
+            "groups": [],
+            "tags": [],
+            "stackable": true,
+            "maxStack": 99,
+            "uniqueInstance": false
+          }
+        }
+      ],
+      "jobs": [
+        {
+          "id": "job-1",
+          "type": "CraftingJob",
+          "defId": "healing-potion",
+          "status": "active",
+          "timer": { "startTick": 8390, "durationTicks": 60 },
+          "team": [],
+          "data": { "quantity": 1 },
+          "results": null,
+          "startTick": 8390,
+          "durationTicks": 60,
+          "updatedAt": "2023-11-14T22:00:00.000Z"
+        }
+      ],
+      "notifications": [
+        {
+          "id": "notification-1",
+          "type": "job_ready",
+          "category": "gameplay",
+          "priority": "normal",
+          "title": "Crafting started",
+          "body": "Your healing potion is being prepared.",
+          "deepLink": {},
+          "meta": {},
+          "groupKey": null,
+          "sourceType": "job",
+          "sourceId": "job-1",
+          "createdAt": "2023-11-14T22:00:00.000Z",
+          "readAt": null,
+          "dismissedAt": null
+        }
+      ],
+      "currencies": {
+        "soft_arcanium": 245,
+        "hard_essence": "18"
+      },
+      "activeEffects": [],
+      "homeBanners": [
+        {
+          "id": "banner-autumn",
+          "title": "Autumn festival",
+          "subtitle": "A new season begins",
+          "description": "Explore the seasonal rewards.",
+          "backgroundImage": "autumn-banner",
+          "ctaLabel": "View season",
+          "ctaRoute": "/season",
+          "priority": 10,
+          "startsAt": "2023-11-01T00:00:00.000Z",
+          "endsAt": "2023-12-01T00:00:00.000Z",
+          "seasonId": null,
+          "config": {},
+          "display": {}
+        }
+      ],
+      "activePowers": [],
+      "entityPowerUsages": {
+        "entity-1": {
+          "quick-heal": {
+            "grantId": "power-grant-1",
+            "chargeUnits": 2,
+            "maxChargeUnits": 3,
+            "costPerUse": 1,
+            "readyAtMs": null
+          }
+        }
+      },
+      "locationPowerUsages": {
+        "location-1": {
+          "resource-surge": {
+            "grantId": "power-grant-2",
+            "chargeUnits": 1,
+            "maxChargeUnits": 2,
+            "costPerUse": 1,
+            "readyAtMs": 1700000060000
+          }
+        }
+      },
+      "activeSeason": null
+    },
+    "cursor": { "delta": "42" }
+  },
+  "command": {
+    "patches": [
+      {
+        "op": "upsert",
+        "entity": "item",
+        "id": "item-instance-1",
+        "data": {
+          "id": "item-instance-1",
+          "userId": "player-1",
+          "definitionId": "item-def-1",
+          "quantity": 4,
+          "state": {},
+          "equippedToId": null,
+          "bound": false,
+          "tradeLocked": false,
+          "data": {},
+          "createdAt": "2023-11-10T10:00:00.000Z",
+          "updatedAt": "2023-11-14T22:13:20.000Z"
+        }
+      },
+      {
+        "op": "upsert",
+        "entity": "player",
+        "id": "player-1",
+        "data": { "keeperXp": "1300" }
+      },
+      {
+        "op": "upsert",
+        "entity": "currencyBalance",
+        "id": "_",
+        "data": { "soft_arcanium": 260 }
+      }
+    ],
+    "ui": [
+      {
+        "type": "local_toast",
+        "tone": "success",
+        "title": "Item received",
+        "body": "Healing Herb ×1 added to your inventory.",
+        "durationMs": 4000
+      }
+    ],
+    "cursor": { "delta": "43" }
+  },
+  "delta": {
+    "from": "42",
+    "to": "43",
+    "patches": [
+      {
+        "op": "upsert",
+        "entity": "item",
+        "id": "item-instance-1",
+        "data": {
+          "id": "item-instance-1",
+          "userId": "player-1",
+          "definitionId": "item-def-1",
+          "quantity": 4,
+          "state": {},
+          "equippedToId": null,
+          "bound": false,
+          "tradeLocked": false,
+          "data": {},
+          "createdAt": "2023-11-10T10:00:00.000Z",
+          "updatedAt": "2023-11-14T22:13:20.000Z"
+        }
+      },
+      {
+        "op": "upsert",
+        "entity": "currencyBalance",
+        "id": "_",
+        "data": { "soft_arcanium": 260 }
+      }
+    ],
+    "ui": []
+  },
+  "streamEvents": [
+    {
+      "event": "hello",
+      "data": { "userId": "player-1", "serverTime": 1700000000000 }
+    },
+    {
+      "event": "tick.sync",
+      "data": {
+        "currentTick": 8401,
+        "tickRate": 1,
+        "serverTime": "2023-11-14T22:13:21.000Z",
+        "boosts": [
+          {
+            "id": "boost-weekend",
+            "name": "Weekend boost",
+            "multiplier": 1.25,
+            "endTime": "2023-11-15T22:13:20.000Z"
+          }
+        ]
+      }
+    }
+  ]
+}

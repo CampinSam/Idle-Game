@@ -128,7 +128,7 @@ export default function UsePotionFlowModal({
       const response = await execute('UseConsumable', payload);
       const newIds: string[] = [];
       for (const p of response.patches || []) {
-        if (p.op === 'upsert' && p.entity === 'activeEffect' && p.data?.id) {
+        if (p.op === 'upsert' && p.entity === 'activeEffect' && typeof p.data.id === 'string') {
           if (!snapshot.has(p.data.id)) newIds.push(p.data.id);
         }
       }
