@@ -104,6 +104,10 @@ function makeDeps(dbOverrides: any = {}) {
 
   const db: any = {
     job: {
+      create: jest.fn(async ({ data }: any) => {
+        Object.assign(jobRow, { id: jobRow.id, ...data });
+        return jobRow;
+      }),
       findFirst: jest.fn(async ({ where }: any) => {
         if (where?.id !== jobRow.id) return null;
         const statusOk = where.status
@@ -214,6 +218,7 @@ function makeDeps(dbOverrides: any = {}) {
 
   const effectService: any = {
     resolve: jest.fn(() => emptyMod),
+    resolveTimerSpeed: jest.fn(async () => emptyMod),
     resolveForTarget: jest.fn(async () => emptyMod),
     getActiveEffectsForUser: jest.fn(async () => []),
     getGlobalPowerRows: jest.fn(async () => []),
@@ -281,6 +286,139 @@ function buildService(deps: ReturnType<typeof makeDeps>): MissionService {
     fakeDefinitionCache,
   );
 }
+
+// ─── Mission duration integration coverage ───────────────────────────────────
+
+describe('MissionService mission duration persistence', () => {
+  it('persists the unmodified duration and ready tick for an ordinary mission', async () => {
+    const deps = makeDeps();
+    Object.assign(deps.defRow, {
+      mode: 'standard',
+      phases: [],
+      timer: { duration: 41, boostable: false },
+    });
+    deps.entityRow.state = { status: 'idle' };
+
+    const svc = buildService(deps);
+    await svc.startMission('user-1', 'def-mp', ['entity-1'], deps.db);
+
+    expect(deps.db.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          timer: { startTick: 100, durationTicks: 41 },
+          readyAtTick: 141,
+        }),
+      }),
+    );
+    expect(deps.jobRow.timer.durationTicks).toBe(41);
+    expect(deps.jobRow.readyAtTick).toBe(141);
+  });
+
+  it('persists phase 0 duration after timer effect, synergy, and team SPD are stacked', async () => {
+    const deps = makeDeps();
+    Object.assign(deps.defRow, {
+      mode: 'multi_phase',
+      phases: [{ name: 'Phase 1', duration: 100 }, { name: 'Phase 2', duration: 80 }],
+      timer: { duration: 999, boostable: true },
+    });
+    const entityRows = [
+      makeEntity({ id: 'slow-1', stats: { SPD: 0 }, state: { status: 'idle' } }),
+      makeEntity({ id: 'slow-2', stats: { SPD: 0 }, state: { status: 'idle' } }),
+      makeEntity({ id: 'fast', stats: { SPD: 300 }, state: { status: 'idle' } }),
+    ];
+    deps.db.entity.findFirst = jest.fn(async ({ where }: any) =>
+      entityRows.find((entity) => entity.id === where.id) ?? null,
+    );
+    deps.effectService.resolveTimerSpeed.mockResolvedValue({
+      flatAdd: 10,
+      percentAdd: 20,
+      multiplier: 1.5,
+    });
+    deps.synergyResolver.resolveRules.mockResolvedValue({
+      matchedRules: [],
+      totals: {
+        synergyScore: 0,
+        statModifiers: {},
+        durationModifiers: { mission: { percentAdd: 25, flatSeconds: 4 } },
+      },
+    });
+
+    const svc = buildService(deps);
+    await svc.startMission('user-1', 'def-mp', ['slow-1', 'slow-2', 'fast'], deps.db);
+
+    // 100s → timer modifier 198 → synergy 251 → stored SPD multiplier 0.5 → 125 ticks.
+    expect(deps.db.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          timer: { startTick: 100, durationTicks: 125 },
+          readyAtTick: 225,
+          data: expect.objectContaining({ spdTimerMultiplier: 0.5 }),
+        }),
+      }),
+    );
+    expect(deps.jobRow.timer.durationTicks).toBe(125);
+    expect(deps.jobRow.readyAtTick).toBe(225);
+    expect(deps.effectService.resolveTimerSpeed).toHaveBeenCalledTimes(1);
+    expect(deps.synergyResolver.resolveRules).toHaveBeenCalledTimes(1);
+  });
+
+  it('advances using the stored SPD multiplier without reapplying timer effects or synergy', async () => {
+    const deps = makeDeps();
+    deps.jobRow.currentPhase = 0;
+    deps.jobRow.data = { ...deps.jobRow.data, spdTimerMultiplier: 0.5 };
+    deps.defRow.phases = [
+      { name: 'Phase 1', duration: 10 },
+      { name: 'Phase 2', duration: 100 },
+    ];
+    deps.defRow.timer = { duration: 999, boostable: true };
+
+    const svc = buildService(deps);
+    await svc.advanceToNextPhase('user-1', 'job-1', deps.db);
+
+    const updateData = deps.db.job.update.mock.calls[0][0].data;
+    expect(updateData.timer).toEqual({ startTick: 100, durationTicks: 50 });
+    expect(updateData.readyAtTick).toBe(150);
+    expect(deps.effectService.resolveTimerSpeed).not.toHaveBeenCalled();
+    expect(deps.synergyResolver.resolveRules).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the mission timer duration when the next phase duration is invalid', async () => {
+    const deps = makeDeps();
+    deps.jobRow.currentPhase = 0;
+    deps.jobRow.data = { ...deps.jobRow.data, spdTimerMultiplier: 0.5 };
+    deps.defRow.phases = [
+      { name: 'Phase 1', duration: 10 },
+      { name: 'Phase 2', duration: 'invalid' },
+    ];
+    deps.defRow.timer = { duration: 37, boostable: false };
+
+    const svc = buildService(deps);
+    await svc.advanceToNextPhase('user-1', 'job-1', deps.db);
+
+    const updateData = deps.db.job.update.mock.calls[0][0].data;
+    expect(updateData.timer).toEqual({ startTick: 100, durationTicks: 18 });
+    expect(updateData.readyAtTick).toBe(118);
+  });
+
+  it('defaults missing stored SPD multipliers to 1 for legacy jobs', async () => {
+    const deps = makeDeps();
+    deps.jobRow.currentPhase = 0;
+    deps.jobRow.data = { ...deps.jobRow.data };
+    delete deps.jobRow.data.spdTimerMultiplier;
+    deps.defRow.phases = [
+      { name: 'Phase 1', duration: 10 },
+      { name: 'Phase 2', duration: 29 },
+    ];
+    deps.defRow.timer = { duration: 999, boostable: true };
+
+    const svc = buildService(deps);
+    await svc.advanceToNextPhase('user-1', 'job-1', deps.db);
+
+    const updateData = deps.db.job.update.mock.calls[0][0].data;
+    expect(updateData.timer).toEqual({ startTick: 100, durationTicks: 29 });
+    expect(updateData.readyAtTick).toBe(129);
+  });
+});
 
 // ─── advanceToNextPhase ───────────────────────────────────────────────────────
 
