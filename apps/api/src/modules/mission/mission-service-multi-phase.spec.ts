@@ -1,5 +1,7 @@
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { MissionService } from './mission.service';
+import { SeededRng } from '@derp/math';
+import { EffectCategory, emptyResolvedModifier } from '@derp/shared';
 
 /**
  * Unit / integration tests for MissionService multi-phase logic.
@@ -617,6 +619,38 @@ describe('MissionService.completeMission — rewardsMode', () => {
 
     return deps;
   }
+
+  it.each([
+    { name: 'ordinary completion', stacked: false, expectedChance: 0.5 },
+    { name: 'stacked completion preserves direct chance additions', stacked: true, expectedChance: 480 / 580 + 5 },
+  ])('$name passes the exact calculated chance to the existing seeded RNG', async ({ stacked, expectedChance }) => {
+    const deps = makeCompletableDeps({ mode: 'single', tiers: {} });
+    deps.entityRow.stats = { ATK: 100, DEF: 100, SPD: 100, FOC: 100, LCK: 0, VIT: 0 };
+    deps.effectService.resolveForTarget.mockResolvedValue(emptyResolvedModifier());
+    deps.jobRow.data.difficulty = 100;
+    if (stacked) {
+      deps.jobRow.data.synergy = {
+        ruleIds: ['rule-test'],
+        totals: { synergyScore: 20, statModifiers: { MISSION_POWER: { percentAdd: 25 } } },
+      };
+      deps.effectService.resolve.mockImplementation((_effects: any, category: EffectCategory) => {
+        if (category === EffectCategory.MISSION_POWER) return { flatAdd: 10, percentAdd: 50, multiplier: 2 };
+        // The chance multiplier remains ignored by completion, as before.
+        if (category === EffectCategory.SUCCESS_CHANCE) return { flatAdd: 2, percentAdd: 3, multiplier: 99 };
+        return { flatAdd: 0, percentAdd: 0, multiplier: 1 };
+      });
+    }
+    const roll = jest.spyOn(SeededRng.prototype, 'chance');
+    try {
+      await buildService(deps).completeMission('user-1', 'job-1', deps.db);
+      expect(roll).toHaveBeenNthCalledWith(1, expectedChance);
+      expect(roll).toHaveBeenCalledTimes(1);
+      expect(deps.synergyResolver.resolveRules).not.toHaveBeenCalled();
+      expect(deps.db.job.update).toHaveBeenCalled();
+    } finally {
+      roll.mockRestore();
+    }
+  });
 
   it('final_bundle: calls resolveOutcomes with the tiers rewards (non-empty outcomeItems)', async () => {
     const deps = makeCompletableDeps({ rewardsMode: 'final_bundle' });

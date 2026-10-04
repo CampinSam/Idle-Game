@@ -1,5 +1,6 @@
 export { calculateMP, calculateTeamMP, calculateInjuryChance, calculateInjuryRecoveryTicks, calculateInjuryPenaltyMultiplier, calculateEffectiveTeamSPD, calculateSpdTimerMultiplier, SPD_TIMER_SCALE, type EntityForMP } from './mission-power';
 export { calculateMissionDurationTicks, type MissionDurationInput } from './mission-duration';
+export { calculateMissionCompletionPower, type MissionCompletionPowerInput } from './mission-completion-power';
 export {
   STAT_KEYS,
   VISIBLE_STATS,

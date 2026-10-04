@@ -21,7 +21,7 @@ import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, type TraitPrimitive } from '@derp/shared';
-import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, calculateEffectiveTeamSPD, calculateSpdTimerMultiplier, calculateMissionDurationTicks, SeededRng, rollQualityFromCl, QUALITY_TIERS } from '@derp/math';
+import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, calculateEffectiveTeamSPD, calculateSpdTimerMultiplier, calculateMissionDurationTicks, calculateMissionCompletionPower, SeededRng, rollQualityFromCl, QUALITY_TIERS } from '@derp/math';
 import { GameConstantsService, GAME_CONSTANT_KEYS } from '../game-constants/game-constants.service';
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
@@ -778,7 +778,7 @@ export class MissionService {
       return { stats: boostedStats, traits: b.traits as any };
     }));
 
-    let rawTeamMP = calculateTeamMP(teamForMP);
+    const baseTeamMP = calculateTeamMP(teamForMP);
 
     // Read the synergy snapshot persisted by startMission instead of
     // re-querying rules. This guarantees reward outcomes use the rule state
@@ -788,35 +788,27 @@ export class MissionService {
       | undefined;
     if (persistedSynergy) {
       const syn = persistedSynergy.totals;
-      // Flat synergy-score add (synergy_score_modifier effects).
-      if (syn.synergyScore !== 0) {
-        rawTeamMP += syn.synergyScore;
-      }
-      // Percent add from MISSION_POWER stat_modifier effects.
       const mpPercentBonus = syn.statModifiers?.['MISSION_POWER']?.percentAdd ?? 0;
-      if (mpPercentBonus !== 0) {
-        rawTeamMP *= 1 + mpPercentBonus / 100;
-      }
       this.logger.debug(
         `Mission ${missionId}: synergy snapshot applied (score=${syn.synergyScore}, mpPct=${mpPercentBonus}) from ${persistedSynergy.ruleIds.length} rule(s)`,
       );
     }
 
     const mpMod = this.effectService.resolve(playerEffects, EffectCategory.MISSION_POWER);
-    rawTeamMP = applyModifier(rawTeamMP, mpMod);
-
     const cap = ANTI_WHALE_CAPS.mpEffectivenessCap;
-    const teamMP = rawTeamMP <= cap ? rawTeamMP : cap + Math.sqrt(rawTeamMP - cap);
     const difficulty = mission.data.difficulty;
-    let successChance = calculateSuccessChance(
-      teamMP,
-      difficulty,
-      def.minSuccessChance ?? 0,
-      def.maxSuccessChance ?? 100,
-    );
-
     const scMod = this.effectService.resolve(playerEffects, EffectCategory.SUCCESS_CHANCE);
-    successChance = Math.min(100, Math.max(0, successChance + scMod.flatAdd + scMod.percentAdd));
+    const { teamMP, successChance } = calculateMissionCompletionPower({
+      baseTeamMP,
+      synergyScore: persistedSynergy ? persistedSynergy.totals.synergyScore : 0,
+      synergyMPPercentAdd: persistedSynergy?.totals.statModifiers?.['MISSION_POWER']?.percentAdd ?? 0,
+      missionPowerModifier: mpMod,
+      mpEffectivenessCap: cap,
+      difficulty,
+      minSuccessChance: def.minSuccessChance ?? 0,
+      maxSuccessChance: def.maxSuccessChance ?? 100,
+      successChanceModifier: scMod,
+    });
 
     const missionSeed = mission.data.seed;
     const rng = new SeededRng(missionSeed);
