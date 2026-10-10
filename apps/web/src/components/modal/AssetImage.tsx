@@ -1,5 +1,5 @@
 import type { AssetRef } from '@derp/shared';
-import { DEFAULT_ICON_URL, mediaUrl } from '../../utils/iconResolver';
+import { DEFAULT_ICON_URL, resolveAssetUrl } from '../../utils/iconResolver';
 import { CSSProperties } from 'react';
 
 interface AssetImageProps {
@@ -9,14 +9,14 @@ interface AssetImageProps {
 }
 
 export default function AssetImage({ asset, style, className }: AssetImageProps) {
-  const src = mediaUrl(`images/${asset.assetKey}.png`);
+  const src = resolveAssetUrl(asset.assetKey) ?? DEFAULT_ICON_URL;
 
   return (
     <img
       src={src}
       alt={asset.alt || ''}
       style={style}
-      className={className}
+      className={`game-icon ${className ?? ''}`.trim()}
       draggable={false}
       onError={(e) => {
         const img = e.currentTarget;

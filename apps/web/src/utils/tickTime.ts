@@ -1,32 +1,19 @@
-export function getTickRemainingMs(item: any, now: number): number {
-  const { startTick, durationTicks } = item;
-  const currentTick = item.tickInfo?.currentTick;
-  const currentRate = item.tickInfo?.currentRate;
-  const serverTime = item.serverTime;
+import { createCountdownTimer } from '../tick/TickTimer';
 
-  if (startTick == null || durationTicks == null || currentTick == null || currentRate == null || serverTime == null) {
-    return Infinity;
-  }
-
-  const endTick = startTick + durationTicks;
-  const remainingTicks = endTick - currentTick;
-  if (remainingTicks <= 0) return 0;
-
-  const remainingMsAtServerTime = (remainingTicks / currentRate) * 1000;
-  const elapsed = now - new Date(serverTime).getTime();
-  return Math.max(0, remainingMsAtServerTime - elapsed);
+export function getTickRemainingMs(item: { startTick: number; durationTicks: number }, currentTick: number, tickRate: number): number {
+  if (item.startTick == null || item.durationTicks == null || tickRate <= 0) return Infinity;
+  const timer = createCountdownTimer({ startTick: item.startTick, durationTicks: item.durationTicks });
+  return timer.getRemainingMs(currentTick, tickRate);
 }
 
-export function getTickTotalDurationMs(item: any): number {
-  const durationTicks = item.durationTicks;
-  const currentRate = item.tickInfo?.currentRate;
-  if (!durationTicks || !currentRate) return 1;
-  return (durationTicks / currentRate) * 1000;
+export function getTickTotalDurationMs(item: { durationTicks: number }, tickRate: number): number {
+  if (!item.durationTicks || !tickRate) return 1;
+  return (item.durationTicks / tickRate) * 1000;
 }
 
-export function getTickProgress(item: any, now: number): number {
-  const total = getTickTotalDurationMs(item);
-  const remaining = getTickRemainingMs(item, now);
+export function getTickProgress(item: { startTick: number; durationTicks: number }, currentTick: number, tickRate: number): number {
+  const total = getTickTotalDurationMs(item, tickRate);
+  const remaining = getTickRemainingMs(item, currentTick, tickRate);
   if (total <= 0 || remaining === Infinity) return 2;
   return Math.min(100, Math.max(2, ((total - remaining) / total) * 100));
 }

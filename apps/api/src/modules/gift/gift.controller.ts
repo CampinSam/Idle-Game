@@ -1,12 +1,16 @@
-import { Controller, Get, Post, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, UseGuards, Headers } from '@nestjs/common';
 import { GiftService } from './gift.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { IdempotencyService } from '../infrastructure/idempotency.service';
 
 @Controller('gifts')
 @UseGuards(JwtAuthGuard)
 export class GiftController {
-  constructor(private giftService: GiftService) {}
+  constructor(
+    private giftService: GiftService,
+    private idempotency: IdempotencyService,
+  ) {}
 
   @Get()
   getGifts(
@@ -28,7 +32,14 @@ export class GiftController {
   claimGift(
     @CurrentUser() user: { id: string },
     @Param('id') id: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.giftService.claimGift(user.id, id);
+    return this.idempotency.executeIdempotent(
+      user.id,
+      'POST:/gifts/:id/claim',
+      idempotencyKey,
+      { giftId: id },
+      () => this.giftService.claimGift(user.id, id),
+    );
   }
 }

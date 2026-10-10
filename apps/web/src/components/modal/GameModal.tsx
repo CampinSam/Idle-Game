@@ -1,8 +1,12 @@
-import { useEffect, useState } from 'react';
-import type { ModalSpecV1, ModalButton as ModalButtonSpec, ModalAction } from '@derp/shared';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ModalSpecV1, ModalButton as ModalButtonSpec, ModalAction, ModalSkipCost } from '@derp/shared';
+import { computeEffectivePage } from '@derp/shared';
 import BlockRenderer from './blocks/BlockRenderer';
 import AssetImage from './AssetImage';
-import './GameModal.css';
+import ItemQty from '../ItemQty';
+import QuantityPickerContext from '../../context/QuantityPickerContext';
+import { useNow } from '../../hooks/useNow';
+import { useAppSelector } from '../../store';
 
 export interface GameModalProps {
   spec: ModalSpecV1;
@@ -13,34 +17,113 @@ export interface GameModalProps {
 }
 
 export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAction }: GameModalProps) {
+  const [pageIndex, setPageIndex] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [pendingConfirmBtn, setPendingConfirmBtn] = useState<ModalButtonSpec | null>(null);
+  const [pickerValues, setPickerValues] = useState<Record<string, number>>({});
+
+  const now = useNow(500);
+  const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
 
   useEffect(() => {
-    if (!isOpen || !spec.dismiss.escape) return;
+    setPageIndex(0);
+    setPendingConfirmBtn(null);
+    const initial: Record<string, number> = {};
+    for (const page of spec.pages ?? []) {
+      for (const block of page.body ?? []) {
+        if (block.type === 'quantityInput') {
+          initial[block.id] = block.defaultValue;
+        }
+      }
+    }
+    setPickerValues(initial);
+  }, [spec]);
+
+  const setPickerValue = useCallback((id: string, value: number) => {
+    setPickerValues((prev) => ({ ...prev, [id]: value }));
+  }, []);
+
+  const pickerCtx = useMemo(
+    () => ({ values: pickerValues, setValue: setPickerValue }),
+    [pickerValues, setPickerValue],
+  );
+
+  const totalPages = Array.isArray(spec.pages) ? spec.pages.length : 0;
+  const { header, body, buttons, dismiss } = computeEffectivePage(spec, pageIndex);
+
+  const progressBlock = useMemo(() => {
+    for (const page of spec.pages ?? []) {
+      for (const block of page.body ?? []) {
+        if (block.type === 'progress' && block.startsAt && block.endsAt) {
+          return block;
+        }
+      }
+    }
+    return null;
+  }, [spec]);
+
+  const computeCurrentSkipCosts = useCallback(
+    (baseCosts: ModalSkipCost[], skipType: 'absolute' | 'scaling'): ModalSkipCost[] => {
+      if (skipType === 'absolute' || !progressBlock?.startsAt || !progressBlock?.endsAt) {
+        return baseCosts;
+      }
+      const totalDuration = Date.parse(progressBlock.endsAt) - Date.parse(progressBlock.startsAt);
+      const remaining = Math.max(0, Date.parse(progressBlock.endsAt) - now);
+      const multiplier = totalDuration > 0 ? remaining / totalDuration : 0;
+      return baseCosts.map((c) => ({
+        ...c,
+        amount: multiplier < 1 ? Math.max(1, Math.ceil(c.amount * multiplier)) : c.amount,
+      }));
+    },
+    [progressBlock, now],
+  );
+
+  const isSkipAffordable = useCallback(
+    (costs: ModalSkipCost[]): boolean =>
+      costs.every((c) => {
+        if (!c.currencyId) return true;
+        return (currencyBalances[c.currencyId] ?? 0) >= c.amount;
+      }),
+    [currencyBalances],
+  );
+
+  useEffect(() => {
+    if (!isOpen || !dismiss.escape) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onRequestClose();
+      if (e.key === 'Escape') {
+        if (pendingConfirmBtn) {
+          setPendingConfirmBtn(null);
+        } else {
+          onRequestClose();
+        }
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, spec.dismiss.escape, onRequestClose]);
+  }, [isOpen, dismiss.escape, onRequestClose, pendingConfirmBtn]);
 
   if (!isOpen) return null;
 
   const onBackdropClick = () => {
-    if (spec.dismiss.backdrop) onRequestClose();
+    if (pendingConfirmBtn) {
+      setPendingConfirmBtn(null);
+      return;
+    }
+    if (dismiss.backdrop) onRequestClose();
   };
 
-  const handleButtonClick = async (btn: ModalButtonSpec) => {
-    if (btn.disabled) return;
-
-    if (btn.requiresConfirm) {
-      const confirmed = window.confirm(btn.requiresConfirm.title);
-      if (!confirmed) return;
+  const resolveAction = useCallback((action: ModalAction): ModalAction => {
+    if (action.type === 'DEPOSIT_LOCATION_XP' && action.chargesBindingId) {
+      const qty = pickerValues[action.chargesBindingId] ?? action.charges ?? 1;
+      return { ...action, charges: Math.max(1, Math.floor(qty)) };
     }
+    return action;
+  }, [pickerValues]);
 
+  const fireAction = async (btn: ModalButtonSpec) => {
     setActionLoading(btn.id);
     try {
-      await onAction(btn.action);
+      await onAction(resolveAction(btn.action));
     } catch (err) {
       console.error('[GameModal] action failed:', err);
     } finally {
@@ -48,48 +131,145 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
     }
   };
 
+  const handleButtonClick = async (btn: ModalButtonSpec) => {
+    if (btn.disabled) return;
+
+    if (btn.action.type === 'NEXT_PAGE') {
+      setPageIndex(i => Math.min(i + 1, totalPages - 1));
+      return;
+    }
+
+    if (btn.action.type === 'PREV_PAGE') {
+      setPageIndex(i => Math.max(i - 1, 0));
+      return;
+    }
+
+    if (btn.requiresConfirm) {
+      setPendingConfirmBtn(btn);
+      return;
+    }
+
+    await fireAction(btn);
+  };
+
+  const handleConfirm = async () => {
+    if (!pendingConfirmBtn) return;
+    const btn = pendingConfirmBtn;
+    setPendingConfirmBtn(null);
+    await fireAction(btn);
+  };
+
+  const handleCancelConfirm = () => setPendingConfirmBtn(null);
+
   return (
+    <QuantityPickerContext.Provider value={pickerCtx}>
     <div className="gm-overlay" onMouseDown={onBackdropClick} role="presentation">
       <div className="gm-modal" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        {spec.header.banner && (
-          <div className="gm-banner">
-            <AssetImage asset={spec.header.banner} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <>
+            {header.banner ? (
+              <div className="gm-banner">
+                <AssetImage asset={header.banner} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxWidth: 'none', maxHeight: 'none' }} />
+                <div className="gm-banner-title-overlay">
+                  <h2 className="gm-title">{header.title}</h2>
+                  {header.subtitle && <p className="gm-subtitle">{header.subtitle}</p>}
+                </div>
+              </div>
+            ) : (
+              <div className="gm-header">
+                {header.icon && (
+                  <div className="gm-header-icon">
+                    <AssetImage asset={header.icon} style={{ width: 48, height: 48, borderRadius: 12 }} />
+                  </div>
+                )}
+                <h2 className="gm-title">{header.title}</h2>
+                {header.subtitle && <p className="gm-subtitle">{header.subtitle}</p>}
+              </div>
+            )}
+
+            {dismiss.x && (
+              <button className="gm-close-btn" onClick={onRequestClose} aria-label="Close">✕</button>
+            )}
+
+            {spec.showPageIndicator && totalPages > 1 && (
+              <div className="gm-page-indicator" aria-label={`Page ${pageIndex + 1} of ${totalPages}`}>
+                {pageIndex + 1} / {totalPages}
+              </div>
+            )}
+
+            <div className="gm-body">
+              {body.map((block, idx) => (
+                <BlockRenderer key={`${spec.id}_p${pageIndex}_b_${idx}`} block={block} />
+              ))}
+            </div>
+
+            <div className="gm-footer">
+              {buttons.map((btn) => {
+                const currentCosts = btn.skipMeta
+                  ? computeCurrentSkipCosts(btn.skipMeta.baseCosts, btn.skipMeta.skipType)
+                  : null;
+                const skipDisabled = currentCosts ? !isSkipAffordable(currentCosts) : false;
+                const isDisabled = btn.disabled || skipDisabled || actionLoading === btn.id;
+
+                return (
+                  <button
+                    key={btn.id}
+                    className={`gm-btn gm-btn-${btn.variant}`}
+                    disabled={isDisabled}
+                    onClick={() => handleButtonClick(btn)}
+                  >
+                    {actionLoading === btn.id ? (
+                      '...'
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <span>{btn.label}</span>
+                        {currentCosts && currentCosts.length > 0 && (
+                          <span className="flex items-center gap-1">
+                            {currentCosts.map((c, i) => (
+                              <ItemQty key={i} src={c.assetKey ?? c.label} amount={c.amount} size={13} />
+                            ))}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+        </>
+
+        {pendingConfirmBtn && (
+          <div
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 p-6"
+            style={{ background: 'linear-gradient(180deg, rgba(20,10,40,0.97) 0%, rgba(10,5,25,0.97) 100%)' }}
+          >
+            <p className="text-center font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
+              {pendingConfirmBtn.requiresConfirm!.title}
+            </p>
+
+            {pendingConfirmBtn.requiresConfirm!.body && pendingConfirmBtn.requiresConfirm!.body.length > 0 && (
+              <div className="w-full">
+                {pendingConfirmBtn.requiresConfirm!.body.map((block, idx) => (
+                  <BlockRenderer key={idx} block={block} />
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-3 w-full mt-1">
+              <button className="gm-btn gm-btn-ghost flex-1" onClick={handleCancelConfirm}>
+                {pendingConfirmBtn.requiresConfirm!.cancelLabel ?? 'Cancel'}
+              </button>
+              <button
+                className="gm-btn gm-btn-primary flex-1"
+                disabled={actionLoading === pendingConfirmBtn.id}
+                onClick={handleConfirm}
+              >
+                {actionLoading === pendingConfirmBtn.id ? '...' : (pendingConfirmBtn.requiresConfirm!.confirmLabel ?? 'Confirm')}
+              </button>
+            </div>
           </div>
         )}
-
-        {spec.dismiss.x && (
-          <button className="gm-close-btn" onClick={onRequestClose} aria-label="Close">✕</button>
-        )}
-
-        <div className="gm-header">
-          {spec.header.icon && (
-            <div className="gm-header-icon">
-              <AssetImage asset={spec.header.icon} style={{ width: 48, height: 48, borderRadius: 12 }} />
-            </div>
-          )}
-          <h2 className="gm-title">{spec.header.title}</h2>
-          {spec.header.subtitle && <p className="gm-subtitle">{spec.header.subtitle}</p>}
-        </div>
-
-        <div className="gm-body">
-          {spec.body.map((block, idx) => (
-            <BlockRenderer key={`${spec.id}_b_${idx}`} block={block} />
-          ))}
-        </div>
-
-        <div className="gm-footer">
-          {spec.buttons.map((btn) => (
-            <button
-              key={btn.id}
-              className={`gm-btn gm-btn-${btn.variant}`}
-              disabled={btn.disabled || actionLoading === btn.id}
-              onClick={() => handleButtonClick(btn)}
-            >
-              {actionLoading === btn.id ? '...' : btn.label}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
+    </QuantityPickerContext.Provider>
   );
 }

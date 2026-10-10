@@ -2,64 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GiftService } from '../gift/gift.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
-
-function getWindowStart(frequency: any, now: Date): Date {
-  const type = frequency?.type ?? 'daily';
-  const interval = frequency?.interval ?? 1;
-
-  if (type === 'daily') {
-    const d = new Date(now);
-    d.setUTCHours(0, 0, 0, 0);
-    return d;
-  }
-
-  if (type === 'every_x_days') {
-    const epochMs = now.getTime();
-    const windowMs = interval * 24 * 60 * 60 * 1000;
-    const windowStart = Math.floor(epochMs / windowMs) * windowMs;
-    return new Date(windowStart);
-  }
-
-  if (type === 'weekly') {
-    const d = new Date(now);
-    d.setUTCHours(0, 0, 0, 0);
-    const day = d.getUTCDay();
-    const diffToMonday = (day === 0 ? 6 : day - 1);
-    d.setUTCDate(d.getUTCDate() - diffToMonday);
-    return d;
-  }
-
-  if (type === 'monthly') {
-    const d = new Date(now);
-    d.setUTCDate(1);
-    d.setUTCHours(0, 0, 0, 0);
-    return d;
-  }
-
-  const d = new Date(now);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
-}
-
-function getWindowDurationMs(frequency: any): number {
-  const type = frequency?.type ?? 'daily';
-  const interval = frequency?.interval ?? 1;
-
-  if (type === 'daily') return 24 * 60 * 60 * 1000;
-  if (type === 'every_x_days') return interval * 24 * 60 * 60 * 1000;
-  if (type === 'weekly') return 7 * 24 * 60 * 60 * 1000;
-  if (type === 'monthly') return 30 * 24 * 60 * 60 * 1000;
-  return 24 * 60 * 60 * 1000;
-}
-
-function windowsMissed(lastClaimedAt: Date | null, frequency: any, now: Date): number {
-  if (!lastClaimedAt) return 1;
-  const lastWindowStart = getWindowStart(frequency, lastClaimedAt);
-  const currentWindowStart = getWindowStart(frequency, now);
-  const durationMs = getWindowDurationMs(frequency);
-  const diff = currentWindowStart.getTime() - lastWindowStart.getTime();
-  return Math.floor(diff / durationMs);
-}
+import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
+import { windowsMissed } from '../../common/util/cadence';
+import type { GiftSpec } from '@derp/shared';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 @Injectable()
 export class CheckInService {
@@ -69,13 +15,37 @@ export class CheckInService {
     private prisma: PrismaService,
     private giftService: GiftService,
     private telemetryService: TelemetryService,
+    private telemetryContextBuilder: TelemetryContextBuilderService,
+    private definitionCache: DefinitionCacheService,
   ) {}
+
+  async ensureInstances(userId: string): Promise<void> {
+    const defs = this.definitionCache.getAll('checkInDef').filter((d: any) => d.enabled);
+    for (const def of defs) {
+      try {
+        await (this.prisma as any).checkInInstance.upsert({
+          where: { userId_checkInDefId: { userId, checkInDefId: def.id } },
+          create: { userId, checkInDefId: def.id, streak: 0, totalClaimed: 0 },
+          update: {},
+        });
+      } catch (err) {
+        this.logger.warn(`ensureInstances: failed to upsert checkIn instance for def ${def.id}: ${err}`);
+      }
+    }
+  }
 
   async autoCheck(userId: string, tx?: any): Promise<string[]> {
     const db = tx || this.prisma;
+
+    // Serialize concurrent check-ins for the same user within this transaction.
+    // pg_advisory_xact_lock blocks until it can acquire the lock and releases
+    // automatically when the transaction ends, so a second rapid tap will wait,
+    // then re-read the already-claimed state and return 0 gifts → 400.
+    await (db as any).$executeRaw`SELECT pg_advisory_xact_lock(1, hashtext(${userId}))`;
+
     const now = new Date();
 
-    const defs = await (db as any).checkInDef.findMany({ where: { enabled: true } });
+    const defs = this.definitionCache.getAll('checkInDef').filter((d: any) => d.enabled);
     const issuedGiftIds: string[] = [];
 
     for (const def of defs) {
@@ -133,20 +103,22 @@ export class CheckInService {
 
     let giftId: string | null = null;
 
-    if (reward?.giftDefId) {
+    const giftSpec: GiftSpec | null = reward?.gift ?? null;
+
+    if (giftSpec) {
       try {
         const gift = await this.giftService.createGiftForPlayer(
           userId,
-          reward.giftDefId,
+          giftSpec,
           'checkin',
           def.id,
           `checkin-${def.id}-${userId}-${streak}`,
+          { checkin: { streak, trackId: def.id, day: dayIndex } },
         );
         giftId = gift.id;
       } catch (err: any) {
-        if (!err?.message?.includes('limit')) {
-          this.logger.warn(`Failed to issue check-in gift for ${def.id}: ${err}`);
-        }
+        this.logger.warn(`Failed to issue check-in gift for track ${def.id} streak ${streak}: ${err}`);
+        return null;
       }
     }
 
@@ -161,6 +133,12 @@ export class CheckInService {
     });
 
     try {
+      let selectionContext;
+      try {
+        selectionContext = await this.telemetryContextBuilder.buildContext(userId);
+      } catch (ctxErr) {
+        this.logger.warn(`Failed to build selection context for check-in telemetry: ${ctxErr}`);
+      }
       await this.telemetryService.record(
         userId,
         'checkin_completed',
@@ -168,6 +146,7 @@ export class CheckInService {
         newStreak,
         { day: dayIndex, track: def.id },
         db,
+        selectionContext,
       );
     } catch (err) {
       this.logger.warn(`Failed to record check-in telemetry: ${err}`);

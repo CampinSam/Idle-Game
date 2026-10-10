@@ -1,6 +1,9 @@
 import { Injectable, Inject, forwardRef, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GiftService } from '../gift/gift.service';
+import type { GiftSpec } from '@derp/shared';
+
+const JOB_SOURCE_TYPES = new Set(['MissionJob', 'CraftingJob', 'BuildingJob']);
 
 @Injectable()
 export class EventService {
@@ -12,6 +15,43 @@ export class EventService {
     private giftService: GiftService,
   ) {}
 
+  private async buildContextData(
+    payload: Record<string, any>,
+    sourceType?: string,
+    sourceId?: string,
+  ): Promise<Record<string, unknown> | undefined> {
+    const parts: Record<string, unknown> = {};
+
+    if (sourceType && JOB_SOURCE_TYPES.has(sourceType) && sourceId) {
+      try {
+        const job = await (this.prisma as any).job.findUnique({
+          where: { id: sourceId },
+          select: {
+            id: true,
+            type: true,
+            defId: true,
+            status: true,
+            team: true,
+            results: true,
+            data: true,
+            timer: true,
+          },
+        });
+        if (job) {
+          parts.job = job;
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to look up job ${sourceId} for context enrichment: ${err}`);
+      }
+    }
+
+    if (payload.contextData && typeof payload.contextData === 'object') {
+      Object.assign(parts, payload.contextData);
+    }
+
+    return Object.keys(parts).length > 0 ? parts : undefined;
+  }
+
   async dispatch(
     defId: string,
     payload: any,
@@ -22,8 +62,8 @@ export class EventService {
       idempotencyKey?: string;
     },
   ) {
-    const eventDef = await (this.prisma as any).eventDefinition.findUnique({
-      where: { id: defId },
+    const eventDef = await (this.prisma as any).eventDefinition.findFirst({
+      where: { OR: [{ id: defId }, { key: defId }] },
     });
 
     if (!eventDef) {
@@ -47,17 +87,24 @@ export class EventService {
 
     switch (eventDef.handlerKey) {
       case 'createGiftForPlayer': {
-        if (!safePayload.giftDefId) {
+        const giftSpec: GiftSpec | undefined = safePayload.gift;
+        if (!giftSpec || typeof giftSpec !== 'object') {
           throw new BadRequestException(
-            `Event "${defId}" requires payload.giftDefId but it was not provided`,
+            `Event "${defId}" requires payload.gift (a GiftSpec) but it was not provided`,
           );
         }
+        const contextData = await this.buildContextData(
+          safePayload,
+          context.sourceType,
+          context.sourceId,
+        );
         return this.giftService.createGiftForPlayer(
           context.userId,
-          safePayload.giftDefId,
+          giftSpec,
           context.sourceType,
           context.sourceId,
           context.idempotencyKey,
+          contextData,
         );
       }
 

@@ -1,17 +1,10 @@
 import { Prisma } from '@prisma/client';
+import type { CommandHandlerResult as SharedCommandHandlerResult, Patch, UiIntent } from '@derp/shared';
 
-export type Patch =
-  | { op: 'upsert'; entity: string; id: string; data: any }
-  | { op: 'delete'; entity: string; id: string };
+export type { Patch, UiIntent };
 
-export type UiIntent =
-  | { type: 'modal'; key: string; title: string; body: any; buttons: any[] }
-  | { type: 'toast'; tone: 'success' | 'error' | 'info'; message: string }
-  | { type: 'navigate'; deepLink: string };
-
-export interface CommandHandlerResult {
-  patches: Patch[];
-  ui: UiIntent[];
+export interface CommandHandlerResult extends SharedCommandHandlerResult {
+  meta?: Record<string, any>;
 }
 
 export interface CommandContext {

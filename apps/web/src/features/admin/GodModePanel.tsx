@@ -1,0 +1,1190 @@
+import { useState, useEffect, useCallback } from 'react';
+import { adminApi } from './adminApi';
+
+type GodTab = 'profile' | 'items' | 'jobs' | 'entities' | 'locations' | 'effects' | 'telemetry';
+
+function StatusMsg({ msg, type }: { msg: string; type: 'success' | 'error' }) {
+  return (
+    <div style={{
+      padding: '0.5rem 0.75rem', borderRadius: 6, marginTop: '0.75rem', fontSize: '0.85rem',
+      background: type === 'success' ? 'rgba(76,175,80,0.15)' : 'rgba(255,107,107,0.15)',
+      color: type === 'success' ? '#4caf50' : '#ff6b6b',
+      border: `1px solid ${type === 'success' ? 'rgba(76,175,80,0.3)' : 'rgba(255,107,107,0.3)'}`,
+    }}>{msg}</div>
+  );
+}
+
+const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
+
+function ProfileTab({ player, onReload }: { player: any; onReload: () => void }) {
+  const [editFields, setEditFields] = useState({
+    keeperLevel: player.keeperLevel,
+    keeperXp: String(player.keeperXp || '0'),
+    prestigeTokens: player.prestigeTokens || 0,
+    flags: JSON.stringify(player.flags || {}, null, 2),
+  });
+  const [currencyEdits, setCurrencyEdits] = useState<Record<string, string>>(() => {
+    const ce: Record<string, string> = {};
+    (player.currencyBalances || []).forEach((cb: any) => { ce[cb.currencyId] = String(cb.balance); });
+    return ce;
+  });
+  const [maxAmount, setMaxAmount] = useState('999999');
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const [devToolsOpen, setDevToolsOpen] = useState(false);
+  const [devWalletChain, setDevWalletChain] = useState('ETH');
+  const [devWalletAddress, setDevWalletAddress] = useState('');
+  const [devWalletSubmitting, setDevWalletSubmitting] = useState(false);
+  const [wallets, setWallets] = useState<Array<{ id: string; chain: string; address: string; isPrimary: boolean }>>([]);
+  const [walletsLoading, setWalletsLoading] = useState(false);
+  const [removingWalletId, setRemovingWalletId] = useState<string | null>(null);
+
+  const savePlayer = async () => {
+    setSaving(true); setMsg(null);
+    try {
+      let flags = player.flags;
+      try { flags = JSON.parse(editFields.flags); } catch {}
+      await adminApi.updatePlayer(player.id, {
+        keeperLevel: Number(editFields.keeperLevel),
+        keeperXp: editFields.keeperXp,
+        prestigeTokens: Number(editFields.prestigeTokens),
+        flags,
+      });
+      setMsg({ text: 'Player updated', type: 'success' });
+      onReload();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setSaving(false); }
+  };
+
+  const saveCurrency = async (currencyId: string) => {
+    setMsg(null);
+    try {
+      await adminApi.setPlayerCurrency(player.id, currencyId, currencyEdits[currencyId] || '0');
+      setMsg({ text: `${currencyId} updated`, type: 'success' });
+      onReload();
+    } catch (e: any) { setMsg({ text: e.message, type: 'error' }); }
+  };
+
+  const maxAllCurrencies = async () => {
+    setMsg(null);
+    const amount = maxAmount || '999999';
+    try {
+      for (const cb of (player.currencyBalances || [])) {
+        await adminApi.setPlayerCurrency(player.id, cb.currencyId, amount);
+      }
+      setMsg({ text: `All currencies set to ${amount}`, type: 'success' });
+      onReload();
+    } catch (e: any) { setMsg({ text: e.message, type: 'error' }); }
+  };
+
+  const resetPlayer = async () => {
+    if (!confirm(`Reset ${player.username}? Deletes ALL game data. Account stays.`)) return;
+    setMsg(null);
+    try {
+      await adminApi.resetPlayer(player.id);
+      setMsg({ text: 'Player reset to fresh state', type: 'success' });
+      onReload();
+    } catch (e: any) { setMsg({ text: e.message, type: 'error' }); }
+  };
+
+  const [resetLink, setResetLink] = useState<string | null>(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
+
+  const generateResetLink = async () => {
+    setGeneratingLink(true); setMsg(null); setResetLink(null);
+    try {
+      const { url } = await adminApi.generateResetLink(player.id);
+      setResetLink(url);
+    } catch (e: any) { setMsg({ text: e.message, type: 'error' }); }
+    finally { setGeneratingLink(false); }
+  };
+
+  const loadWallets = useCallback(async () => {
+    setWalletsLoading(true);
+    try {
+      const data = await adminApi.listPlayerWallets(player.id);
+      setWallets(data);
+    } catch {} finally { setWalletsLoading(false); }
+  }, [player.id]);
+
+  useEffect(() => {
+    if (devToolsOpen) loadWallets();
+  }, [devToolsOpen, loadWallets]);
+
+  const addDevWallet = async () => {
+    const trimmed = devWalletAddress.trim();
+    if (!trimmed) { setMsg({ text: 'Wallet address is required', type: 'error' }); return; }
+    setDevWalletSubmitting(true); setMsg(null);
+    try {
+      await adminApi.addPlayerWallet(player.id, devWalletChain, trimmed);
+      setMsg({ text: `Wallet added (${devWalletChain})`, type: 'success' });
+      setDevWalletAddress('');
+      await loadWallets();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setDevWalletSubmitting(false); }
+  };
+
+  const removeWallet = async (walletId: string) => {
+    if (!confirm('Remove this wallet from the player?')) return;
+    setRemovingWalletId(walletId); setMsg(null);
+    try {
+      await adminApi.removePlayerWallet(player.id, walletId);
+      setMsg({ text: 'Wallet removed', type: 'success' });
+      await loadWallets();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setRemovingWalletId(null); }
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+        <div className="form-field">
+          <label>Keeper Level</label>
+          <input type="number" value={editFields.keeperLevel || ''} onChange={(e) => setEditFields({ ...editFields, keeperLevel: e.target.value })} />
+        </div>
+        <div className="form-field">
+          <label>Keeper XP</label>
+          <input type="text" value={editFields.keeperXp || ''} onChange={(e) => setEditFields({ ...editFields, keeperXp: e.target.value })} />
+        </div>
+        <div className="form-field">
+          <label>Prestige Tokens</label>
+          <input type="number" value={editFields.prestigeTokens || ''} onChange={(e) => setEditFields({ ...editFields, prestigeTokens: e.target.value })} />
+        </div>
+      </div>
+
+      <div className="form-field" style={{ marginBottom: '1rem' }}>
+        <label>Flags (JSON)</label>
+        <textarea
+          rows={4}
+          value={editFields.flags || '{}'}
+          onChange={(e) => setEditFields({ ...editFields, flags: e.target.value })}
+          style={{ width: '100%', padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#a0e0a0', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', boxSizing: 'border-box' }}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+        <button onClick={savePlayer} className="btn-save" disabled={saving}>Save Profile</button>
+        <button onClick={generateResetLink} disabled={generatingLink} style={{
+          padding: '0.5rem 1rem', border: '1px solid #6c9eff', borderRadius: 6,
+          background: 'rgba(108,158,255,0.1)', color: '#93c5fd', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+        }}>{generatingLink ? 'Generating…' : '🔑 Reset Link'}</button>
+        <button onClick={resetPlayer} style={{
+          padding: '0.5rem 1rem', border: '1px solid #ff6b6b', borderRadius: 6,
+          background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+        }}>Reset Account</button>
+      </div>
+
+      {resetLink && (
+        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#0a1020', border: '1px solid #1e3a5f', borderRadius: 8 }}>
+          <div style={{ color: '#8888aa', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>
+            Password Reset Link (expires in 1 hour)
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              readOnly
+              value={resetLink}
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+              style={{ flex: 1, fontFamily: 'monospace', fontSize: '0.72rem', padding: '0.4rem', background: '#060c18', border: '1px solid #1e2a3e', borderRadius: 5, color: '#93c5fd', cursor: 'text' }}
+            />
+            <button
+              onClick={() => { navigator.clipboard.writeText(resetLink); setMsg({ text: 'Link copied!', type: 'success' }); }}
+              style={{ padding: '0.4rem 0.75rem', border: '1px solid #2a3a5e', borderRadius: 5, background: 'rgba(108,158,255,0.12)', color: '#93c5fd', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+            >Copy</button>
+          </div>
+        </div>
+      )}
+
+      <h4 style={{ margin: '0 0 0.75rem', color: '#b8b8ff', borderTop: '1px solid #2a2a4e', paddingTop: '1rem' }}>Currencies</h4>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: '1rem' }}>
+        <input
+          type="text"
+          value={maxAmount}
+          onChange={(e) => setMaxAmount(e.target.value)}
+          style={{ width: 120, padding: '0.4rem', border: '1px solid #333', borderRadius: 4, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem' }}
+        />
+        <button onClick={maxAllCurrencies} style={{
+          padding: '0.4rem 0.9rem', border: '1px solid #6c63ff', borderRadius: 6,
+          background: 'rgba(108,99,255,0.2)', color: '#b8b0ff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+        }}>⚡ Max All Currencies</button>
+      </div>
+      {(player.currencyBalances || []).length === 0 && <div style={{ color: '#666', fontStyle: 'italic' }}>No currencies</div>}
+      {(player.currencyBalances || []).map((cb: any) => (
+        <div key={cb.currencyId} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ minWidth: 160, fontSize: '0.85rem', color: '#b0b0d0' }}>{cb.currencyId}</span>
+          <input
+            type="text"
+            value={currencyEdits[cb.currencyId] || ''}
+            onChange={(e) => setCurrencyEdits({ ...currencyEdits, [cb.currencyId]: e.target.value })}
+            style={{ flex: 1, padding: '0.4rem', border: '1px solid #333', borderRadius: 4, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem' }}
+          />
+          <button onClick={() => saveCurrency(cb.currencyId)} className="btn-edit" style={{ padding: '0.35rem 0.6rem' }}>Set</button>
+        </div>
+      ))}
+
+      <div style={{ marginTop: '1.5rem', borderTop: '1px dashed #2a2a4e', paddingTop: '1rem' }}>
+        <button
+          onClick={() => setDevToolsOpen((v) => !v)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', color: '#555',
+            fontSize: '0.8rem', fontWeight: 600, padding: 0, display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          <span>{devToolsOpen ? '▼' : '▶'}</span>
+          <span style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}>Dev Tools</span>
+        </button>
+
+        {devToolsOpen && (
+          <div style={{ marginTop: '0.75rem', background: '#0a1020', border: '1px solid #1e2a3e', borderRadius: 8, padding: '0.85rem' }}>
+            <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ color: '#8888aa', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>
+                Linked Wallets {walletsLoading && <span style={{ color: '#555' }}>loading…</span>}
+              </div>
+              {!walletsLoading && wallets.length === 0 && (
+                <div style={{ color: '#555', fontStyle: 'italic', fontSize: '0.8rem' }}>No wallets linked</div>
+              )}
+              {wallets.map((w) => (
+                <div key={w.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5, background: '#0f1828', borderRadius: 5, padding: '0.4rem 0.6rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#6c8eba', minWidth: 70, fontWeight: 600 }}>{w.chain}</span>
+                  <span style={{ flex: 1, fontFamily: 'monospace', fontSize: '0.75rem', color: '#c0c8d8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.address}</span>
+                  {w.isPrimary && (
+                    <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: 4, background: 'rgba(108,99,255,0.2)', color: '#b8b0ff', border: '1px solid rgba(108,99,255,0.3)', whiteSpace: 'nowrap' }}>primary</span>
+                  )}
+                  <button
+                    onClick={() => removeWallet(w.id)}
+                    disabled={removingWalletId === w.id}
+                    style={{
+                      padding: '0.2rem 0.5rem', border: '1px solid rgba(255,107,107,0.4)', borderRadius: 4,
+                      background: 'rgba(255,107,107,0.1)', color: '#ff8888', cursor: 'pointer',
+                      fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {removingWalletId === w.id ? '…' : 'Remove'}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ borderTop: '1px dashed #1e2a3e', paddingTop: '0.75rem' }}>
+              <div style={{ color: '#666', fontSize: '0.75rem', marginBottom: '0.6rem', fontStyle: 'italic' }}>
+                Add wallet address without verification (admin only)
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <select
+                  value={devWalletChain}
+                  onChange={(e) => setDevWalletChain(e.target.value)}
+                  disabled={devWalletSubmitting}
+                  style={{ padding: '0.4rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem', minWidth: 110 }}
+                >
+                  <option value="ETH">Ethereum</option>
+                  <option value="BASE">Base</option>
+                  <option value="MATIC">Polygon</option>
+                  <option value="CARDANO">Cardano</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Wallet address"
+                  value={devWalletAddress}
+                  onChange={(e) => setDevWalletAddress(e.target.value)}
+                  disabled={devWalletSubmitting}
+                  style={{ flex: 1, minWidth: 160, padding: '0.4rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem', fontFamily: 'monospace' }}
+                />
+                <button
+                  onClick={addDevWallet}
+                  disabled={devWalletSubmitting}
+                  style={{
+                    padding: '0.4rem 0.85rem', border: '1px solid #4a4a7e', borderRadius: 6,
+                    background: 'rgba(108,99,255,0.15)', color: '#b8b0ff', cursor: 'pointer',
+                    fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap',
+                  }}
+                >
+                  {devWalletSubmitting ? '...' : 'Add Wallet'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
+function ItemsTab({ player }: { player: any }) {
+  const [itemDefs, setItemDefs] = useState<any[]>([]);
+  const [selectedItem, setSelectedItem] = useState('');
+  const [quantity, setQuantity] = useState('1');
+  const [playerItems, setPlayerItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [search, setSearch] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const [defs, items] = await Promise.all([adminApi.listItemDefs(), adminApi.getPlayerItems(player.id)]);
+      setItemDefs(defs);
+      setPlayerItems(items as any[]);
+      if (defs.length > 0 && !selectedItem) setSelectedItem(defs[0].id);
+    } catch {}
+  }, [player.id, selectedItem]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const grant = async () => {
+    if (!selectedItem) return;
+    setLoading(true); setMsg(null);
+    try {
+      const result = await adminApi.grantItems(player.id, selectedItem, Number(quantity) || 1);
+      setMsg({ text: `Granted ${quantity}x ${selectedItem}. New qty: ${result.newQty}`, type: 'success' });
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setLoading(false); }
+  };
+
+  const filteredDefs = search ? itemDefs.filter(d => d.id.toLowerCase().includes(search.toLowerCase()) || d.name?.toLowerCase().includes(search.toLowerCase())) : itemDefs;
+
+  return (
+    <div>
+      <div style={{ background: '#0f1a30', padding: '1rem', borderRadius: 8, border: '1px solid #2a2a4e', marginBottom: '1rem' }}>
+        <h4 style={{ margin: '0 0 0.75rem', color: '#b8b8ff', fontSize: '0.95rem' }}>Spawn Item</h4>
+        <input
+          type="text"
+          placeholder="Filter items..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #333', borderRadius: 6, background: '#0a1020', color: '#e0e0ff', fontSize: '0.85rem', boxSizing: 'border-box' }}
+        />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select
+            value={selectedItem}
+            onChange={(e) => setSelectedItem(e.target.value)}
+            style={{ flex: 1, padding: '0.5rem', border: '1px solid #333', borderRadius: 6, background: '#0a1020', color: '#e0e0ff', fontSize: '0.85rem' }}
+          >
+            {filteredDefs.map((d) => (
+              <option key={d.id} value={d.id}>{d.name || d.id} ({d.id})</option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min="1"
+            max="9999"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            style={{ width: 80, padding: '0.5rem', border: '1px solid #333', borderRadius: 6, background: '#0a1020', color: '#e0e0ff', fontSize: '0.85rem' }}
+          />
+          <button onClick={grant} className="btn-save" disabled={loading}>Give</button>
+        </div>
+      </div>
+
+      <h4 style={{ margin: '0 0 0.5rem', color: '#b8b8ff', fontSize: '0.9rem' }}>Player Inventory ({playerItems.length} items)</h4>
+      {playerItems.length === 0 && <div style={{ color: '#666', fontStyle: 'italic', fontSize: '0.85rem' }}>No items</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 6 }}>
+        {playerItems.map((item: any) => (
+          <div key={item.itemId} style={{ background: '#0f1a30', padding: '0.5rem 0.75rem', borderRadius: 6, border: '1px solid #2a2a4e', fontSize: '0.85rem' }}>
+            <span style={{ color: '#e0e0ff', fontWeight: 600 }}>{(item as any).item?.name || item.itemId}</span>
+            <span style={{ color: '#888', marginLeft: 8 }}>×{item.quantity}</span>
+          </div>
+        ))}
+      </div>
+
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
+function JobsTab({ player }: { player: any }) {
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [completing, setCompleting] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const j = await adminApi.getPlayerJobs(player.id);
+      setJobs(j);
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setLoading(false); }
+  }, [player.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const forceComplete = async (jobId: string) => {
+    setCompleting(jobId); setMsg(null);
+    try {
+      await adminApi.forceCompleteJob(player.id, jobId);
+      setMsg({ text: 'Job force-completed!', type: 'success' });
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setCompleting(null); }
+  };
+
+  const STATUS_COLORS: Record<string, string> = {
+    active: '#4fc3f7', ready_notified: '#81c784', completed: '#4caf50', failed: '#e57373', pending: '#ffb74d',
+  };
+
+  if (loading) return <div style={{ color: '#888' }}>Loading jobs...</div>;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <span style={{ color: '#b8b8ff', fontSize: '0.9rem' }}>{jobs.length} total jobs</span>
+        <button onClick={load} className="btn-edit" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>Refresh</button>
+      </div>
+      {jobs.length === 0 && <div style={{ color: '#666', fontStyle: 'italic' }}>No jobs found</div>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {jobs.map((job) => {
+          const isActive = job.status === 'active' || job.status === 'pending';
+          return (
+            <div key={job.id} style={{
+              background: '#0f1a30', padding: '0.6rem 0.75rem', borderRadius: 8,
+              border: '1px solid #2a2a4e', display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 2 }}>
+                  <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem', borderRadius: 4, background: 'rgba(108,99,255,0.2)', color: '#9d96ff' }}>{job.type}</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e0e0ff' }}>{job.defId || job.id.slice(0, 8)}</span>
+                </div>
+                <span style={{ fontSize: '0.75rem', color: STATUS_COLORS[job.status] || '#aaa' }}>{job.status}</span>
+                {job.updatedAt && <span style={{ fontSize: '0.7rem', color: '#555', marginLeft: 8 }}>{new Date(job.updatedAt).toLocaleString()}</span>}
+              </div>
+              {isActive && (
+                <button
+                  onClick={() => forceComplete(job.id)}
+                  disabled={completing === job.id}
+                  style={{
+                    padding: '0.35rem 0.75rem', border: '1px solid #6c63ff', borderRadius: 6,
+                    background: 'rgba(108,99,255,0.2)', color: '#b8b0ff', cursor: 'pointer',
+                    fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap',
+                  }}
+                >
+                  {completing === job.id ? '...' : '⚡ Force Complete'}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
+function PowerUsageRows({
+  usages,
+  resetting,
+  onReset,
+}: {
+  usages: any[];
+  resetting: string | null;
+  onReset: (powerGrantId: string, powerKey: string) => void;
+}) {
+  return (
+    <>
+      {usages.map((usage) => {
+        const chargeUnits: number = usage.chargeUnits ?? 0;
+        const maxChargeUnits: number = usage.maxChargeUnits ?? 1;
+        const costPerUse: number = usage.costPerUse ?? 1;
+        const usesAvailable: number = usage.usesAvailable ?? 0;
+        const fillPct = maxChargeUnits > 0 ? Math.min(100, (chargeUnits / maxChargeUnits) * 100) : 0;
+        const readyAtMs: number | null = usage.readyAtMs ?? null;
+        return (
+          <div key={usage.powerGrantId} style={{ marginBottom: 8, fontSize: '0.8rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#e0e0ff', flex: 1, fontWeight: 600 }}>{usage.powerKey}</span>
+              <span style={{ color: usesAvailable > 0 ? '#81c784' : '#e57373' }}>
+                {usesAvailable} use{usesAvailable !== 1 ? 's' : ''} avail
+              </span>
+              <button
+                onClick={() => onReset(usage.powerGrantId, usage.powerKey)}
+                disabled={resetting === usage.powerGrantId}
+                style={{
+                  padding: '0.2rem 0.6rem', border: '1px solid #c0392b', borderRadius: 4,
+                  background: 'rgba(192,57,43,0.15)', color: '#e74c3c', cursor: 'pointer',
+                  fontSize: '0.75rem', fontWeight: 600,
+                }}
+              >
+                {resetting === usage.powerGrantId ? '...' : 'Reset'}
+              </button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+              <div style={{ flex: 1, height: 4, background: '#1a1a3e', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ width: `${fillPct}%`, height: '100%', background: fillPct > 50 ? '#6c63ff' : fillPct > 20 ? '#ffb74d' : '#e74c3c', borderRadius: 2 }} />
+              </div>
+              <span style={{ color: '#888', whiteSpace: 'nowrap' }}>
+                {chargeUnits.toFixed(2)} / {maxChargeUnits} (cost {costPerUse}/use)
+              </span>
+            </div>
+            {readyAtMs !== null && (
+              <div style={{ color: '#888', fontSize: '0.72rem', marginTop: 2 }}>
+                ready ~{new Date(readyAtMs).toLocaleTimeString()}
+              </div>
+            )}
+            {usage.remainingChargeUnits !== null && usage.remainingChargeUnits !== undefined && (
+              <div style={{ color: '#666', fontSize: '0.72rem', marginTop: 1 }}>
+                grant remaining: {usage.remainingChargeUnits}
+              </div>
+            )}
+            {usage.lastChargeAppliedAtTick && (
+              <div style={{ color: '#555', fontSize: '0.72rem', marginTop: 1 }}>
+                last recharged tick: {usage.lastChargeAppliedAtTick}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function EntityPowerUsageSection({ playerId, entityId }: { playerId: string; entityId: string }) {
+  const [usages, setUsages] = useState<any[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const load = async () => {
+    setLoadError(null);
+    try {
+      const data = await adminApi.getEntityPowerUsage(playerId, entityId);
+      setUsages(data);
+    } catch (e: any) {
+      setUsages([]);
+      setLoadError(e.message || 'Failed to load power usage');
+    }
+  };
+
+  useEffect(() => { load(); }, [playerId, entityId]);
+
+  const handleReset = async (powerGrantId: string, powerKey: string) => {
+    if (!window.confirm(`Reset charge pool for "${powerKey}"? This clears stored charge so the power will recharge from zero.`)) return;
+    setResetting(powerGrantId); setMsg(null);
+    try {
+      await adminApi.resetEntityPowerUsage(playerId, entityId, powerGrantId);
+      setMsg({ text: `Reset "${powerKey}" successfully`, type: 'success' });
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setResetting(null); }
+  };
+
+  if (usages === null) return <div style={{ color: '#666', fontSize: '0.8rem', marginTop: '0.75rem' }}>Loading power usage...</div>;
+  if (loadError) return (
+    <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2a2a4e', paddingTop: '0.75rem' }}>
+      <div style={{ color: '#b8b0ff', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>Power Usage</div>
+      <StatusMsg msg={`Failed to load: ${loadError}`} type="error" />
+    </div>
+  );
+  if (usages.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2a2a4e', paddingTop: '0.75rem' }}>
+      <div style={{ color: '#b8b0ff', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>Power Usage</div>
+      <PowerUsageRows usages={usages} resetting={resetting} onReset={handleReset} />
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
+function LocationPowerUsageSection({ playerId, locationId }: { playerId: string; locationId: string }) {
+  const [usages, setUsages] = useState<any[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const load = async () => {
+    setLoadError(null);
+    try {
+      const data = await adminApi.getLocationPowerUsage(playerId, locationId);
+      setUsages(data);
+    } catch (e: any) {
+      setUsages([]);
+      setLoadError(e.message || 'Failed to load power usage');
+    }
+  };
+
+  useEffect(() => { load(); }, [playerId, locationId]);
+
+  const handleReset = async (powerGrantId: string, powerKey: string) => {
+    if (!window.confirm(`Reset charge pool for "${powerKey}"? This clears stored charge so the power will recharge from zero.`)) return;
+    setResetting(powerGrantId); setMsg(null);
+    try {
+      await adminApi.resetLocationPowerUsage(playerId, locationId, powerGrantId);
+      setMsg({ text: `Reset "${powerKey}" successfully`, type: 'success' });
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setResetting(null); }
+  };
+
+  if (usages === null) return <div style={{ color: '#666', fontSize: '0.8rem', marginTop: '0.75rem' }}>Loading power usage...</div>;
+  if (loadError) return (
+    <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2a2a4e', paddingTop: '0.75rem' }}>
+      <div style={{ color: '#b8b0ff', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>Power Usage</div>
+      <StatusMsg msg={`Failed to load: ${loadError}`} type="error" />
+    </div>
+  );
+  if (usages.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2a2a4e', paddingTop: '0.75rem' }}>
+      <div style={{ color: '#b8b0ff', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>Power Usage</div>
+      <PowerUsageRows usages={usages} resetting={resetting} onReset={handleReset} />
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
+const STATUS_BADGE_COLORS: Record<string, { bg: string; color: string; border: string }> = {
+  idle:     { bg: 'rgba(76,175,80,0.15)',   color: '#81c784', border: 'rgba(76,175,80,0.3)' },
+  mission:  { bg: 'rgba(79,195,247,0.15)',  color: '#4fc3f7', border: 'rgba(79,195,247,0.3)' },
+  crafting: { bg: 'rgba(255,183,77,0.15)',  color: '#ffb74d', border: 'rgba(255,183,77,0.3)' },
+  working:  { bg: 'rgba(206,147,216,0.15)', color: '#ce93d8', border: 'rgba(206,147,216,0.3)' },
+  injured:  { bg: 'rgba(229,115,115,0.15)', color: '#e57373', border: 'rgba(229,115,115,0.3)' },
+};
+
+function EntityStatusBadge({ status }: { status: string }) {
+  const colors = STATUS_BADGE_COLORS[status] ?? { bg: 'rgba(136,136,136,0.15)', color: '#aaa', border: 'rgba(136,136,136,0.3)' };
+  return (
+    <span style={{
+      fontSize: '0.7rem', padding: '0.15rem 0.45rem', borderRadius: 4, fontWeight: 600,
+      background: colors.bg, color: colors.color, border: `1px solid ${colors.border}`,
+      textTransform: 'uppercase', letterSpacing: '0.03em',
+    }}>{status}</span>
+  );
+}
+
+function EntitiesTab({ player, onReload, isSuperAdmin }: { player: any; onReload: () => void; isSuperAdmin?: boolean }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [entityEdits, setEntityEdits] = useState<Record<string, any>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [reconciling, setReconciling] = useState<string | null>(null);
+  const [rebuilding, setRebuilding] = useState<string | null>(null);
+  const [pendingRebuild, setPendingRebuild] = useState<string | null>(null);
+  const [rebuildDiffs, setRebuildDiffs] = useState<Record<string, { before: any; after: any }>>({});
+  const [entityMsgs, setEntityMsgs] = useState<Record<string, { text: string; type: 'success' | 'error' }>>({});
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const initEdit = (entity: any) => {
+    const stats = (entity.stats as any) || {};
+    setEntityEdits((prev) => ({
+      ...prev,
+      [entity.id]: {
+        name: (entity.display as any)?.name || '',
+        level: entity.level || 1,
+        ...STAT_KEYS.reduce((acc, k) => ({ ...acc, [k]: String(stats[k] ?? 0) }), {}),
+      },
+    }));
+  };
+
+  const toggle = (entity: any) => {
+    if (expanded === entity.id) {
+      setExpanded(null);
+    } else {
+      setExpanded(entity.id);
+      if (!entityEdits[entity.id]) initEdit(entity);
+    }
+  };
+
+  const saveEntity = async (entity: any) => {
+    setSaving(entity.id); setMsg(null);
+    try {
+      const edit = entityEdits[entity.id] || {};
+      const existingStats = (entity.stats as any) || {};
+      const newStats = {
+        ...existingStats,
+        ...STAT_KEYS.reduce((acc, k) => ({ ...acc, [k]: Number(edit[k] ?? existingStats[k] ?? 0) }), {}),
+      };
+      await adminApi.updatePlayerEntity(player.id, entity.id, {
+        stats: newStats,
+        level: Number(edit.level) || entity.level,
+        name: edit.name || undefined,
+      });
+      setMsg({ text: `Entity ${entity.id.slice(0, 8)} saved`, type: 'success' });
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setSaving(null); }
+  };
+
+  const reconcileEntity = async (entity: any) => {
+    setReconciling(entity.id);
+    setEntityMsgs((prev) => { const n = { ...prev }; delete n[entity.id]; return n; });
+    try {
+      const result = await adminApi.reconcileEntityStatus(player.id, entity.id);
+      if (result.changed) {
+        setEntityMsgs((prev) => ({
+          ...prev,
+          [entity.id]: { text: `Status: ${result.previousStatus} → ${result.newStatus}${result.jobId ? ` (job ${result.jobId.slice(0, 8)})` : ''}`, type: 'success' },
+        }));
+        onReload();
+      } else {
+        setEntityMsgs((prev) => ({
+          ...prev,
+          [entity.id]: { text: `Already correct: ${result.newStatus}${result.jobId ? ` (job ${result.jobId.slice(0, 8)})` : ''}`, type: 'success' },
+        }));
+      }
+    } catch (e: any) {
+      setEntityMsgs((prev) => ({ ...prev, [entity.id]: { text: e.message, type: 'error' } }));
+    } finally { setReconciling(null); }
+  };
+
+  const startRebuild = (entity: any) => {
+    setEntityMsgs((prev) => { const n = { ...prev }; delete n[entity.id]; return n; });
+    setRebuildDiffs((prev) => { const n = { ...prev }; delete n[entity.id]; return n; });
+    setPendingRebuild(entity.id);
+  };
+
+  const confirmRebuild = async (entityId: string) => {
+    setPendingRebuild(null);
+    setRebuilding(entityId);
+    try {
+      const result = await adminApi.regenerateEntity(entityId);
+      setRebuildDiffs((prev) => ({ ...prev, [entityId]: result }));
+      onReload();
+    } catch (e: any) {
+      setEntityMsgs((prev) => ({ ...prev, [entityId]: { text: e.message, type: 'error' } }));
+    } finally { setRebuilding(null); }
+  };
+
+  const entities = player.entities || [];
+
+  return (
+    <div>
+      {entities.length === 0 && <div style={{ color: '#666', fontStyle: 'italic' }}>No entities</div>}
+      {entities.map((entity: any) => {
+        const display = (entity.display as any) || {};
+        const stats = (entity.stats as any) || {};
+        const isOpen = expanded === entity.id;
+        const edit = entityEdits[entity.id] || {};
+        return (
+          <div key={entity.id} style={{ marginBottom: 8, background: '#0f1a30', borderRadius: 8, border: '1px solid #2a2a4e', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <button
+                onClick={() => toggle(entity)}
+                style={{
+                  flex: 1, padding: '0.65rem 0.9rem', background: 'transparent', border: 'none',
+                  color: '#e0e0ff', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8,
+                  minWidth: 0,
+                }}
+              >
+                <span style={{ fontSize: '1rem' }}>{isOpen ? '▼' : '▶'}</span>
+                <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{display.name || entity.id.slice(0, 12)}</span>
+                <span style={{ color: '#888', fontSize: '0.8rem', flexShrink: 0 }}>{entity.definitionId}</span>
+                <EntityStatusBadge status={(entity.state as any)?.status || 'idle'} />
+                <span style={{ marginLeft: 'auto', color: '#b8b8ff', fontSize: '0.8rem', flexShrink: 0 }}>Lv.{entity.level}</span>
+                <span style={{ color: '#666', fontSize: '0.75rem', marginLeft: 8, flexShrink: 0 }}>{entity.rarity}</span>
+              </button>
+              <button
+                onClick={() => reconcileEntity(entity)}
+                disabled={reconciling === entity.id}
+                title="Check active jobs and set correct status"
+                style={{
+                  padding: '0.35rem 0.65rem', margin: '0 0.5rem', border: '1px solid #444', borderRadius: 6,
+                  background: 'rgba(255,255,255,0.05)', color: '#888', cursor: 'pointer',
+                  fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
+                }}
+              >
+                {reconciling === entity.id ? '...' : '⚙ Reconcile'}
+              </button>
+              {isSuperAdmin && (
+                pendingRebuild === entity.id ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: '0.5rem', flexShrink: 0 }}>
+                    <span style={{ fontSize: '0.72rem', color: '#f59e0b', maxWidth: 160 }}>
+                      Overwrite base stats from seed?
+                    </span>
+                    <button
+                      onClick={() => setPendingRebuild(null)}
+                      style={{
+                        padding: '0.25rem 0.6rem', border: '1px solid #2a2a4a', borderRadius: 4,
+                        background: 'rgba(255,255,255,0.05)', color: '#6a6a9a',
+                        cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600,
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => confirmRebuild(entity.id)}
+                      style={{
+                        padding: '0.25rem 0.6rem', border: '1px solid rgba(220,38,38,0.5)', borderRadius: 4,
+                        background: 'rgba(220,38,38,0.3)', color: '#f87171',
+                        cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700,
+                      }}
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => startRebuild(entity)}
+                    disabled={rebuilding === entity.id}
+                    title="Re-derive traits, stats and level from seed (super_admin only)"
+                    style={{
+                      padding: '0.35rem 0.65rem', marginRight: '0.5rem', border: '1px solid rgba(124,58,237,0.4)', borderRadius: 6,
+                      background: rebuilding === entity.id ? 'rgba(124,58,237,0.08)' : 'rgba(124,58,237,0.2)',
+                      color: '#c4b5fd', cursor: rebuilding === entity.id ? 'default' : 'pointer',
+                      fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
+                    }}
+                  >
+                    {rebuilding === entity.id ? '...' : '🔁 Rebuild'}
+                  </button>
+                )
+              )}
+            </div>
+
+            {entityMsgs[entity.id] && (
+              <div style={{ margin: '0 0.9rem 0.5rem' }}>
+                <StatusMsg msg={entityMsgs[entity.id].text} type={entityMsgs[entity.id].type} />
+              </div>
+            )}
+
+            {rebuildDiffs[entity.id] && (() => {
+              const diff = rebuildDiffs[entity.id];
+              const bStats = diff.before?.stats || {};
+              const aStats = diff.after?.stats || {};
+              const bTraits = diff.before?.traits || {};
+              const aTraits = diff.after?.traits || {};
+              const changedStats = STAT_KEYS.filter((k) => bStats[k] !== aStats[k]);
+              const allTraitKeys = Array.from(new Set([
+                ...Object.keys(bTraits),
+                ...Object.keys(aTraits),
+              ]));
+              const changedTraits = allTraitKeys.filter((slot) => {
+                const bv = typeof bTraits[slot] === 'object' ? bTraits[slot]?.traitId : bTraits[slot];
+                const av = typeof aTraits[slot] === 'object' ? aTraits[slot]?.traitId : aTraits[slot];
+                return bv !== av;
+              });
+              return (
+                <div style={{
+                  margin: '0 0.9rem 0.75rem',
+                  padding: '0.6rem 0.8rem',
+                  background: 'rgba(108,99,255,0.08)',
+                  border: '1px solid rgba(108,99,255,0.25)',
+                  borderRadius: 6,
+                  fontSize: '0.78rem',
+                }}>
+                  <div style={{ color: '#a89fff', fontWeight: 700, marginBottom: 6 }}>
+                    ✓ Rebuilt — Level {diff.before.level} → {diff.after.level}
+                  </div>
+                  {changedStats.length === 0 && changedTraits.length === 0 && (
+                    <div style={{ color: '#5a5a8a' }}>Stats and traits unchanged</div>
+                  )}
+                  {changedStats.length > 0 && (
+                    <div style={{ marginBottom: changedTraits.length > 0 ? 6 : 0 }}>
+                      <div style={{ color: '#5a5a8a', fontSize: '0.72rem', marginBottom: 4 }}>STATS</div>
+                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        {changedStats.map((k) => (
+                          <div key={k} style={{ color: '#9090c8' }}>
+                            <span style={{ color: '#6060a0' }}>{k}: </span>
+                            <span style={{ color: '#f87171' }}>{bStats[k] ?? '–'}</span>
+                            <span style={{ color: '#4a4a7a', margin: '0 3px' }}>→</span>
+                            <span style={{ color: '#34d399' }}>{aStats[k] ?? '–'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {changedTraits.length > 0 && (
+                    <div>
+                      <div style={{ color: '#5a5a8a', fontSize: '0.72rem', marginBottom: 4 }}>TRAITS</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {changedTraits.map((slot) => {
+                          const bv = typeof bTraits[slot] === 'object' ? (bTraits[slot]?.traitId ?? JSON.stringify(bTraits[slot])) : String(bTraits[slot] ?? '–');
+                          const av = typeof aTraits[slot] === 'object' ? (aTraits[slot]?.traitId ?? JSON.stringify(aTraits[slot])) : String(aTraits[slot] ?? '–');
+                          return (
+                            <div key={slot} style={{ color: '#9090c8' }}>
+                              <span style={{ color: '#6060a0' }}>{slot}: </span>
+                              <span style={{ color: '#f87171' }}>{bv}</span>
+                              <span style={{ color: '#4a4a7a', margin: '0 3px' }}>→</span>
+                              <span style={{ color: '#34d399' }}>{av}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {isOpen && (
+              <div style={{ padding: '0 0.9rem 0.9rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <div className="form-field">
+                    <label>Name</label>
+                    <input type="text" value={edit.name ?? display.name ?? ''} onChange={(e) => setEntityEdits((prev) => ({ ...prev, [entity.id]: { ...prev[entity.id], name: e.target.value } }))} />
+                  </div>
+                  <div className="form-field">
+                    <label>Level</label>
+                    <input type="number" min="1" max="100" value={edit.level ?? entity.level ?? 1} onChange={(e) => setEntityEdits((prev) => ({ ...prev, [entity.id]: { ...prev[entity.id], level: e.target.value } }))} />
+                  </div>
+                  {STAT_KEYS.map((k) => (
+                    <div key={k} className="form-field">
+                      <label>{k}</label>
+                      <input type="number" value={edit[k] ?? String(stats[k] ?? 0)} onChange={(e) => setEntityEdits((prev) => ({ ...prev, [entity.id]: { ...prev[entity.id], [k]: e.target.value } }))} />
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => saveEntity(entity)} className="btn-save" disabled={saving === entity.id}>
+                  {saving === entity.id ? 'Saving...' : 'Save Entity'}
+                </button>
+                <EntityPowerUsageSection playerId={player.id} entityId={entity.id} />
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
+function LocationsTab({ player }: { player: any }) {
+  const [settling, setSettling] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const settle = async (locationId: string) => {
+    setSettling(locationId); setMsg(null);
+    try {
+      await adminApi.forceSettleLocation(player.id, locationId);
+      setMsg({ text: 'Location settled (production recalculated)', type: 'success' });
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setSettling(null); }
+  };
+
+  const locations = player.locationInstances || [];
+
+  return (
+    <div>
+      {locations.length === 0 && <div style={{ color: '#666', fontStyle: 'italic' }}>No locations</div>}
+      {locations.map((loc: any) => {
+        const storage = (loc.storage as any) || {};
+        const stored = storage.stored || {};
+        const capacity = storage.capacity || {};
+        return (
+          <div key={loc.id} style={{ background: '#0f1a30', padding: '0.75rem', borderRadius: 8, border: '1px solid #2a2a4e', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.5rem' }}>
+              <span style={{ fontWeight: 600, color: '#e0e0ff' }}>{loc.definitionId}</span>
+              <span style={{ color: '#b8b8ff', fontSize: '0.8rem' }}>Lv.{loc.level}</span>
+              <span style={{ color: '#666', fontSize: '0.75rem' }}>{loc.regionId}</span>
+              <button
+                onClick={() => settle(loc.id)}
+                disabled={settling === loc.id}
+                style={{
+                  marginLeft: 'auto', padding: '0.3rem 0.75rem', border: '1px solid #6c63ff', borderRadius: 6,
+                  background: 'rgba(108,99,255,0.2)', color: '#b8b0ff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                }}
+              >
+                {settling === loc.id ? '...' : '⚡ Force Settle'}
+              </button>
+            </div>
+            {Object.keys(stored).length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {Object.entries(stored).map(([resource, amount]) => (
+                  <div key={resource} style={{ fontSize: '0.8rem', color: '#b0b0d0', background: '#0a1020', padding: '0.2rem 0.5rem', borderRadius: 4 }}>
+                    {resource}: {String(amount)} / {String((capacity as any)[resource] ?? '?')}
+                  </div>
+                ))}
+              </div>
+            )}
+            {Object.keys(stored).length === 0 && <div style={{ fontSize: '0.8rem', color: '#555' }}>No stored resources</div>}
+            <LocationPowerUsageSection playerId={player.id} locationId={loc.id} />
+          </div>
+        );
+      })}
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
+function EffectsTab({ player }: { player: any }) {
+  const [effects, setEffects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const e = await adminApi.getPlayerEffects(player.id);
+      setEffects(e);
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setLoading(false); }
+  }, [player.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const removeEffect = async (effectId: string) => {
+    setRemoving(effectId); setMsg(null);
+    try {
+      await adminApi.deletePlayerEffect(player.id, effectId);
+      setMsg({ text: 'Effect removed', type: 'success' });
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setRemoving(null); }
+  };
+
+  if (loading) return <div style={{ color: '#888' }}>Loading effects...</div>;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <span style={{ color: '#b8b8ff', fontSize: '0.9rem' }}>{effects.length} active effects</span>
+        <button onClick={load} className="btn-edit" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>Refresh</button>
+      </div>
+      {effects.length === 0 && <div style={{ color: '#666', fontStyle: 'italic' }}>No active effects</div>}
+      {effects.map((effect) => (
+        <div key={effect.id} style={{
+          background: '#0f1a30', padding: '0.6rem 0.75rem', borderRadius: 8,
+          border: '1px solid #2a2a4e', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 2 }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e0e0ff' }}>{effect.effectDefId}</span>
+              <span style={{ fontSize: '0.75rem', color: '#9d96ff', padding: '0.1rem 0.4rem', borderRadius: 4, background: 'rgba(108,99,255,0.15)' }}>{effect.category}</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#888' }}>
+              {effect.valueMode}: {effect.value ?? JSON.stringify(effect.stats)}
+              {effect.currentStacks > 1 && <span style={{ color: '#ffb74d', marginLeft: 6 }}>×{effect.currentStacks} stacks</span>}
+              {effect.expiresAt && <span style={{ marginLeft: 8 }}>expires {new Date(effect.expiresAt).toLocaleString()}</span>}
+            </div>
+          </div>
+          <button
+            onClick={() => removeEffect(effect.id)}
+            disabled={removing === effect.id}
+            className="btn-delete"
+            style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+          >
+            {removing === effect.id ? '...' : 'Remove'}
+          </button>
+        </div>
+      ))}
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
+function TelemetryTab({ player }: { player: any }) {
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [limit, setLimit] = useState(30);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const e = await adminApi.getPlayerTelemetry(player.id, limit);
+      setEvents(e);
+    } catch {}
+    finally { setLoading(false); }
+  }, [player.id, limit]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const EVENT_COLORS: Record<string, string> = {
+    mission_complete: '#81c784', mission_failed: '#e57373', gift_claimed: '#ffb74d',
+    shop_purchase: '#4fc3f7', lootbox_open: '#ce93d8', checkin: '#80deea',
+  };
+
+  if (loading) return <div style={{ color: '#888' }}>Loading telemetry...</div>;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: '0.75rem' }}>
+        <span style={{ color: '#b8b8ff', fontSize: '0.9rem' }}>{events.length} events</span>
+        <select value={limit} onChange={(e) => setLimit(Number(e.target.value))} style={{ padding: '0.3rem', border: '1px solid #333', borderRadius: 4, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.8rem' }}>
+          <option value={20}>Last 20</option>
+          <option value={30}>Last 30</option>
+          <option value={50}>Last 50</option>
+          <option value={100}>Last 100</option>
+        </select>
+        <button onClick={load} className="btn-edit" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>Refresh</button>
+      </div>
+      {events.length === 0 && <div style={{ color: '#666', fontStyle: 'italic' }}>No telemetry events</div>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {events.map((ev) => (
+          <div key={ev.id} style={{
+            background: '#0f1a30', padding: '0.5rem 0.75rem', borderRadius: 6,
+            border: '1px solid #1e2a40', display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{
+              fontSize: '0.75rem', padding: '0.1rem 0.4rem', borderRadius: 4, whiteSpace: 'nowrap',
+              background: 'rgba(108,99,255,0.15)',
+              color: EVENT_COLORS[ev.eventType] || '#9d96ff',
+            }}>{ev.eventType}</span>
+            {ev.targetId && <span style={{ fontSize: '0.8rem', color: '#b0b0d0' }}>{ev.targetId}</span>}
+            {ev.value != null && ev.value !== 1 && <span style={{ fontSize: '0.8rem', color: '#ffb74d' }}>×{ev.value}</span>}
+            <span style={{ fontSize: '0.7rem', color: '#555', marginLeft: 'auto' }}>{new Date(ev.createdAt).toLocaleString()}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const GOD_TABS: { key: GodTab; label: string }[] = [
+  { key: 'profile', label: 'Profile' },
+  { key: 'items', label: '📦 Items' },
+  { key: 'jobs', label: '⚡ Jobs' },
+  { key: 'entities', label: '🧬 Entities' },
+  { key: 'locations', label: '🏰 Locations' },
+  { key: 'effects', label: '✨ Effects' },
+  { key: 'telemetry', label: '📋 Telemetry' },
+];
+
+interface GodModePanelProps {
+  player: any;
+  onBack: () => void;
+  onReload: () => void;
+  isSuperAdmin?: boolean;
+}
+
+export function GodModePanel({ player, onBack, onReload, isSuperAdmin }: GodModePanelProps) {
+  const [tab, setTab] = useState<GodTab>('profile');
+
+  return (
+    <div style={{ background: '#16213e', padding: '1.25rem', borderRadius: 8, border: '1px solid #2a2a4e' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div>
+          <h3 style={{ margin: 0, color: '#e0e0ff' }}>{player.username}</h3>
+          <div style={{ color: '#888', fontSize: '0.8rem' }}>{player.email} | ID: {player.id}</div>
+        </div>
+        <button onClick={onBack} className="btn-cancel" style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>← Back</button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 2, marginBottom: '1rem', flexWrap: 'wrap' }}>
+        {GOD_TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            style={{
+              padding: '0.4rem 0.8rem', border: '1px solid #2a2a4e', borderRadius: 6,
+              background: tab === t.key ? 'rgba(108,99,255,0.25)' : '#0f1a30',
+              color: tab === t.key ? '#b8b0ff' : '#888',
+              cursor: 'pointer', fontSize: '0.82rem', fontWeight: tab === t.key ? 600 : 400,
+              borderBottom: tab === t.key ? '2px solid #6c63ff' : '1px solid #2a2a4e',
+            }}
+          >{t.label}</button>
+        ))}
+      </div>
+
+      <div>
+        {tab === 'profile' && <ProfileTab player={player} onReload={onReload} />}
+        {tab === 'items' && <ItemsTab player={player} />}
+        {tab === 'jobs' && <JobsTab player={player} />}
+        {tab === 'entities' && <EntitiesTab player={player} onReload={onReload} isSuperAdmin={isSuperAdmin} />}
+        {tab === 'locations' && <LocationsTab player={player} />}
+        {tab === 'effects' && <EffectsTab player={player} />}
+        {tab === 'telemetry' && <TelemetryTab player={player} />}
+      </div>
+    </div>
+  );
+}

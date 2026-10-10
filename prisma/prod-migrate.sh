@@ -10,4 +10,4 @@ echo "Running prisma migrate deploy..."
 npx prisma migrate deploy
 
 echo "Running seed..."
-npx tsx prisma/seed.ts
+NODE_ENV=production npx tsx prisma/seed.ts

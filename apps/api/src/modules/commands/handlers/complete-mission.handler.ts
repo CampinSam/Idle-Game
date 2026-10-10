@@ -1,11 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
-import { PatchBuilder, buildCurrencyPatches, buildItemPatches, buildPlayerPatch, buildEntityPatch } from '../patch-builder';
+import { PatchBuilder, buildCurrencyPatches, buildItemPatches, buildPlayerPatch, buildEntityPatch, buildMissionDefStatusPatches } from '../patch-builder';
 import { MissionService } from '../../mission/mission.service';
+import { NotificationService } from '../../notification/notification.service';
+import { GameRulesService } from '../../game-rules/game-rules.service';
+import { DefinitionCacheService } from '../../definition-cache/definition-cache.service';
 
 @Injectable()
 export class CompleteMissionHandler implements CommandHandler {
-  constructor(private missionService: MissionService) {}
+  constructor(
+    private missionService: MissionService,
+    private notificationService: NotificationService,
+    private gameRules: GameRulesService,
+    private definitionCache: DefinitionCacheService,
+  ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { jobId } = payload;
@@ -26,25 +34,41 @@ export class CompleteMissionHandler implements CommandHandler {
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
 
-    const updatedNotif = await (ctx.tx as any).notification.findFirst({
-      where: { userId: ctx.userId, sourceType: 'job_ready', sourceId: jobId, archivedAt: null },
-    });
-    if (updatedNotif) pb.upsertNotification(updatedNotif);
+    // If mission completion resolved any player flags, push updated requirement
+    // status for all category/mission defs so the client can unlock gated
+    // content in the same render cycle — no separate HTTP refetch needed.
+    if ((result.missionResult as any)?.resolvedFlagCount > 0 || (result.missionResult as any)?.resolvedUnlockCount > 0) {
+      await buildMissionDefStatusPatches(pb, ctx.tx, ctx.userId, this.gameRules, this.definitionCache);
+    }
+
+    const removedEffectIds: string[] = result.missionResult?.removedEffectIds || [];
+    for (const effectId of removedEffectIds) {
+      pb.deleteActiveEffect(effectId);
+    }
 
     const missionResult = result.missionResult;
     const success = missionResult?.success;
+    const title = success ? 'Mission Complete!' : 'Mission Failed';
+    const body = success
+      ? (missionResult?.rewards?.map((r: any) => `${r.amount}x ${r.name || r.key || r.type}`).join(', ') || 'Rewards collected.')
+      : 'Better luck next time.';
+
+    const notification = await this.notificationService.upsertJobNotification({
+      userId: ctx.userId,
+      jobId,
+      type: 'mission_complete',
+      category: 'missions',
+      priority: 'normal',
+      title,
+      body,
+      deepLink: { jobId },
+      readAt: new Date(),
+    }, ctx.tx);
+    pb.upsertNotification(notification);
 
     return {
       patches: pb.build(),
-      ui: [
-        {
-          type: 'toast' as const,
-          tone: success ? 'success' as const : 'info' as const,
-          message: success
-            ? `Mission complete! ${missionResult?.rewards?.map((r: any) => `${r.amount}x ${r.name || r.key || r.type}`).join(', ') || ''}`
-            : 'Mission failed — better luck next time',
-        },
-      ],
+      ui: [],
     };
   }
 }

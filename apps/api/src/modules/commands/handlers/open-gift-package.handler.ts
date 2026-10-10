@@ -3,6 +3,8 @@ import { CommandHandler, CommandContext, CommandHandlerResult } from '../command
 import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildEntityPatch, buildPlayerPatch } from '../patch-builder';
 import { CurrencyService } from '../../currency/currency.service';
 import { InventoryService } from '../../inventory/inventory.service';
+import { GameRulesService } from '../../game-rules/game-rules.service';
+import { NotificationService } from '../../notification/notification.service';
 import { resolveRewardSpec } from '../../gift/reward-resolver.util';
 
 @Injectable()
@@ -10,6 +12,8 @@ export class OpenGiftPackageHandler implements CommandHandler {
   constructor(
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
+    private gameRules: GameRulesService,
+    private notificationService: NotificationService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -34,6 +38,7 @@ export class OpenGiftPackageHandler implements CommandHandler {
       ctx.tx,
       this.currencyService,
       this.inventoryService,
+      this.gameRules,
       ctx.userId,
       rewardSpec,
       itemInstanceId,
@@ -41,8 +46,13 @@ export class OpenGiftPackageHandler implements CommandHandler {
 
     await (ctx.tx as any).itemInstance.delete({ where: { id: itemInstanceId } });
 
+    const readNotifications = await this.notificationService.markReadBySource(ctx.userId, 'ItemInstance', itemInstanceId, ctx.tx);
+
     const pb = new PatchBuilder();
     pb.deleteItem(itemInstanceId);
+    for (const notif of readNotifications) {
+      pb.upsertNotification(notif);
+    }
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildPlayerPatch(pb, ctx.tx, ctx.userId);
@@ -54,18 +64,36 @@ export class OpenGiftPackageHandler implements CommandHandler {
     }
 
     const rewardSummary = grants
-      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.currencyId ?? g.itemDefId ?? g.definitionId ?? g.type}`)
+      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.key ?? g.currencyId ?? g.itemDefId ?? g.definitionId ?? g.type}`)
       .join(', ');
+
+    const giftBodyText = rewardSummary || 'Your rewards have been added.';
 
     return {
       patches: pb.build(),
       ui: [
         {
           type: 'modal' as const,
-          key: `gift-opened-${itemInstanceId}`,
-          title: 'Gift Opened!',
-          body: rewardSummary || 'Your rewards have been added.',
-          buttons: [{ label: 'Collect', action: 'close' }],
+          spec: {
+            version: 1,
+            id: `gift-opened-${itemInstanceId}`,
+            kind: 'gift_opened',
+            dismiss: { backdrop: true, x: true, escape: true },
+            header: { title: 'Gift Opened!' },
+            pages: [
+              {
+                body: [
+                  {
+                    type: 'richText',
+                    doc: [{ t: 'p', c: [{ t: 'text', v: giftBodyText }] }],
+                  },
+                ],
+              },
+            ],
+            buttons: [
+              { id: 'close', label: 'Collect', variant: 'primary', action: { type: 'CLOSE_MODAL' } },
+            ],
+          },
         },
       ],
     };

@@ -3,6 +3,7 @@ import { useAppSelector } from '../store';
 import { useCommand } from './useCommand';
 import { useModal } from '../context/ModalContext';
 import { api } from '../services/api';
+import { audioEngine } from '../services/AudioEngine';
 
 export function useCollectJob() {
   const { execute } = useCommand();
@@ -21,20 +22,32 @@ export function useCollectJob() {
       let completed = false;
 
       if (type === 'MissionJob') {
-        await execute('CompleteMission', { jobId });
+        const response = await execute('CompleteMission', { jobId });
+        const jobPatch = response?.patches?.find(
+          (p: any) => p.op === 'upsert' && p.entity === 'job' && p.id === jobId,
+        ) as { op: 'upsert'; entity: string; id: string; data: any } | undefined;
+        const failed = jobPatch?.data?.status === 'failed';
+        audioEngine.play(failed ? 'sfx.mission.fail' : 'sfx.mission.success');
+        if (!failed) audioEngine.play('sfx.economy.currency_earn');
         completed = true;
       } else if (type === 'CraftingJob') {
         await execute('CollectCrafting', { jobId });
+        audioEngine.play('sfx.craft.complete');
         completed = true;
       } else if (type === 'BuildingJob') {
         const locationId = jd?.locationId;
         const buildingId = jd?.buildingId;
         if (locationId && buildingId) {
           await execute('CompleteBuilding', { locationId, buildingId });
+          audioEngine.play('sfx.building.complete');
           completed = true;
         } else {
           console.warn('[useCollectJob] BuildingJob missing locationId or buildingId', jobId);
         }
+      } else if (type === 'DustingJob') {
+        await execute('CollectDusting', { jobId });
+        audioEngine.play('sfx.craft.complete');
+        completed = true;
       } else {
         console.warn('[useCollectJob] Unknown job type:', type, jobId);
       }

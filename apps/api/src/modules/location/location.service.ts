@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
@@ -10,19 +11,54 @@ import { CurrencyService } from "../currency/currency.service";
 import { InventoryService } from "../inventory/inventory.service";
 import { GameRulesService } from "../game-rules/game-rules.service";
 import { NotificationService } from "../notification/notification.service";
-import { ANTI_WHALE_CAPS } from "@derp/shared";
+import { EffectService } from "../effect/effect.service";
+import { TelemetryService } from "../telemetry/telemetry.service";
+import { DefinitionCacheService } from "../definition-cache/definition-cache.service";
+import { ANTI_WHALE_CAPS, EffectCategory, applyModifier } from "@derp/shared";
+import { PowerChargeService } from "../global-power/power-charge.service";
+import { serializeLocation } from "../commands/location-serializer.util";
 import {
   resolveLevelConfig,
   resolveConstructionCosts,
-  resolveProductionRates,
-  resolveStorageCapacity,
   resolveAllowedBuildings,
   calcGrowth,
+  calcXpForLevel,
+  diffLocationLevelUnlocks,
   LevelRules,
+  LocationLevelUnlocks as LevelConfigLocationLevelUnlocks,
 } from "../game-rules/level-config.util";
+
+import { DEFAULT_XP_DEPOSIT_COST, LocationXpCostOption } from './location-xp.constants';
+export { LocationXpCostOption };
+
+export type LocationLevelUnlocks = LevelConfigLocationLevelUnlocks;
+
+export interface AddLocationXpResult {
+  location: any;
+  oldLevel: number;
+  newLevel: number;
+  xpGained: number;
+  leveledUp: boolean;
+  unlocks: LocationLevelUnlocks;
+  /**
+   * Notification record (created or updated) when a level-up occurred.
+   * Returned so command handlers can include it in their patch stream so the
+   * client gets the notification immediately via sync, rather than waiting
+   * for the next bootstrap/poll.
+   */
+  notification?: any;
+  /**
+   * If the requested charges exceeded the remaining XP capacity to reach
+   * maxLevel, the deposit was clamped down to this many charges. The full
+   * cost for this clamped count is what was actually spent.
+   */
+  chargesApplied: number;
+}
 
 @Injectable()
 export class LocationService {
+  private readonly logger = new Logger(LocationService.name);
+
   constructor(
     private prisma: PrismaService,
     private settlementService: LocationSettlementService,
@@ -31,7 +67,266 @@ export class LocationService {
     private inventoryService: InventoryService,
     private gameRules: GameRulesService,
     private notificationService: NotificationService,
+    private effectService: EffectService,
+    private telemetryService: TelemetryService,
+    private definitionCache: DefinitionCacheService,
   ) {}
+
+  /**
+   * Creates a starter outpost for `userId`, recalculates its storage/meta,
+   * and sets it as the user's primaryLocationId.  This is the single canonical
+   * path for all first-outpost creation (email registration, wallet onboarding,
+   * and admin player-reset).
+   */
+  async createStarterOutpost(userId: string): Promise<any> {
+    const currentTick = await this.tickService.getCurrentTick();
+    const locationDef = this.definitionCache.get('locationDefinition', 'derp_outpost');
+    if (!locationDef) throw new NotFoundException('LocationDefinition "derp_outpost" not found');
+    const loc = await (this.prisma as any).locationInstance.create({
+      data: {
+        ownerUserId: userId,
+        definitionId: locationDef.id,
+        name: 'Starter Outpost',
+        kind: 'outpost_fungible',
+        level: 1,
+        lastCollectionTick: BigInt(Math.floor(currentTick)),
+        storage: { capacity: {}, stored: {}, lastSettledAt: new Date().toISOString() },
+        state: {},
+      },
+    });
+    await this.settlementService.recalculateLocationMeta(loc.id);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { primaryLocationId: loc.id },
+    });
+    return loc;
+  }
+
+  resolveXpDepositCosts(rules: LevelRules | null | undefined): LocationXpCostOption[] {
+    const raw = (rules as any)?.xpDepositCosts;
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw
+        .filter((c: any) =>
+          c && (c.type === 'currency' || c.type === 'item') && typeof c.id === 'string' &&
+          typeof c.amount === 'number' && c.amount > 0,
+        )
+        .map((c: any) => ({
+          type: c.type,
+          id: c.id,
+          amount: c.amount,
+          xpPerCharge: typeof c.xpPerCharge === 'number' && c.xpPerCharge > 0 ? c.xpPerCharge : 1,
+        }));
+    }
+    return [{ ...DEFAULT_XP_DEPOSIT_COST }];
+  }
+
+  /**
+   * Spends the chosen cost option `charges` times to deposit XP into a
+   * LocationInstance. Walks the location's per-level XP curve, recalculating
+   * meta and emitting one collapsed level-up notification (+ telemetry) per
+   * call when one or more levels were gained.
+   *
+   * Mirrors the entity XP authority pattern: callers must always go through
+   * this method — never mutate `location.xp` / `location.level` directly.
+   */
+  async depositLocationXp(
+    userId: string,
+    locationId: string,
+    chosen: { type: 'currency' | 'item'; id: string; amount: number },
+    charges: number,
+    externalTx?: any,
+  ): Promise<AddLocationXpResult> {
+    if (!Number.isFinite(charges) || charges <= 0) {
+      throw new BadRequestException('charges must be a positive integer');
+    }
+    const chargesInt = Math.floor(charges);
+
+    const doWork = async (tx: any): Promise<AddLocationXpResult> => {
+      const loc = await (tx as any).locationInstance.findFirst({
+        where: { id: locationId, ownerUserId: userId },
+        include: { definition: true },
+      });
+      if (!loc) throw new NotFoundException('Location not found');
+
+      const rules = (loc.definition?.rules as LevelRules) || {};
+      const maxLevel = rules.maxLevel ?? 50;
+
+      if (loc.level >= maxLevel) {
+        // Cap-safe: reject at max so we never spend resources for XP that would
+        // be discarded. Frontend mirrors this with a disabled state, but a
+        // direct API caller still needs the explicit error.
+        throw new BadRequestException('Outpost is already at maximum level');
+      }
+
+      const options = this.resolveXpDepositCosts(rules);
+      const match = options.find(
+        (o) => o.type === chosen.type && o.id === chosen.id && o.amount === chosen.amount,
+      );
+      if (!match) {
+        throw new BadRequestException('Selected cost option is not available for this location');
+      }
+
+      const xpPerCharge = match.xpPerCharge ?? 1;
+
+      // Cap-safe spending: compute remaining XP capacity to reach maxLevel
+      // from the current (level, xp), then clamp the requested charge count
+      // so we never spend resources for XP that would be discarded at cap.
+      let remainingXpCapacity = 0;
+      {
+        let lvl = loc.level;
+        let xpInLvl = Number(loc.xp ?? 0);
+        while (lvl < maxLevel) {
+          const need = calcXpForLevel(rules, lvl + 1);
+          remainingXpCapacity += Math.max(0, need - xpInLvl);
+          xpInLvl = 0;
+          lvl++;
+        }
+      }
+      const maxUsefulCharges = Math.max(
+        1,
+        Math.ceil(remainingXpCapacity / Math.max(1, xpPerCharge)),
+      );
+      const chargesApplied = Math.min(chargesInt, maxUsefulCharges);
+
+      const totalCost = match.amount * chargesApplied;
+      const xpDelta = xpPerCharge * chargesApplied;
+
+      if (match.type === 'currency') {
+        await this.currencyService.spendTx(tx, {
+          userId,
+          currencyId: match.id,
+          amount: totalCost,
+          reason: 'location_xp_deposit',
+          sourceType: 'location',
+          sourceId: locationId,
+        });
+      } else {
+        await this.inventoryService.removeItemTx(tx, {
+          userId,
+          itemId: match.id,
+          quantity: totalCost,
+          reason: 'location_xp_deposit',
+          sourceType: 'location',
+          sourceId: locationId,
+        });
+      }
+
+      const oldLevel = loc.level;
+
+      let newLevel = oldLevel;
+      let newXp = Number(loc.xp ?? 0) + xpDelta;
+
+      while (newLevel < maxLevel) {
+        const need = calcXpForLevel(rules, newLevel + 1);
+        if (newXp < need) break;
+        newXp -= need;
+        newLevel++;
+      }
+      if (newLevel >= maxLevel) {
+        // At cap: residual XP is preserved as 0 since no further threshold exists.
+        newXp = 0;
+      }
+
+      const updated = await (tx as any).locationInstance.update({
+        where: { id: locationId },
+        data: { level: newLevel, xp: BigInt(newXp) },
+      });
+
+      const leveledUp = newLevel > oldLevel;
+      const unlocks: LocationLevelUnlocks = leveledUp
+        ? diffLocationLevelUnlocks(rules, oldLevel, newLevel)
+        : {
+            workerSlotsAdded: 0,
+            buildingSlotsAdded: 0,
+            newAllowedBuildings: [],
+            newAllowedRooms: [],
+            storageAdded: [],
+            productionAdded: [],
+          };
+
+      // Always record the deposit itself for analytics (level-ups get a
+      // separate, more detailed event below).
+      try {
+        await this.telemetryService.record(
+          userId,
+          'location_xp_deposited',
+          locationId,
+          xpDelta,
+          {
+            locationId,
+            definitionId: loc.definitionId,
+            costType: match.type,
+            costId: match.id,
+            costAmount: totalCost,
+            chargesRequested: chargesInt,
+            chargesApplied,
+            xpGained: xpDelta,
+            leveledUp,
+          },
+          tx,
+        );
+      } catch (err) {
+        this.logger.warn(`Failed to record location_xp_deposited telemetry: ${err}`);
+      }
+
+      let levelUpNotification: any = null;
+      if (leveledUp) {
+        try {
+          await this.settlementService.recalculateLocationMeta(locationId, tx);
+        } catch (err) {
+          this.logger.warn(
+            `Failed to recalculate location meta for ${locationId} after level-up: ${err}`,
+          );
+        }
+        try {
+          await this.telemetryService.record(
+            userId,
+            'location_level_up',
+            locationId,
+            newLevel - oldLevel,
+            {
+              locationId,
+              definitionId: loc.definitionId,
+              fromLevel: oldLevel,
+              toLevel: newLevel,
+              unlocks,
+            },
+            tx,
+          );
+        } catch (err) {
+          this.logger.warn(`Failed to record location_level_up telemetry: ${err}`);
+        }
+        try {
+          levelUpNotification = await this.notificationService.recordLocationLevelUp(
+            {
+              userId,
+              locationId,
+              locationName: loc.definitionId || 'Outpost',
+              fromLevel: oldLevel,
+              toLevel: newLevel,
+              unlocks,
+            },
+            tx,
+          );
+        } catch (err) {
+          this.logger.warn(`Failed to record location_level_up notification: ${err}`);
+        }
+      }
+
+      return {
+        location: { ...loc, ...updated, definition: loc.definition },
+        oldLevel,
+        newLevel,
+        xpGained: xpDelta,
+        leveledUp,
+        unlocks,
+        notification: levelUpNotification,
+        chargesApplied,
+      };
+    };
+
+    return externalTx ? doWork(externalTx) : this.prisma.$transaction((tx) => doWork(tx));
+  }
 
   /**
    * Enforces the maxActiveOutposts anti-whale cap.
@@ -44,15 +339,40 @@ export class LocationService {
       select: { keeperLevel: true },
     });
     if (!user) throw new NotFoundException("User not found");
+    const locationSlotUnlocks = await (client as any).userUnlock.count({
+      where: { userId, key: { in: ['location_slot.1', 'location_slot.2', 'location_slot.3'] } },
+    });
     const activeCount = await (client as any).locationInstance.count({
       where: { ownerUserId: userId, enabled: true },
     });
-    const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel);
+    const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel, locationSlotUnlocks);
     if (activeCount >= maxOutposts) {
       throw new BadRequestException(
         `Maximum ${maxOutposts} active outpost(s) allowed at Keeper Level ${user.keeperLevel}`,
       );
     }
+  }
+
+  /**
+   * Returns true if a new location assigned to `userId` should be automatically
+   * activated (i.e. the player is still below their active-slot cap).
+   * Use this when creating or transferring a location to decide the initial `enabled` value.
+   */
+  async shouldAutoActivate(userId: string, tx?: any): Promise<boolean> {
+    const client = tx ?? this.prisma;
+    const user = await (client as any).user.findUnique({
+      where: { id: userId },
+      select: { keeperLevel: true },
+    });
+    if (!user) return false;
+    const locationSlotUnlocks = await (client as any).userUnlock.count({
+      where: { userId, key: { in: ['location_slot.1', 'location_slot.2', 'location_slot.3'] } },
+    });
+    const activeCount = await (client as any).locationInstance.count({
+      where: { ownerUserId: userId, enabled: true },
+    });
+    const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel, locationSlotUnlocks);
+    return activeCount < maxOutposts;
   }
 
   private async getCurrencyIds(externalTx?: any): Promise<Set<string>> {
@@ -71,7 +391,7 @@ export class LocationService {
           definition: true,
           buildings: {
             include: {
-              buildingDef: true,
+              buildingDef: { include: { displayDef: true } },
               rooms: { include: { roomDef: true } },
             },
           },
@@ -90,8 +410,46 @@ export class LocationService {
     ]);
 
     return locations.map((loc: any) =>
-      this.serializeLocation(loc, buildingJobs, currencyIds),
+      serializeLocation(loc, buildingJobs, currencyIds),
     );
+  }
+
+  async getPowerUsage(
+    userId: string,
+    locationId: string,
+  ): Promise<Record<string, { chargeUnits: number; maxChargeUnits: number; costPerUse: number; usesAvailable: number; lastChargeAppliedAtTick: string | null }>> {
+    const location = await (this.prisma as any).locationInstance.findFirst({
+      where: { id: locationId, ownerUserId: userId },
+      select: { id: true },
+    });
+    if (!location) return {};
+
+    const usages = await (this.prisma as any).locationPowerUsage.findMany({
+      where: { locationInstanceId: locationId },
+      include: {
+        powerGrant: {
+          select: {
+            powerKey: true,
+            overrides: true,
+            powerDef: { select: { chargeConfig: true } },
+          },
+        },
+      },
+    });
+
+    const result: Record<string, { chargeUnits: number; maxChargeUnits: number; costPerUse: number; usesAvailable: number; lastChargeAppliedAtTick: string | null }> = {};
+    for (const u of usages) {
+      const chargeConfig = PowerChargeService.extractChargeConfig(u.powerGrant?.powerDef, u.powerGrant?.overrides);
+      const costPerUse = chargeConfig.costPerUse ?? 1;
+      result[u.powerGrant.powerKey] = {
+        chargeUnits: u.chargeUnits,
+        maxChargeUnits: chargeConfig.maxChargeUnits ?? 1,
+        costPerUse,
+        usesAvailable: costPerUse > 0 ? Math.floor(u.chargeUnits / costPerUse) : 0,
+        lastChargeAppliedAtTick: u.lastChargeAppliedAt !== null ? String(u.lastChargeAppliedAt) : null,
+      };
+    }
+    return result;
   }
 
   async getLocation(userId: string, locationId: string) {
@@ -113,7 +471,7 @@ export class LocationService {
           definition: true,
           buildings: {
             include: {
-              buildingDef: true,
+              buildingDef: { include: { displayDef: true } },
               rooms: { include: { roomDef: true } },
             },
           },
@@ -139,7 +497,7 @@ export class LocationService {
     ]);
 
     return {
-      ...this.serializeLocation(result, buildingJobs, currencyIds),
+      ...serializeLocation(result, buildingJobs, currencyIds),
       storage: storageInfo,
     };
   }
@@ -149,7 +507,9 @@ export class LocationService {
     currentLocation?: any,
     parentBuilding?: any,
   ) {
-    const [user, allLocations] = await Promise.all([
+    // Load regions to translate UUID regionId FK values back to slug keys.
+    // Game rules JSON references regions by slug; requirement context must match.
+    const [user, allLocations, regionDefs] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId } }),
       (this.prisma as any).locationInstance.findMany({
         where: { ownerUserId: userId },
@@ -157,38 +517,39 @@ export class LocationService {
           definition: true,
           buildings: {
             include: {
-              buildingDef: true,
+              buildingDef: { include: { displayDef: true } },
               rooms: { include: { roomDef: true } },
             },
           },
         },
       }),
+      Promise.resolve(this.definitionCache.getAll('regionDefinition')),
     ]);
     if (!user) throw new NotFoundException("User not found");
 
-    const allPlayerLocations = allLocations.map((loc: any) => ({
-      buildings: loc.buildings.map((b: any) => ({
-        buildingDefId: b.buildingDefId,
-        rooms: b.rooms?.map((r: any) => ({ roomDefId: r.roomDefId })) ?? [],
-      })),
-      regionId: loc.definition?.regionId ?? null,
-    }));
+    // UUID → slug maps for requirement context normalisation.
+    const regionKeyById = new Map(regionDefs.map((r: any) => [r.id, r.key]));
 
-    const currentLocationCtx = currentLocation
-      ? {
-          buildings: (currentLocation.buildings ?? []).map((b: any) => ({
-            buildingDefId: b.buildingDefId,
-            rooms: b.rooms?.map((r: any) => ({ roomDefId: r.roomDefId })) ?? [],
-          })),
-          regionId: currentLocation.definition?.regionId ?? null,
-        }
-      : undefined;
+    const toLocationCtx = (loc: any) => ({
+      buildings: (loc.buildings ?? []).map((b: any) => ({
+        // buildingDefId FK column is UUID; game rules compare against slug keys.
+        buildingDefId: b.buildingDef?.key ?? b.buildingDefId,
+        rooms: (b.rooms ?? []).map((r: any) => ({
+          roomDefId: r.roomDef?.key ?? r.roomDefId,
+        })),
+      })),
+      regionId: regionKeyById.get(loc.definition?.regionId) ?? loc.definition?.regionId ?? null,
+    });
+
+    const allPlayerLocations = allLocations.map(toLocationCtx);
+
+    const currentLocationCtx = currentLocation ? toLocationCtx(currentLocation) : undefined;
 
     const parentBuildingCtx = parentBuilding
       ? {
-          buildingDefId: parentBuilding.buildingDefId,
+          buildingDefId: parentBuilding.buildingDef?.key ?? parentBuilding.buildingDefId,
           rooms: (parentBuilding.rooms ?? []).map((r: any) => ({
-            roomDefId: r.roomDefId,
+            roomDefId: r.roomDef?.key ?? r.roomDefId,
           })),
         }
       : undefined;
@@ -206,7 +567,7 @@ export class LocationService {
       include: {
         definition: true,
         buildings: {
-          include: { buildingDef: true, rooms: { include: { roomDef: true } } },
+          include: { buildingDef: { include: { displayDef: true } }, rooms: { include: { roomDef: true } } },
         },
       },
     });
@@ -220,20 +581,23 @@ export class LocationService {
     }
 
     const allowedIds = allowedBuildings.map((a) => a.buildingDefId);
-    const buildingDefs = await (this.prisma as any).buildingDef.findMany({
-      where: { id: { in: allowedIds } },
-    });
-    const defMap = new Map(buildingDefs.map((d: any) => [d.id, d]));
+    const buildingDefs = this.definitionCache.getAll('buildingDef')
+      .filter((d: any) => allowedIds.includes(d.key));
+    const defMap = new Map(buildingDefs.map((d: any) => [d.key, d]));
 
     const reqContext = await this.buildLocationRequirementContext(
       userId,
       location,
     );
 
+    // existingCounts must be keyed by slug (same as entry.buildingDefId from rules JSON).
+    // location.buildings[].buildingDefId is UUID after migration, so we translate via defMap.
+    const buildingDefUuidToKey = new Map(buildingDefs.map((d: any) => [d.id, d.key]));
     const existingCounts = new Map<string, number>();
     for (const b of location.buildings) {
-      const count = existingCounts.get(b.buildingDefId) || 0;
-      existingCounts.set(b.buildingDefId, count + 1);
+      const slug = buildingDefUuidToKey.get(b.buildingDefId) ?? b.buildingDefId;
+      const count = existingCounts.get(slug) || 0;
+      existingCounts.set(slug, count + 1);
     }
 
     const available = allowedBuildings
@@ -248,6 +612,7 @@ export class LocationService {
           !this.gameRules.checkRequirements(
             def.visibilityRequirements,
             reqContext,
+            `BuildingDef[${def.id}].visibilityRequirements`,
           )
         )
           return false;
@@ -259,12 +624,14 @@ export class LocationService {
         const meetsReqs = this.gameRules.checkRequirements(
           def.requirements,
           reqContext,
+          `BuildingDef[${def.id}].requirements`,
         );
         return {
           id: def.id,
           name: def.name,
           description: def.description,
           tags: def.tags,
+          category: def.category ?? null,
           rules: def.rules,
           requirements: def.requirements,
           meetsRequirements: meetsReqs,
@@ -293,16 +660,22 @@ export class LocationService {
       include: {
         definition: true,
         buildings: {
-          include: { buildingDef: true, rooms: { include: { roomDef: true } } },
+          include: { buildingDef: { include: { displayDef: true } }, rooms: { include: { roomDef: true } } },
         },
       },
     });
     if (!location) throw new NotFoundException("Location not found");
 
+    // Resolve definition first so we can compare by key (game rules use slugs)
+    // and write by id (UUID FK column on location_building_instances).
+    const def = this.definitionCache.get('buildingDef', buildingDefId);
+    if (!def) throw new BadRequestException("Building definition not found");
+
     const locRules = (location.definition?.rules as LevelRules) || {};
     const allowedBuildings = resolveAllowedBuildings(locRules, location.level);
+    // allowedBuildings[].buildingDefId comes from rules JSON — always slug keys.
     const allowedEntry = allowedBuildings.find(
-      (a) => a.buildingDefId === buildingDefId,
+      (a) => a.buildingDefId === def.key,
     );
     if (!allowedEntry)
       throw new BadRequestException(
@@ -310,24 +683,20 @@ export class LocationService {
       );
 
     const maxCount = allowedEntry.maxCount ?? 1;
+    // location.buildings[].buildingDefId is a UUID FK column after migration.
     const existingCount = location.buildings.filter(
-      (b: any) => b.buildingDefId === buildingDefId,
+      (b: any) => b.buildingDefId === def.id,
     ).length;
     if (existingCount >= maxCount) {
       throw new BadRequestException(
         `Maximum ${maxCount} of this building already built`,
       );
     }
-
-    const def = await (this.prisma as any).buildingDef.findUnique({
-      where: { id: buildingDefId },
-    });
-    if (!def) throw new BadRequestException("Building definition not found");
     const reqContext = await this.buildLocationRequirementContext(
       userId,
       location,
     );
-    if (!this.gameRules.checkRequirements(def.requirements, reqContext)) {
+    if (!this.gameRules.checkRequirements(def.requirements, reqContext, `BuildingDef[${def.id}].requirements`)) {
       throw new BadRequestException("Requirements not met to build this");
     }
     const defRules = (def.rules as LevelRules) || {};
@@ -349,7 +718,11 @@ export class LocationService {
       timer.growthScalar,
       buildLevel,
     );
-    const durationTicks = durationSeconds;
+    let durationTicks = durationSeconds;
+    const buildTimerMod = await this.effectService.resolveTimerSpeed(userId, EffectCategory.BUILDING_BUILD_TIMER_SPEED);
+    if (buildTimerMod.flatAdd !== 0 || buildTimerMod.percentAdd !== 0 || buildTimerMod.multiplier !== 1) {
+      durationTicks = Math.max(0, Math.floor(applyModifier(durationTicks, buildTimerMod)));
+    }
     const isInstant = durationTicks <= 0;
 
     const doWork = async (tx: any) => {
@@ -389,7 +762,7 @@ export class LocationService {
       const building = await (tx as any).locationBuildingInstance.create({
         data: {
           locationId,
-          buildingDefId,
+          buildingDefId: def.id,
           level: 1,
           state: buildingState,
         },
@@ -401,11 +774,12 @@ export class LocationService {
           data: {
             userId,
             type: "BuildingJob",
-            defId: buildingDefId,
+            defId: def.id,
             status: "active",
             timer: { startTick: Math.floor(currentTick), durationTicks },
             team: [],
             data: { locationId, buildingId: building.id },
+            readyAtTick: Math.floor(currentTick) + durationTicks,
           },
         });
       }
@@ -423,7 +797,7 @@ export class LocationService {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
       } catch (err) {
-        console.warn(
+        this.logger.warn(
           `Failed to recalculate storage for location ${locationId}: ${err}`,
         );
       }
@@ -456,14 +830,14 @@ export class LocationService {
     if (!building) throw new NotFoundException("Building not found");
 
     if (!building.buildingDef) {
-      console.warn(
+      this.logger.warn(
         `completeBuilding: definition not found for buildingDefId=${building.buildingDefId}, failing job gracefully`,
       );
       const buildingJob = await (this.prisma as any).job.findFirst({
         where: {
           userId,
           type: "BuildingJob",
-          status: { in: ["active", "ready_notified"] },
+          status: { in: ["active", "ready_notified", "skipped"] },
           data: { path: ["buildingId"], equals: buildingId },
         },
       });
@@ -477,16 +851,14 @@ export class LocationService {
           },
         });
         try {
-          await this.notificationService.updateBySource({
+          await this.notificationService.upsertJobNotification({
             userId,
-            sourceType: "job_ready",
-            sourceId: buildingJob.id,
+            jobId: buildingJob.id,
             type: "building_complete",
-            category: "buildings",
+            category: "locations",
             priority: "normal",
             title: "Construction Failed",
             body: errorMsg,
-            markRead: true,
           });
         } catch (err) {
           // notification update is non-critical
@@ -515,7 +887,7 @@ export class LocationService {
       where: {
         userId,
         type: "BuildingJob",
-        status: { in: ["active", "ready_notified"] },
+        status: { in: ["active", "ready_notified", "skipped"] },
         data: { path: ["buildingId"], equals: buildingId },
       },
     });
@@ -568,22 +940,20 @@ export class LocationService {
       });
 
       const isUpgrade = !!upgradeToLevel;
-      const existingNotif = await (tx as any).notification.findFirst({
-        where: { userId, sourceType: "job_ready", sourceId: buildingJob.id, archivedAt: null },
-      });
       let updatedNotification: any = null;
-      if (existingNotif) {
-        updatedNotification = await (tx as any).notification.update({
-          where: { id: existingNotif.id },
-          data: {
-            type: "building_complete",
-            title: isUpgrade ? "Upgrade Complete!" : "Construction Complete!",
-            body: `${building.buildingDef.name}${isUpgrade ? ` upgraded to level ${building.level}` : " has been built"}`,
-            readAt: new Date(),
-            dismissedAt: null,
-            deepLink: { screen: "/locations", locationId, buildingId },
-          },
-        });
+      try {
+        updatedNotification = await this.notificationService.upsertJobNotification({
+          userId,
+          jobId: buildingJob.id,
+          type: "building_complete",
+          category: "locations",
+          priority: "normal",
+          title: isUpgrade ? "Upgrade Complete!" : "Construction Complete!",
+          body: `${building.buildingDef.name}${isUpgrade ? ` upgraded to level ${building.level}` : " has been built"}`,
+          deepLink: { screen: "/locations", locationId, buildingId },
+        }, tx);
+      } catch (err) {
+        // notification update is non-critical
       }
 
       return { building, updatedNotification };
@@ -595,11 +965,27 @@ export class LocationService {
 
     if (externalTx) {
       await this.settlementService.recalculateLocationMeta(locationId, externalTx);
+      const locAfter = await (externalTx as any).locationInstance.findFirst({ where: { id: locationId } });
+      if (locAfter) {
+        const stoAfter = (locAfter.storage as any) || {};
+        await (externalTx as any).locationInstance.update({
+          where: { id: locationId },
+          data: { storage: { ...stoAfter, lastSettledAt: new Date().toISOString() } },
+        });
+      }
     } else {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
+        const locAfter = await (this.prisma as any).locationInstance.findFirst({ where: { id: locationId } });
+        if (locAfter) {
+          const stoAfter = (locAfter.storage as any) || {};
+          await (this.prisma as any).locationInstance.update({
+            where: { id: locationId },
+            data: { storage: { ...stoAfter, lastSettledAt: new Date().toISOString() } },
+          });
+        }
       } catch (err) {
-        console.warn(
+        this.logger.warn(
           `Failed to recalculate location meta for ${locationId}: ${err}`,
         );
       }
@@ -662,7 +1048,11 @@ export class LocationService {
       timer.growthScalar,
       nextLevel,
     );
-    const durationTicks = durationSeconds;
+    let durationTicks = durationSeconds;
+    const upgradeTimerMod = await this.effectService.resolveTimerSpeed(userId, EffectCategory.BUILDING_UPGRADE_TIMER_SPEED);
+    if (upgradeTimerMod.flatAdd !== 0 || upgradeTimerMod.percentAdd !== 0 || upgradeTimerMod.multiplier !== 1) {
+      durationTicks = Math.max(0, Math.floor(applyModifier(durationTicks, upgradeTimerMod)));
+    }
     const isInstant = durationTicks <= 0;
 
     const doWork = async (tx: any) => {
@@ -719,6 +1109,7 @@ export class LocationService {
             timer: { startTick: Math.floor(currentTick), durationTicks },
             team: [],
             data: { locationId, buildingId, upgradeToLevel: currentLevel + 1 },
+            readyAtTick: Math.floor(currentTick) + durationTicks,
           },
         });
 
@@ -736,7 +1127,7 @@ export class LocationService {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
       } catch (err) {
-        console.warn(
+        this.logger.warn(
           `Failed to recalculate storage for location ${locationId}: ${err}`,
         );
       }
@@ -821,9 +1212,9 @@ export class LocationService {
         where: { id: locationId },
         data: {
           storage: {
-            capacity: capacityAmounts,
+            ...storage,
             stored: zeroedStored,
-            productionRates: storage.productionRates || {},
+            lastSettledAt: new Date().toISOString(),
           },
         },
       });
@@ -872,11 +1263,7 @@ export class LocationService {
       );
     }
 
-    const locationDef = await (
-      this.prisma as any
-    ).locationDefinition.findUnique({
-      where: { id: location.definitionId },
-    });
+    const locationDef = this.definitionCache.get('locationDefinition', location.definitionId);
     const locRules = (locationDef?.rules as LevelRules) || {};
     const locConfig = resolveLevelConfig(locRules, location.level);
 
@@ -906,7 +1293,7 @@ export class LocationService {
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(
+      this.logger.warn(
         `Failed to recalculate location meta for ${locationId}: ${err}`,
       );
     }
@@ -950,7 +1337,7 @@ export class LocationService {
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(
+      this.logger.warn(
         `Failed to recalculate location meta for ${locationId}: ${err}`,
       );
     }
@@ -958,165 +1345,241 @@ export class LocationService {
     return { success: true };
   }
 
-  private resolveResourceType(
-    resourceId: string,
-    currencyIds: Set<string>,
-  ): { outputType: string; outputRefId: string } {
-    if (currencyIds.has(resourceId)) {
-      return { outputType: "CURRENCY", outputRefId: resourceId };
-    }
-    return { outputType: "ITEM", outputRefId: resourceId };
-  }
-
-  private serializeLocation(
-    location: any,
-    buildingJobs: any[] = [],
-    currencyIds: Set<string> = new Set(),
-  ) {
-    const jobsByBuildingId = new Map<string, any>();
-    for (const job of buildingJobs) {
-      const jobData = job.data as any;
-      if (jobData?.buildingId) {
-        jobsByBuildingId.set(jobData.buildingId, job);
-      }
-    }
-
-    const storage = (location.storage as any) || {};
-    const storedMap: Record<string, number> = storage.stored || {};
-    const storageBalances = Object.entries(storedMap).map(([key, amount]) => {
-      const resolved = this.resolveResourceType(key, currencyIds);
-      return {
-        outputType: resolved.outputType,
-        outputRefId: resolved.outputRefId,
-        amount: Number(amount),
-      };
-    });
-
-    return {
-      id: location.id,
-      ownerUserId: location.ownerUserId,
-      definitionId: location.definitionId,
-      regionId: location.regionId,
-      name: location.definitionId || location.regionId || "Location",
-      region: location.regionId || "",
-      isUnique: location.isUnique,
-      level: location.level,
-      xp: location.xp.toString(),
-      threatLevel: location.threatLevel,
-      corruptionLevel: location.corruptionLevel,
-      enabled: location.enabled !== false,
-      lastCollectionTick: location.lastCollectionTick.toString(),
-      storage: {
-        capacity: storage.capacity || {},
-        stored: storage.stored || {},
-        productionRates: storage.productionRates || {},
-      },
-      lastAccruedTick: location.lastCollectionTick.toString(),
-      storageBalances,
-      buildings: (location.buildings ?? []).map((b: any) => {
-        const job = jobsByBuildingId.get(b.id);
-        const jobTimer = job?.timer as any;
-        const bState = (b.state as any) || {};
-        const bRules = (b.buildingDef?.rules as LevelRules) || {};
-        const bConfig = resolveLevelConfig(bRules, b.level);
-        const defTags: string[] = Array.isArray(b.buildingDef?.tags)
-          ? b.buildingDef.tags
-          : [];
-        const isEnabled = b.enabled !== false;
-        const status = job ? "building" : isEnabled ? "active" : "disabled";
-
-        let category = "GENERATOR";
-        if (defTags.includes("storage")) category = "STORAGE";
-        else if (defTags.includes("defense")) category = "DEFENSE";
-
-        const bProduction = resolveProductionRates(bConfig.production, b.level);
-        const primaryResource = Object.keys(bProduction)[0] || null;
-        const resolved = primaryResource
-          ? this.resolveResourceType(primaryResource, currencyIds)
-          : { outputType: null, outputRefId: null };
-        const rph = primaryResource ? bProduction[primaryResource] : 0;
-
-        const nextLevel = b.level + 1;
-        const nextConfig = resolveLevelConfig(bRules, nextLevel);
-        const nextCosts = resolveConstructionCosts(
-          nextConfig.constructionCost,
-          nextLevel,
-        );
-
-        return {
-          id: b.id,
-          buildingDefId: b.buildingDefId,
-          name: b.buildingDef.name,
-          category,
-          level: b.level,
-          isEnabled,
-          status,
-          jobId: job?.id ?? null,
-          jobStatus: job?.status ?? null,
-          startTick: jobTimer?.startTick ?? 0,
-          durationTicks: jobTimer?.durationTicks ?? 0,
-          jobData: job?.data ?? null,
-          outputType: resolved.outputType,
-          outputRefId: resolved.outputRefId,
-          resourcePerHour: String(rph),
-          maxLevel: bRules.maxLevel ?? 10,
-          upgradeCosts: nextCosts,
-          upgradeTimer: nextConfig.timer || null,
-          timer: bConfig.timer || null,
-          effects: bConfig.effects || {},
-          data: b.state || {},
-          rooms: (b.rooms ?? []).map((r: any) => {
-            const rRules = (r.roomDef?.rules as LevelRules) || {};
-            const rConfig = resolveLevelConfig(rRules, r.level);
-            const rStorage = resolveStorageCapacity(rConfig.storage, r.level);
-            const nextLevel = r.level + 1;
-            const nextConfig = resolveLevelConfig(rRules, nextLevel);
-            const nextCosts = resolveConstructionCosts(
-              nextConfig.constructionCost,
-              nextLevel,
-            );
-            return {
-              id: r.id,
-              roomDefId: r.roomDefId,
-              name: r.roomDef.name,
-              level: r.level,
-              enabled: r.enabled !== false,
-              maxLevel: rRules.maxLevel ?? 5,
-              storage: rStorage,
-              effects: rConfig.effects || {},
-              upgradeCosts: nextCosts,
-              timer: rConfig.timer || null,
-              state: r.state,
-            };
-          }),
-        };
-      }),
-      workers: (location.workerAssignments ?? []).map((w: any, i: number) => ({
-        id: w.id,
-        entityId: w.entityId,
-        slotIndex: i,
-        roleTag: w.roleTag,
-        bonus: w.bonus,
-      })),
-      createdAt: location.createdAt.toISOString(),
-      updatedAt: location.updatedAt.toISOString(),
-    };
-  }
-
   async toggleLocationEnabled(
     userId: string,
     locationId: string,
     enabled: boolean,
+    externalTx?: any,
   ) {
-    const location = await this.prisma.locationInstance.findFirst({
-      where: { id: locationId, ownerUserId: userId },
-    });
-    if (!location) throw new NotFoundException("Location not found");
-    await this.prisma.locationInstance.update({
-      where: { id: locationId },
-      data: { enabled },
-    });
-    return { id: locationId, enabled };
+    // getCurrentTick is a non-DB call; fetch it before entering the transaction.
+    const currentTickBig = BigInt(Math.floor(await this.tickService.getCurrentTick()));
+
+    const doWork = async (db: any) => {
+      const location = await (db as any).locationInstance.findFirst({
+        where: { id: locationId, ownerUserId: userId },
+      });
+      if (!location) throw new NotFoundException("Location not found");
+
+      await this.settlementService.settleLocationTx(db, locationId, userId, currentTickBig);
+
+      if (!enabled) {
+        const activeCount = await (db as any).locationInstance.count({
+          where: { ownerUserId: userId, enabled: true },
+        });
+        if (activeCount <= 1) {
+          throw new BadRequestException("Cannot disable your only active outpost");
+        }
+
+        // --- Unassign workers ---
+        const assignments = await (db as any).locationWorkerAssignment.findMany({
+          where: { locationId },
+          select: { entityId: true },
+        });
+        const workerEntityIds: string[] = assignments.map((a: any) => a.entityId);
+        await (db as any).locationWorkerAssignment.deleteMany({ where: { locationId } });
+
+        // --- Locate all jobs to cancel ---
+        const buildingAndCraftingJobs = await (db as any).job.findMany({
+          where: {
+            userId,
+            type: { in: ["BuildingJob", "CraftingJob"] },
+            status: { in: ["active", "ready_notified"] },
+            data: { path: ["locationId"], equals: locationId },
+          },
+          select: { id: true, team: true },
+        });
+
+        const allActiveMissionJobs = workerEntityIds.length > 0
+          ? await (db as any).job.findMany({
+              where: {
+                userId,
+                type: "MissionJob",
+                status: { in: ["active", "ready_notified"] },
+              },
+              select: { id: true, team: true },
+            })
+          : [];
+        const affectedMissionJobs = (allActiveMissionJobs as any[]).filter((j: any) => {
+          const team: string[] = Array.isArray(j.team) ? j.team : [];
+          return workerEntityIds.some((eid) => team.includes(eid));
+        });
+
+        const allCancelledJobs = [...buildingAndCraftingJobs, ...affectedMissionJobs];
+        const allCancelledJobIds: string[] = allCancelledJobs.map((j: any) => j.id);
+
+        // --- Collect all team entity IDs across every cancelled job plus worker IDs ---
+        const allEntityIdsToIdle = new Set<string>(workerEntityIds);
+        for (const job of allCancelledJobs) {
+          const team: string[] = Array.isArray(job.team) ? job.team : [];
+          for (const eid of team) allEntityIdsToIdle.add(eid);
+        }
+
+        // --- Set all affected entities to idle ---
+        for (const entityId of allEntityIdsToIdle) {
+          const entity = await (db as any).entity.findUnique({
+            where: { id: entityId },
+            select: { state: true },
+          });
+          if (entity) {
+            const entityState = (entity.state as any) || {};
+            await (db as any).entity.update({
+              where: { id: entityId },
+              data: { state: { ...entityState, status: "idle" } },
+            });
+          }
+        }
+
+        // --- Cancel jobs and archive their job_ready notifications ---
+        if (allCancelledJobIds.length > 0) {
+          await (db as any).job.updateMany({
+            where: { id: { in: allCancelledJobIds } },
+            data: { status: "cancelled" },
+          });
+
+          const staleNotifs = await (db as any).notification.findMany({
+            where: {
+              userId,
+              sourceType: { in: ["job", "job_ready"] },
+              sourceId: { in: allCancelledJobIds },
+              archivedAt: null,
+            },
+            select: { id: true },
+          });
+          if (staleNotifs.length > 0) {
+            const now = new Date();
+            await (db as any).notification.updateMany({
+              where: { id: { in: staleNotifs.map((n: any) => n.id) } },
+              data: { archivedAt: now, dismissedAt: now, readAt: now },
+            });
+          }
+        }
+
+        // --- Clear primary outpost if it pointed here ---
+        await (db as any).user.updateMany({
+          where: { id: userId, primaryLocationId: locationId },
+          data: { primaryLocationId: null },
+        });
+      }
+
+      await (db as any).locationInstance.update({
+        where: { id: locationId },
+        data: { enabled },
+      });
+
+      return { id: locationId, enabled };
+    };
+
+    return externalTx ? doWork(externalTx) : this.prisma.$transaction((tx) => doWork(tx));
+  }
+
+  async swapOutposts(
+    userId: string,
+    disableLocationId: string,
+    enableLocationId: string,
+    externalTx?: any,
+  ): Promise<void> {
+    const currentTickBig = BigInt(Math.floor(await this.tickService.getCurrentTick()));
+
+    const doWork = async (db: any) => {
+      await this.settlementService.settleLocationTx(db, disableLocationId, userId, currentTickBig);
+
+      const assignments = await (db as any).locationWorkerAssignment.findMany({
+        where: { locationId: disableLocationId },
+        select: { entityId: true },
+      });
+      const workerEntityIds: string[] = assignments.map((a: any) => a.entityId);
+      await (db as any).locationWorkerAssignment.deleteMany({ where: { locationId: disableLocationId } });
+
+      const buildingAndCraftingJobs = await (db as any).job.findMany({
+        where: {
+          userId,
+          type: { in: ['BuildingJob', 'CraftingJob'] },
+          status: { in: ['active', 'ready_notified'] },
+          data: { path: ['locationId'], equals: disableLocationId },
+        },
+        select: { id: true, team: true },
+      });
+
+      const allActiveMissionJobs = workerEntityIds.length > 0
+        ? await (db as any).job.findMany({
+            where: {
+              userId,
+              type: 'MissionJob',
+              status: { in: ['active', 'ready_notified'] },
+            },
+            select: { id: true, team: true },
+          })
+        : [];
+      const affectedMissionJobs = (allActiveMissionJobs as any[]).filter((j: any) => {
+        const team: string[] = Array.isArray(j.team) ? j.team : [];
+        return workerEntityIds.some((eid) => team.includes(eid));
+      });
+
+      const allCancelledJobs = [...buildingAndCraftingJobs, ...affectedMissionJobs];
+      const allCancelledJobIds: string[] = allCancelledJobs.map((j: any) => j.id);
+
+      const allEntityIdsToIdle = new Set<string>(workerEntityIds);
+      for (const job of allCancelledJobs) {
+        const team: string[] = Array.isArray(job.team) ? job.team : [];
+        for (const eid of team) allEntityIdsToIdle.add(eid);
+      }
+
+      for (const entityId of allEntityIdsToIdle) {
+        const entity = await (db as any).entity.findUnique({
+          where: { id: entityId },
+          select: { state: true },
+        });
+        if (entity) {
+          const entityState = (entity.state as any) || {};
+          await (db as any).entity.update({
+            where: { id: entityId },
+            data: { state: { ...entityState, status: 'idle' } },
+          });
+        }
+      }
+
+      if (allCancelledJobIds.length > 0) {
+        await (db as any).job.updateMany({
+          where: { id: { in: allCancelledJobIds } },
+          data: { status: 'cancelled' },
+        });
+
+        const staleNotifs = await (db as any).notification.findMany({
+          where: {
+            userId,
+            sourceType: { in: ['job', 'job_ready'] },
+            sourceId: { in: allCancelledJobIds },
+            archivedAt: null,
+          },
+          select: { id: true },
+        });
+        if (staleNotifs.length > 0) {
+          const now = new Date();
+          await (db as any).notification.updateMany({
+            where: { id: { in: staleNotifs.map((n: any) => n.id) } },
+            data: { archivedAt: now, dismissedAt: now, readAt: now },
+          });
+        }
+      }
+
+      await (db as any).user.updateMany({
+        where: { id: userId, primaryLocationId: disableLocationId },
+        data: { primaryLocationId: null },
+      });
+
+      await (db as any).locationInstance.update({
+        where: { id: disableLocationId },
+        data: { enabled: false },
+      });
+
+      await this.settlementService.settleLocationTx(db, enableLocationId, userId, currentTickBig);
+      await (db as any).locationInstance.update({
+        where: { id: enableLocationId },
+        data: { enabled: true },
+      });
+    };
+
+    return externalTx ? doWork(externalTx) : this.prisma.$transaction((tx) => doWork(tx));
   }
 
   async toggleBuildingEnabled(
@@ -1129,14 +1592,21 @@ export class LocationService {
       where: { id: buildingId, locationId, location: { ownerUserId: userId } },
     });
     if (!building) throw new NotFoundException("Building not found");
-    await this.prisma.locationBuildingInstance.update({
-      where: { id: buildingId },
-      data: { enabled },
+
+    const currentTickBig = BigInt(Math.floor(await this.tickService.getCurrentTick()));
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.settlementService.settleLocationTx(tx, locationId, userId, currentTickBig);
+      await (tx as any).locationBuildingInstance.update({
+        where: { id: buildingId },
+        data: { enabled },
+      });
     });
+
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(
+      this.logger.warn(
         `Failed to recalculate location meta for ${locationId}: ${err}`,
       );
     }
@@ -1156,14 +1626,21 @@ export class LocationService {
       },
     });
     if (!room) throw new NotFoundException("Room not found");
-    await (this.prisma as any).locationRoomInstance.update({
-      where: { id: roomId },
-      data: { enabled },
+
+    const currentTickBig = BigInt(Math.floor(await this.tickService.getCurrentTick()));
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.settlementService.settleLocationTx(tx, locationId, userId, currentTickBig);
+      await (tx as any).locationRoomInstance.update({
+        where: { id: roomId },
+        data: { enabled },
+      });
     });
+
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(
+      this.logger.warn(
         `Failed to recalculate location meta for ${locationId}: ${err}`,
       );
     }

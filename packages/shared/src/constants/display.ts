@@ -126,12 +126,13 @@ export interface NotificationCategoryDisplay {
 }
 
 export const NOTIFICATION_CATEGORY_DISPLAY: Record<string, NotificationCategoryDisplay> = {
-  missions:  { icon: '⚔️' },
-  crafting:  { icon: '🔮' },
-  locations: { icon: '🏰' },
-  boost:     { icon: '⚡' },
-  gift:      { icon: '🎁' },
-  system:    { icon: '🔔' },
+  missions:    { icon: '⚔️' },
+  crafting:    { icon: '🔮' },
+  locations:   { icon: '🏰' },
+  boost:       { icon: '⚡' },
+  gift:        { icon: '🎁' },
+  progression: { icon: '⭐' },
+  system:      { icon: '🔔' },
 };
 
 export const NOTIFICATION_PRIORITY_COLORS: Record<string, string> = {
@@ -153,6 +154,7 @@ export const BUILDING_CATEGORY_DISPLAY: Record<string, BuildingCategoryDisplay> 
   GENERATOR: { icon: '⚡' },
   DEFENSE:   { icon: '🛡️' },
   STORAGE:   { icon: '📦' },
+  WORKSHOP:  { icon: '⚒️' },
   default:   { icon: '🏗️' },
 };
 

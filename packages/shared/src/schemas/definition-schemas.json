@@ -18,7 +18,6 @@
     "ItemType": {
       "values": [
         "MATERIAL",
-        "POTION",
         "CONSUMABLE",
         "GEAR",
         "QUEST",
@@ -31,15 +30,14 @@
       "values": [
         "COMMON",
         "UNCOMMON",
-        "SCARCE",
-        "ADVANCED",
+        "SCARE",
         "RARE",
-        "ULTRA_RARE",
         "EPIC",
         "MYTHIC",
-        "LEGENDARY"
+        "LEGENDARY",
+        "UNIQUE"
       ],
-      "description": "Rarity tiers in ascending order"
+      "description": "Rarity tiers in ascending order: common | uncommon | scare | rare | epic | mythic | legendary | unique"
     },
     "ItemCategory": {
       "values": [
@@ -132,6 +130,7 @@
         "currency",
         "item",
         "entity",
+        "lootTable",
         "bundle"
       ],
       "description": "Types of rewards in gift definitions"
@@ -157,9 +156,10 @@
         "SPD",
         "FOC",
         "LCK",
-        "VIT"
+        "VIT",
+        "RND"
       ],
-      "description": "Entity stat types"
+      "description": "Entity stat types. ATK/DEF/SPD/FOC/LCK/VIT are the 6 visible stats stored on entities. RND is a hidden resolution directive: when authored in a definition (trait slotStats, effect stats, or scaling weights), RND is resolved to a randomly chosen visible stat at the moment the definition is applied. RND is never stored as a base entity stat, never shown in any UI, and never contributes to PowerScore or Mission Power."
     },
     "Archetypes": {
       "values": [
@@ -214,7 +214,7 @@
         "CRAFT_AGAIN",
         "API_CALL"
       ],
-      "description": "Discriminant values for ModalAction — determines which fields are present on the action object"
+      "description": "Discriminant values for ModalAction \u2014 determines which fields are present on the action object"
     },
     "ModalBlockType": {
       "values": [
@@ -230,7 +230,7 @@
         "giftReveal",
         "error"
       ],
-      "description": "Discriminant values for ModalBlock — determines the block renderer and its fields"
+      "description": "Discriminant values for ModalBlock \u2014 determines the block renderer and its fields"
     },
     "ButtonVariant": {
       "values": [
@@ -290,6 +290,104 @@
         "monthly"
       ],
       "description": "How often a check-in window opens"
+    },
+    "EffectCategory": {
+      "values": [
+        "stat_boost",
+        "mission_power",
+        "success_chance",
+        "reward_multiplier",
+        "xp_multiplier",
+        "keeper_xp_multiplier",
+        "production_rate",
+        "storage_capacity",
+        "timer_speed",
+        "trait_grant",
+        "currency_multiplier",
+        "cost_discount",
+        "slot_unlock",
+        "protection",
+        "reveal",
+        "threat_reduction",
+        "craft_luck",
+        "worker_efficiency",
+        "cooldown_reduction",
+        "level_up_bonus"
+      ],
+      "description": "What game mechanic the effect modifies (20 categories)"
+    },
+    "EffectValueMode": {
+      "values": [
+        "flat_add",
+        "percent_add",
+        "multiplier",
+        "flat_set",
+        "bps",
+        "flat_grant",
+        "random_range"
+      ],
+      "description": "How the effect value is applied to the base value"
+    },
+    "EffectDurationModel": {
+      "values": [
+        "instant",
+        "timed",
+        "tick_based",
+        "count_based",
+        "session",
+        "permanent",
+        "until_removed"
+      ],
+      "description": "How the effect expires"
+    },
+    "EffectStackingRule": {
+      "values": [
+        "replace",
+        "refresh",
+        "stack_additive",
+        "stack_multiplicative",
+        "stack_capped",
+        "no_stack"
+      ],
+      "description": "Behavior when the same EffectDef is applied again to the same target"
+    },
+    "EffectTargetType": {
+      "values": [
+        "entity",
+        "player",
+        "location",
+        "team",
+        "job",
+        "global"
+      ],
+      "description": "What the effect targets"
+    },
+    "EffectSourceType": {
+      "values": [
+        "consumable",
+        "equipment",
+        "trait",
+        "building",
+        "room",
+        "mission_reward",
+        "season_event",
+        "admin",
+        "quest_reward",
+        "checkin",
+        "shop",
+        "flag",
+        "ascension"
+      ],
+      "description": "Where the effect originated from"
+    },
+    "AudioBus": {
+      "values": [
+        "music",
+        "sfx",
+        "ui",
+        "ambient"
+      ],
+      "description": "The audio mixing bus that a sound definition belongs to. Controls which volume slider governs the sound."
     }
   },
   "complexTypes": {
@@ -317,16 +415,19 @@
           "description": "How skip cost scales"
         },
         "skip_cost": {
-          "type": "CostObject",
-          "default": {},
-          "description": "Cost to skip (only if skipable=true)"
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/CostEntry"
+          },
+          "default": [],
+          "description": "Cost entries to skip (only if skipable=true)"
         }
       },
       "defaults": {
         "duration": 0,
         "boostable": true,
         "skipable": false,
-        "skip_cost": {},
+        "skip_cost": [],
         "skip_type": "absolute"
       }
     },
@@ -491,11 +592,17 @@
             },
             "idempotencyKey": {
               "type": "string",
-              "description": "Optional dedup key"
+              "description": "Optional dedup key. Supports ${jobId} interpolation."
             },
             "payload": {
               "type": "object",
-              "description": "Key-value payload for the event handler"
+              "description": "Payload forwarded to the event handler. For createGiftForPlayer events, must include gift \u2014 either { giftDefId } (reference to an existing GiftDef row) or a fully-inline InlineGiftDef ({ name, instant?, rewardSpec, ... }).",
+              "properties": {
+                "gift": {
+                  "$ref": "#/complexTypes/GiftSpec",
+                  "description": "Gift to issue to the player. Either { giftDefId } or an inline InlineGiftDef. Required for createGiftForPlayer handler events."
+                }
+              }
             }
           }
         }
@@ -507,9 +614,19 @@
         "bundle": {
           "type": "array",
           "items": {
-            "$ref": "#/complexTypes/RewardEntry"
+            "oneOf": [
+              {
+                "$ref": "#/complexTypes/RewardEntry"
+              },
+              {
+                "$ref": "#/complexTypes/BundleEntry"
+              },
+              {
+                "$ref": "#/complexTypes/BundleRefEntry"
+              }
+            ]
           },
-          "description": "Nested reward entries"
+          "description": "Nested reward entries (may include nested bundles and bundle_refs)"
         },
         "odds": {
           "type": "number",
@@ -517,10 +634,57 @@
           "max": 100,
           "description": "Percentage chance the entire bundle triggers"
         },
+        "pickMin": {
+          "type": "integer",
+          "min": 0,
+          "description": "Pick mode: minimum number of entries to select from the bundle (uses entry odds as weights)"
+        },
+        "pickMax": {
+          "type": "integer",
+          "min": 0,
+          "description": "Pick mode: maximum number of entries to select from the bundle (uses entry odds as weights)"
+        },
         "requirements": {
           "type": "Requirements",
           "default": [],
           "description": "Conditions for this bundle"
+        }
+      }
+    },
+    "BundleRefEntry": {
+      "description": "A reference to a saved BundleDef. At resolution time the server inlines the referenced bundle's contents and applies any inline overrides. Behaves exactly like an inline bundle whose entries came from the BundleDef.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "bundle_ref",
+          "required": true,
+          "description": "Discriminator \u2014 must be the literal string 'bundle_ref'"
+        },
+        "bundleDefId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the referenced BundleDef. Missing or disabled refs resolve to nothing (logged warning)."
+        },
+        "odds": {
+          "type": "number",
+          "min": 0,
+          "max": 100,
+          "description": "Override the BundleDef's default odds for this usage. If omitted, uses the def's odds (or 100)."
+        },
+        "pickMin": {
+          "type": "integer",
+          "min": 0,
+          "description": "Override the BundleDef's default pickMin for this usage. If omitted, uses the def's pickMin."
+        },
+        "pickMax": {
+          "type": "integer",
+          "min": 0,
+          "description": "Override the BundleDef's default pickMax for this usage. If omitted, uses the def's pickMax."
+        },
+        "requirements": {
+          "type": "Requirements",
+          "default": [],
+          "description": "Conditions gating this reference (evaluated before expansion)"
         }
       }
     },
@@ -536,18 +700,99 @@
               },
               {
                 "$ref": "#/complexTypes/BundleEntry"
+              },
+              {
+                "$ref": "#/complexTypes/BundleRefEntry"
               }
             ]
           },
-          "description": "Array of reward entries and/or bundles"
+          "description": "Array of reward entries, bundles, and/or bundle_refs"
         }
       },
       "defaults": {
         "rewards": []
       }
     },
+    "OutcomeTiers": {
+      "description": "Per-tier outcome blocks used on MissionDef and RecipeDef. Each key maps to a tier block containing a rewards array. The 'failure' tier fires when the mission fails or the crafting pass/fail gate fails. The seven success tiers (common through legendary) are selected via a Gaussian bell curve centred on the entity's effective CL (crafting luck) or mission power. Optional top-level 'sigma' (default 22) controls the spread of the bell curve.",
+      "type": "object",
+      "properties": {
+        "sigma": {
+          "type": "number",
+          "default": 22,
+          "description": "Optional Gaussian spread override. Default is 22."
+        },
+        "failure": {
+          "type": "object",
+          "description": "Tier block fired when the mission fails or the crafting pass/fail gate fails.",
+          "properties": {
+            "rewards": {
+              "type": "array",
+              "description": "Outcome entries (same shape as OutcomeBlock.rewards)"
+            }
+          }
+        },
+        "common": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 15.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "uncommon": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 45.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "scare": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 75.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "rare": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 105.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "epic": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 135.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "mythic": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 165.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "legendary": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 195.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        }
+      },
+      "defaults": {}
+    },
     "CostObject": {
-      "description": "Map of resource ID to amount. Used for crafting costs and skip costs.",
+      "description": "DEPRECATED \u2014 Legacy map format. All costs now use the CostEntry array format [{type, id, amount}]. Kept for reference only.",
       "type": "object",
       "additionalProperties": {
         "type": "number",
@@ -614,6 +859,199 @@
         "baseCapacity": {
           "type": "number",
           "description": "Base storage capacity"
+        }
+      }
+    },
+    "ShopCostEntry": {
+      "description": "A cost or original-cost entry for a ShopItemDef. Requires both an id and an amount.",
+      "properties": {
+        "type": {
+          "type": "enum",
+          "enum": ["currency", "item"],
+          "description": "Resource type — 'currency' deducts a currency balance, 'item' removes inventory items"
+        },
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Currency ID or ItemDefinition ID"
+        },
+        "amount": {
+          "type": "number",
+          "required": true,
+          "description": "Quantity to deduct"
+        }
+      }
+    },
+    "ShopContentEntry": {
+      "description": "A content entry granted to the player on a successful ShopItemDef purchase. The 'outpost_slots' type has no id.",
+      "variants": {
+        "currency": {
+          "description": "Credits a currency balance",
+          "properties": {
+            "type": { "type": "string", "const": "currency" },
+            "id": { "type": "string", "required": true, "description": "Currency ID" },
+            "amount": { "type": "number", "required": true, "description": "Amount to credit" }
+          }
+        },
+        "item": {
+          "description": "Adds items to the player inventory",
+          "properties": {
+            "type": { "type": "string", "const": "item" },
+            "id": { "type": "string", "required": true, "description": "ItemDefinition ID" },
+            "amount": { "type": "number", "required": true, "description": "Quantity to add" }
+          }
+        },
+        "outpost_slots": {
+          "description": "Grants unlock keys for location slots — no id needed. Grants up to `amount` location_slot.N keys not already owned.",
+          "properties": {
+            "type": { "type": "string", "const": "outpost_slots" },
+            "amount": { "type": "number", "required": true, "description": "Number of extra outpost slots to unlock" }
+          }
+        }
+      }
+    },
+    "DisplayButtonStateStyle": {
+      "description": "Per-state visual overrides for an inline mission button. All fields are optional; omitting a field falls back to the hardcoded default.",
+      "properties": {
+        "background": {
+          "type": "string",
+          "description": "CSS background value \u2014 plain colour or full gradient, e.g. 'linear-gradient(135deg, #3b1fa8, #6d28d9)'"
+        },
+        "color": {
+          "type": "string",
+          "description": "CSS text colour, e.g. '#ffffff'"
+        },
+        "borderColor": {
+          "type": "string",
+          "description": "CSS border colour, e.g. 'rgba(167,139,250,0.55)'"
+        }
+      }
+    },
+    "DisplayInlineButtonsStyle": {
+      "description": "Placement and per-state styling for inline mission buttons shown on a Mission Category card.",
+      "properties": {
+        "placement": {
+          "type": "string",
+          "enum": [
+            "inline",
+            "bottom"
+          ],
+          "default": "inline",
+          "description": "'inline' (default) \u2014 buttons sit beside the card content; 'bottom' \u2014 buttons are pushed to the card's bottom edge via flex layout"
+        },
+        "normal": {
+          "$ref": "#/complexTypes/DisplayButtonStateStyle",
+          "description": "Style when the player can afford the mission"
+        },
+        "requirementsNotMet": {
+          "$ref": "#/complexTypes/DisplayButtonStateStyle",
+          "description": "Style when the player cannot afford the mission (cost not met)"
+        },
+        "disabled": {
+          "$ref": "#/complexTypes/DisplayButtonStateStyle",
+          "description": "Style when the button is explicitly disabled"
+        }
+      }
+    },
+    "DisplayStyle": {
+      "description": "Visual style overrides stored on a DisplayDef. All sub-objects are optional; missing keys use runtime defaults. The `data._mode` key is a UI-only hint stored by the admin editor (never read by the game engine).",
+      "properties": {
+        "overlay": {
+          "description": "Colour overlay rendered on top of the background image",
+          "properties": {
+            "color": {
+              "type": "string",
+              "description": "Solid overlay colour, e.g. '#0F0A28'"
+            },
+            "opacity": {
+              "type": "number",
+              "min": 0,
+              "max": 1,
+              "description": "Overlay opacity (0\u20131)"
+            },
+            "gradient": {
+              "type": "string",
+              "description": "Raw CSS gradient \u2014 overrides color+opacity when set"
+            }
+          }
+        },
+        "background": {
+          "description": "Background image layout",
+          "properties": {
+            "position": {
+              "type": "string",
+              "description": "CSS background-position"
+            },
+            "size": {
+              "type": "string",
+              "description": "CSS background-size"
+            },
+            "repeat": {
+              "type": "string",
+              "description": "CSS background-repeat"
+            },
+            "attachment": {
+              "type": "string",
+              "description": "CSS background-attachment"
+            }
+          }
+        },
+        "title": {
+          "description": "Card heading / hero title font overrides",
+          "properties": {
+            "fontFamily": {
+              "type": "string"
+            },
+            "fontWeight": {
+              "type": "string"
+            },
+            "fontSize": {
+              "type": "string"
+            },
+            "color": {
+              "type": "string"
+            },
+            "letterSpacing": {
+              "type": "string"
+            },
+            "textTransform": {
+              "type": "string"
+            },
+            "textShadow": {
+              "type": "string"
+            },
+            "lineHeight": {
+              "type": "string"
+            }
+          }
+        },
+        "body": {
+          "description": "Body / inline text font overrides (everything else inside the card)",
+          "properties": {
+            "fontFamily": {
+              "type": "string"
+            },
+            "fontWeight": {
+              "type": "string"
+            },
+            "fontSize": {
+              "type": "string"
+            },
+            "color": {
+              "type": "string"
+            },
+            "lineHeight": {
+              "type": "string"
+            }
+          }
+        },
+        "inlineButtons": {
+          "$ref": "#/complexTypes/DisplayInlineButtonsStyle",
+          "description": "Inline mission button layout and per-state styling (Mission Category cards only)"
+        },
+        "data": {
+          "type": "object",
+          "description": "Admin-editor UI hints. Currently used keys: `_mode` (string) \u2014 the selected editing context ('missionCategory' | 'mission' | 'generic'). Ignored by the game engine."
         }
       }
     },
@@ -715,6 +1153,31 @@
           "type": "number",
           "description": "XP scaling rate"
         },
+        "xpDepositCosts": {
+          "type": "array",
+          "description": "Cost options players may pick from when depositing XP into an instance (LocationDefinition only). Each option spends `amount` of `id` per click and grants `xpPerCharge` XP. Defaults to [{ type:'currency', id:'hard_essence', amount:1, xpPerCharge:1 }] when omitted.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "enum",
+                "enum": [
+                  "currency",
+                  "item"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "number"
+              },
+              "xpPerCharge": {
+                "type": "number"
+              }
+            }
+          }
+        },
         "level": {
           "type": "object",
           "description": "Map of level number (string key) to LevelBlock. Sparse entries inherit downward.",
@@ -762,27 +1225,6 @@
           "keys": {
             "enum": "Stats"
           }
-        }
-      }
-    },
-    "ConsumableData": {
-      "description": "Consumable behavior configuration",
-      "properties": {
-        "effect": {
-          "type": "string",
-          "description": "Effect type (e.g. heal, speed_boost)"
-        },
-        "amount": {
-          "type": "number",
-          "description": "Effect magnitude"
-        },
-        "duration": {
-          "type": "number",
-          "description": "Duration in seconds (0 = instant)"
-        },
-        "multiplier": {
-          "type": "number",
-          "description": "Effect multiplier"
         }
       }
     },
@@ -891,7 +1333,7 @@
       }
     },
     "GiftRewardSpec": {
-      "description": "Reward specification for gifts. Structure varies by type.",
+      "description": "Reward specification for gifts. Structure varies by type. String values in the spec support ${path.to.value} token syntax and ${random(\"a\",\"b\",\"c\")} scripting, resolved against snapshotted contextData at claim time.",
       "commonProperties": {
         "type": {
           "type": "enum",
@@ -926,9 +1368,53 @@
         },
         "entity": {
           "properties": {
-            "entityDefId": {
+            "definitionId": {
               "type": "string",
-              "description": "Entity definition ID (ref: EntityDefinition)"
+              "description": "Entity definition ID (ref: EntityDefinition). Supports ${path} token syntax."
+            },
+            "overrides": {
+              "type": "object",
+              "nullable": true,
+              "description": "Optional overrides applied to the created entity",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Override the entity's display name. Supports ${path} tokens and ${random(...)}."
+                },
+                "level": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "Override the entity's starting level"
+                },
+                "stats": {
+                  "type": "object",
+                  "nullable": true,
+                  "description": "Override individual stat values (e.g. { \"ATK\": 20, \"DEF\": 15 })"
+                },
+                "traits": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "nullable": true,
+                  "description": "Override the entity's trait list"
+                }
+              }
+            }
+          }
+        },
+        "lootTable": {
+          "description": "Grants a lootbox item to the player's inventory",
+          "properties": {
+            "lootboxDefId": {
+              "type": "string",
+              "description": "Lootbox definition ID (ref: LootboxDef)"
+            },
+            "qty": {
+              "type": "number",
+              "default": 1,
+              "description": "Number of lootbox items to grant"
             }
           }
         },
@@ -1327,7 +1813,7 @@
       }
     },
     "ModalBlock": {
-      "description": "A single content block rendered in the modal body. Discriminated by the 'type' field.",
+      "description": "A single content block rendered in the modal body. Discriminated by the 'type' field. Every block type supports an optional 'from' string property \u2014 a dot-path into the server context that auto-populates the block's data fields (e.g. 'results.rewards'). The 'from' field is stripped before the block is sent to the client. All string fields support ${path.to.value} token resolution against the modal context.",
       "variants": {
         "richText": {
           "description": "Formatted rich text content",
@@ -1339,6 +1825,11 @@
             "doc": {
               "$ref": "#/complexTypes/RichTextDoc",
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. String \u2192 wraps as single paragraph. RichTextDoc array \u2192 used as doc."
             }
           }
         },
@@ -1348,6 +1839,11 @@
             "type": {
               "type": "string",
               "const": "divider"
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context (not typically used for divider)."
             }
           }
         },
@@ -1365,6 +1861,11 @@
             "caption": {
               "type": "string",
               "nullable": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Object \u2192 extracts assetKey/alt/caption. String \u2192 used as assetKey."
             }
           }
         },
@@ -1391,6 +1892,11 @@
                 }
               },
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Array \u2192 used as rows. Object \u2192 entries converted to {label: key, value: String(val)}."
             }
           }
         },
@@ -1409,6 +1915,11 @@
             "label": {
               "type": "string",
               "nullable": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. String \u2192 used as endsAt. Object \u2192 extracts {endsAt, label?}."
             }
           }
         },
@@ -1430,6 +1941,11 @@
             "max": {
               "type": "number",
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Object \u2192 extracts {current, max, label?}."
             }
           }
         },
@@ -1446,6 +1962,11 @@
                 "$ref": "#/complexTypes/RewardItem"
               },
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Array \u2192 each entry mapped via mapRewardItem to populate items."
             }
           }
         },
@@ -1466,6 +1987,11 @@
                 "$ref": "#/complexTypes/RewardItem"
               },
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Array \u2192 each entry mapped via mapRewardItem to populate items."
             }
           }
         },
@@ -1497,6 +2023,11 @@
                 }
               },
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Array \u2192 each entry extracts {name, qtyDelta, assetKey?}."
             }
           }
         },
@@ -1531,6 +2062,11 @@
                 "$ref": "#/complexTypes/RewardItem"
               },
               "nullable": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Object with gift key \u2192 merges into gift field and maps rewards. Object with giftId/title \u2192 merges directly."
             }
           }
         },
@@ -1544,6 +2080,11 @@
             "message": {
               "type": "string",
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. String \u2192 used as message. Object \u2192 extracts message field."
             }
           }
         }
@@ -1573,7 +2114,7 @@
       }
     },
     "ModalSpecV1": {
-      "description": "Server-authoritative modal specification (version 1). The backend constructs this object; the frontend renders it declaratively via GameModal. Used for mission results, gift reveals, crafting completion, notifications, and any other game event that requires a rich popup.",
+      "description": "Server-authoritative modal specification (version 1). The backend constructs this object; the frontend renders it declaratively via GameModal. Used for mission results, gift reveals, crafting completion, notifications, and any other game event that requires a rich popup. When used as a ModalDef spec overlay, all string fields support ${path.to.value} token resolution against the server context. The optional 'replaceBody' boolean controls whether the spec body replaces (true) or prepends to (false, default) the server-generated body.",
       "properties": {
         "version": {
           "type": "number",
@@ -1603,7 +2144,7 @@
             "x": {
               "type": "boolean",
               "default": true,
-              "description": "Show close (×) button"
+              "description": "Show close (\u00d7) button"
             },
             "escape": {
               "type": "boolean",
@@ -1630,11 +2171,80 @@
             "$ref": "#/complexTypes/ModalButton"
           },
           "default": [],
-          "description": "Action buttons rendered at the bottom of the modal (typically 1–2)"
+          "description": "Action buttons rendered at the bottom of the modal (typically 1\u20132)"
+        },
+        "replaceBody": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true in a ModalDef spec overlay, the spec body replaces the server-generated body entirely. When false (default), the spec body is prepended before the server body."
         },
         "telemetry": {
           "$ref": "#/complexTypes/ModalTelemetry",
           "nullable": true
+        }
+      }
+    },
+    "EntityResult": {
+      "type": "object",
+      "description": "Per-entity outcome recorded in job results after mission completion. Present in results.entityResults[] on MissionJob jobs.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Entity UUID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Entity display name"
+        },
+        "oldLevel": {
+          "type": "number",
+          "description": "Level before XP was applied"
+        },
+        "newLevel": {
+          "type": "number",
+          "description": "Level after XP was applied"
+        },
+        "xpGained": {
+          "type": "number",
+          "description": "Amount of XP gained"
+        },
+        "leveledUp": {
+          "type": "boolean",
+          "description": "true if newLevel > oldLevel"
+        },
+        "injured": {
+          "type": "boolean",
+          "description": "Reserved for future injury system (always false)"
+        }
+      }
+    },
+    "TeamEntitySnapshot": {
+      "type": "object",
+      "description": "Entity snapshot included in the JobContext team array for modal template resolution. Fetched at modal-build time from the database.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Entity UUID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Entity display name (display.name || speciesId)"
+        },
+        "level": {
+          "type": "number",
+          "description": "Current entity level"
+        },
+        "xp": {
+          "type": "number",
+          "description": "Current XP within level"
+        },
+        "stats": {
+          "type": "object",
+          "description": "Entity stats object (ATK, DEF, SPD, FOC, LCK, VIT)"
+        },
+        "traits": {
+          "type": "object",
+          "description": "Entity traits object (slot \u2192 archetype map)"
         }
       }
     },
@@ -1652,43 +2262,236 @@
         }
       }
     },
+    "InlineGiftDef": {
+      "type": "object",
+      "description": "An inline gift definition authored directly on a definition object. Use this when the gift is specific to one source and does not need its own GiftDef row.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Admin-facing display name for the inline gift"
+        },
+        "presentation": {
+          "$ref": "#/complexTypes/GiftPresentation",
+          "default": {},
+          "description": "Visual properties (iconKey, title, subtitle, animationKey, accentColor)"
+        },
+        "claimRules": {
+          "$ref": "#/complexTypes/GiftClaimRules",
+          "default": {},
+          "description": "Claiming behavior (limitPerPlayer, expiresInSeconds)"
+        },
+        "rewardSpec": {
+          "$ref": "#/complexTypes/GiftRewardSpec",
+          "default": [],
+          "description": "Reward entries granted on claim"
+        },
+        "instant": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, rewards are delivered immediately. If false, a GIFT_PACKAGE item is created."
+        },
+        "modalDefId": {
+          "type": "string",
+          "description": "Optional ModalDef ID to show when the gift is opened"
+        }
+      }
+    },
+    "GiftSpec": {
+      "description": "A union type for specifying a gift on a definition object. Either a reference to an existing GiftDef row, or a fully-inline gift definition.",
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Reference to an existing GiftDef by ID",
+          "properties": {
+            "giftDefId": {
+              "type": "string",
+              "required": true,
+              "description": "ID of the GiftDef row to use"
+            }
+          }
+        },
+        {
+          "$ref": "#/complexTypes/InlineGiftDef",
+          "description": "Fully-inline gift definition \u2014 no GiftDef row required"
+        }
+      ]
+    },
     "CheckInDayReward": {
       "type": "object",
       "description": "A reward entry for a specific check-in day",
       "properties": {
         "day": {
           "type": "integer",
-          "description": "0-indexed day in cycle (or 1-indexed — match to streak % cycleLength)"
+          "description": "0-indexed day in cycle (or 1-indexed \u2014 match to streak % cycleLength)"
         },
-        "giftDefId": {
-          "type": "string",
-          "description": "GiftDef to issue when this day is claimed"
+        "gift": {
+          "$ref": "#/complexTypes/GiftSpec",
+          "description": "The gift to issue when this day is claimed. Either { giftDefId } or an inline InlineGiftDef."
         }
       }
     },
     "QuestObjective": {
       "type": "object",
-      "description": "A single objective that must be completed as part of a quest",
+      "description": "A single objective that must be completed as part of a quest. Uses a unified RichSelection selector — including event-scope rules — to match telemetry events.",
+      "required": ["selector", "target"],
       "properties": {
-        "eventType": {
-          "type": "string",
-          "description": "PlayerEvent.eventType to match"
-        },
-        "key": {
-          "type": "string",
-          "description": "If set, also matches PlayerEvent.key. Null = any key"
+        "selector": {
+          "$ref": "#/complexTypes/RichSelection",
+          "description": "RichSelection tree evaluated against a SelectionContext that includes the live telemetry event (event.type, event.key, event.amount, event.data.<key>). All event matching and world-state filtering lives here."
         },
         "target": {
           "type": "number",
           "description": "Total amount needed to complete this objective"
         },
-        "description": {
+        "label": {
           "type": "string",
-          "description": "Human-readable objective text"
+          "description": "Human-readable objective text shown in the UI"
+        }
+      }
+    },
+    "ConsumableEffectSpec": {
+      "description": "A single effect entry in a consumable item's consumableData.effects array",
+      "properties": {
+        "effectDefId": {
+          "type": "string",
+          "required": true,
+          "description": "References an EffectDef id"
         },
-        "dataFilter": {
+        "targetType": {
+          "type": "enum",
+          "enum": "EffectTargetType",
+          "required": true,
+          "description": "What the effect targets when consumed"
+        }
+      }
+    },
+    "ConsumableData": {
+      "description": "Consumable behavior for items with type CONSUMABLE. References EffectDef records for the actual effects. Each effect carries its own targetType \u2014 there is no top-level targetType.",
+      "properties": {
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/ConsumableEffectSpec"
+          },
+          "required": true,
+          "description": "Array of effect specs applied when the item is consumed"
+        }
+      }
+    },
+    "DustingData": {
+      "description": "Dusting configuration for an ItemDefinition. When present, a Dust action appears on the item in inventory. The player consumes the item and receives randomised rewards via the job/outcome-tier pipeline.",
+      "properties": {
+        "instant": {
+          "type": "boolean",
+          "required": true,
+          "default": false,
+          "description": "If true, the job resolves in the same transaction with no timer. The command response includes instantRewards in meta."
+        },
+        "durationTicks": {
+          "type": "number",
+          "required": true,
+          "default": 60,
+          "description": "Base tick duration for the dusting job. Ignored when instant=true."
+        },
+        "quantityScaling": {
+          "type": "enum",
+          "enum": ["ALL_AT_ONCE", "LINEAR"],
+          "required": true,
+          "default": "ALL_AT_ONCE",
+          "description": "ALL_AT_ONCE: fixed duration regardless of quantity. LINEAR: durationTicks × quantity."
+        },
+        "difficulty": {
+          "type": "number",
+          "required": true,
+          "default": 0,
+          "description": "Pass/fail difficulty. 0 = always pass. Higher = harder. Uses rollPassFail(cl=0, difficulty)."
+        },
+        "tiers": {
           "type": "object",
-          "description": "Optional shallow key-value match against PlayerEvent.data (e.g. {outcome:\"success\"})"
+          "required": true,
+          "default": {},
+          "description": "Outcome tier blocks keyed by quality name. Supported keys: failure, common, uncommon, scare, rare, epic, mythic, legendary. Each block: { rewards: OutcomeEntry[], clRequirement?: number }."
+        },
+        "skipCost": {
+          "type": "object",
+          "required": false,
+          "nullable": true,
+          "description": "Optional instant-finish cost. When present, players can pay to mark the active dusting job ready immediately. Shape: { type: 'currency' | 'item', id: string, amount: number }. Only used when instant=false."
+        }
+      }
+    },
+    "PassiveEffectSpec": {
+      "description": "An inline passive effect entry used in the passiveEffects array on items. Resolved at query time from equipped items \u2014 does not create ActiveEffect records.",
+      "properties": {
+        "category": {
+          "type": "enum",
+          "enum": "EffectCategory",
+          "required": true,
+          "description": "Effect category"
+        },
+        "valueMode": {
+          "type": "enum",
+          "enum": "EffectValueMode",
+          "required": true,
+          "description": "How the value is applied"
+        },
+        "value": {
+          "type": "number",
+          "description": "Scalar value (used by most value modes)"
+        },
+        "stats": {
+          "$ref": "#/complexTypes/EffectStatMap",
+          "description": "Per-stat values (for stat_boost category)"
+        },
+        "trait": {
+          "type": "string",
+          "description": "Trait archetype name (for trait_grant category)"
+        }
+      }
+    },
+    "EffectStatMap": {
+      "description": "Per-stat modifier values. Keys are stat IDs (ATK/DEF/SPD/FOC/LCK/VIT), values are numbers. The special key RND may be a single number or an array of numbers \u2014 each element independently picks a random visible stat at resolution time and awards its full point value to it (the same stat may be chosen more than once by chance). RND is stripped from the resolved output and is never stored as an entity stat.",
+      "properties": {
+        "ATK": {
+          "type": "number",
+          "description": "Attack modifier"
+        },
+        "DEF": {
+          "type": "number",
+          "description": "Defense modifier"
+        },
+        "SPD": {
+          "type": "number",
+          "description": "Speed modifier"
+        },
+        "FOC": {
+          "type": "number",
+          "description": "Focus modifier"
+        },
+        "LCK": {
+          "type": "number",
+          "description": "Luck modifier"
+        },
+        "VIT": {
+          "type": "number",
+          "description": "Vitality modifier"
+        },
+        "RND": {
+          "oneOf": [
+            {
+              "type": "number",
+              "description": "Single random pick: one randomly chosen visible stat gains this many points"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "description": "Multiple independent random picks: each element picks its own random visible stat and awards its value. Same stat may be chosen more than once by chance."
+            }
+          ],
+          "description": "Random stat award(s). Each value independently picks a random visible stat at resolution time. Serialize as a plain number when only one entry exists (backwards compatible); serialize as an array when there are two or more entries."
         }
       }
     }
@@ -1754,7 +2557,7 @@
       }
     },
     "ItemDef": {
-      "description": "Item definitions with rarity, stacking, binding, equipment, consumable, and crafting metadata",
+      "description": "Item definitions with rarity, stacking, equipment, consumable, and passive effect metadata",
       "prismaModel": "ItemDefinition",
       "tableName": "item_defs",
       "primaryKey": "id",
@@ -1763,11 +2566,6 @@
           "type": "string",
           "required": true,
           "description": "Unique identifier"
-        },
-        "version": {
-          "type": "integer",
-          "default": 1,
-          "description": "Schema version"
         },
         "type": {
           "type": "enum",
@@ -1795,11 +2593,6 @@
           "type": "string",
           "nullable": true,
           "description": "Icon key"
-        },
-        "iconUrl": {
-          "type": "string",
-          "nullable": true,
-          "description": "Direct icon URL"
         },
         "uiColor": {
           "type": "string",
@@ -1838,55 +2631,33 @@
           "default": false,
           "description": "Each item unique?"
         },
-        "tradable": {
-          "type": "boolean",
-          "default": true,
-          "description": "Can be traded?"
-        },
-        "bindOnEquip": {
-          "type": "boolean",
-          "default": false,
-          "description": "Binds when equipped?"
-        },
-        "bindOnPickup": {
-          "type": "boolean",
-          "default": false,
-          "description": "Binds when acquired?"
-        },
-        "hasState": {
-          "type": "boolean",
-          "default": false,
-          "description": "Has dynamic state?"
-        },
-        "stateSchema": {
-          "type": "json",
+        "lootboxDefId": {
+          "type": "string",
           "nullable": true,
-          "description": "JSON Schema for state validation"
+          "description": "Reference to a LootboxDef. Required when type is LOOTBOX. Determines the outcome pool when the player opens this item."
         },
         "equipData": {
           "$ref": "#/complexTypes/EquipData",
           "nullable": true,
           "description": "Equipment slot and stats"
         },
-        "statModifiers": {
-          "type": "json",
-          "nullable": true,
-          "description": "Passive stat modifiers"
-        },
         "passiveEffects": {
-          "type": "json",
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/PassiveEffectSpec"
+          },
           "nullable": true,
-          "description": "Passive effects"
+          "description": "Passive effects applied while the item is equipped (resolved at query time, no ActiveEffect records)"
         },
         "consumableData": {
           "$ref": "#/complexTypes/ConsumableData",
           "nullable": true,
           "description": "Consumable behavior"
         },
-        "craftingData": {
-          "type": "json",
+        "dustingData": {
+          "$ref": "#/complexTypes/DustingData",
           "nullable": true,
-          "description": "Crafting metadata"
+          "description": "Dusting behavior — if present, a Dust action appears on this item in inventory. The player consumes the item and receives randomised rewards via the job/outcome-tier pipeline."
         },
         "data": {
           "type": "json",
@@ -1902,7 +2673,7 @@
       }
     },
     "EntityDefinition": {
-      "description": "Character/entity blueprints referencing body, equipment, and progression schemas",
+      "description": "Self-contained character/entity blueprint. Task #367 collapsed BodySchema, EquipmentSchema, ProgressionProfile, TraitDefinition, and NftCollectionDef.data.attributeMap into this record. Task #371 re-introduced structured progression rules: the legacy boolean/int columns (leveling, ascension, mastery, prestigeEligible, maxLevel, ascensionCap, attributeMap) were replaced by four JSON sub-objects \u2014 `progression`, `ascension`, `mastery`, and `init` (which holds both `init.scratch` for fresh mints and `init.nft` for NFT-backed builds, including the renamed attributeMap).",
       "prismaModel": "EntityDefinition",
       "tableName": "entity_definitions",
       "primaryKey": "id",
@@ -1910,30 +2681,56 @@
         "id": {
           "type": "string",
           "required": true,
-          "description": "Unique identifier"
+          "description": "Unique identifier (e.g. derp_bird)"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Human-readable display name"
         },
         "speciesId": {
           "type": "string",
           "required": true,
           "description": "Species identifier"
         },
-        "bodySchemaId": {
-          "type": "ref",
-          "refTable": "BodySchema",
-          "required": true,
-          "description": "References BodySchema"
+        "slots": {
+          "$ref": "#/complexTypes/BodySlots",
+          "default": {},
+          "description": "Body slot layout: { slotName: [allowedArchetype, ...] }"
         },
-        "equipmentSchemaId": {
-          "type": "ref",
-          "refTable": "EquipmentSchema",
-          "required": true,
-          "description": "References EquipmentSchema"
+        "equipmentSlots": {
+          "$ref": "#/complexTypes/EquipmentSlotSchema",
+          "default": {},
+          "description": "Equipment slot capacities: { slotName: maxCount }"
         },
-        "progressionProfileId": {
-          "type": "ref",
-          "refTable": "ProgressionProfile",
-          "required": true,
-          "description": "References ProgressionProfile"
+        "traits": {
+          "type": "json",
+          "default": {},
+          "description": "Per-archetype trait map keyed by archetype name: { archetype: { slotStats, tags, emoji, color, gradient, scaling, rarityMultiplier, rarity } }"
+        },
+        "progression": {
+          "type": "json",
+          "default": {},
+          "description": "Progression rules. Shape: { enabled:boolean, maxLevel:int, xpCurve: { kind:'geometric', base:int, ratio:float } | { kind:'table', perLevel:int[] }, statGain: { guaranteed: { ATK,DEF,SPD,FOC,LCK,VIT:int }, bonusPool: { kind:'rarityScaled', base:int, exponent:float, rarityField?:string } | { kind:'flat', amount:int }, distribution: { uniformShare:float, weightedShare:float, weightsField?:string } } }. Required: maxLevel, xpCurve. Defaults reproduce the legacy 50/100*1.15^L curve and 14-pool 50-50 split when fields are present."
+        },
+        "ascension": {
+          "type": "json",
+          "default": {
+            "enabled": false
+          },
+          "description": "Ascension rules. Shape: { enabled:boolean, cap:int, costPerStep?:object, effects?:object[] }. Currently { enabled:false } for all entities \u2014 no in-game ascension flow ships yet."
+        },
+        "mastery": {
+          "type": "json",
+          "default": {
+            "enabled": false
+          },
+          "description": "Mastery rules. Shape: { enabled:boolean, branches?:object[] }. Currently { enabled:false } for all entities \u2014 no in-game mastery flow ships yet."
+        },
+        "init": {
+          "type": "json",
+          "default": {},
+          "description": "Initialization rules used when minting a new entity. Shape: { baseStats: { ATK,DEF,SPD,FOC,LCK,VIT:int }, scratch: { startingLevel:int, slotFill: { kind:'singleRandomArchetype' } | { kind:'fixed', fixed: { slot: archetype } } }, nft: { attributeMap: { rawNftKey: slotName }, missingSlotPolicy: 'skip'|'error'|'default', defaults: { slot: archetype } } }. baseStats is the shared stat floor applied by both the non-NFT generator and the NFT builder. scratch contains only trait-selection rules (slotFill, startingLevel). The nft.attributeMap was previously stored as a top-level column (#367) and before that on NftCollectionDef.data."
         },
         "rules": {
           "$ref": "#/complexTypes/LevelRules",
@@ -1946,152 +2743,8 @@
           "description": "Extra data"
         }
       },
-      "relations": {
-        "bodySchema": {
-          "model": "BodySchema",
-          "field": "bodySchemaId"
-        },
-        "equipmentSchema": {
-          "model": "EquipmentSchema",
-          "field": "equipmentSchemaId"
-        },
-        "progressionProfile": {
-          "model": "ProgressionProfile",
-          "field": "progressionProfileId"
-        }
-      },
       "indexes": [
         "speciesId"
-      ]
-    },
-    "BodySchema": {
-      "description": "Defines body slots and which archetypes are allowed per slot",
-      "prismaModel": "BodySchema",
-      "tableName": "body_schemas",
-      "primaryKey": "id",
-      "fields": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Unique identifier (e.g. avian_7)"
-        },
-        "slots": {
-          "$ref": "#/complexTypes/BodySlots",
-          "default": {},
-          "description": "Map of slot to allowed archetypes"
-        },
-        "data": {
-          "type": "json",
-          "default": {},
-          "description": "Extra data"
-        }
-      }
-    },
-    "EquipmentSchema": {
-      "description": "Defines equipment slot types and max counts per slot",
-      "prismaModel": "EquipmentSchema",
-      "tableName": "equipment_schemas",
-      "primaryKey": "id",
-      "fields": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Unique identifier"
-        },
-        "schema": {
-          "$ref": "#/complexTypes/EquipmentSlotSchema",
-          "default": {},
-          "description": "Map of slot to max count"
-        },
-        "data": {
-          "type": "json",
-          "default": {},
-          "description": "Extra data"
-        }
-      }
-    },
-    "ProgressionProfile": {
-      "description": "Defines leveling, ascension, mastery, and prestige capabilities for entities",
-      "prismaModel": "ProgressionProfile",
-      "tableName": "progression_profiles",
-      "primaryKey": "id",
-      "fields": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Unique identifier"
-        },
-        "leveling": {
-          "type": "boolean",
-          "default": true,
-          "description": "Can level up?"
-        },
-        "ascension": {
-          "type": "boolean",
-          "default": true,
-          "description": "Can ascend?"
-        },
-        "mastery": {
-          "type": "boolean",
-          "default": true,
-          "description": "Can gain mastery?"
-        },
-        "prestigeEligible": {
-          "type": "boolean",
-          "default": true,
-          "description": "Eligible for prestige?"
-        },
-        "maxLevel": {
-          "type": "integer",
-          "default": 50,
-          "description": "Maximum level cap"
-        },
-        "ascensionCap": {
-          "type": "integer",
-          "default": 5,
-          "description": "Maximum ascension tier"
-        },
-        "data": {
-          "type": "json",
-          "default": {},
-          "description": "Extra data"
-        }
-      }
-    },
-    "TraitDefinition": {
-      "description": "Trait archetypes with per-slot stat bonuses. One record per archetype.",
-      "prismaModel": "TraitDefinition",
-      "tableName": "trait_definitions",
-      "primaryKey": "id",
-      "fields": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Unique identifier"
-        },
-        "archetype": {
-          "type": "string",
-          "required": true,
-          "description": "Display name of archetype (e.g. Dave, Astro)"
-        },
-        "slotStats": {
-          "$ref": "#/complexTypes/SlotStats",
-          "default": {},
-          "description": "Nested map of slot to stat bonuses"
-        },
-        "tags": {
-          "type": "string[]",
-          "default": [],
-          "description": "Classification tags"
-        },
-        "data": {
-          "type": "json",
-          "default": {},
-          "description": "Extra data"
-        }
-      },
-      "indexes": [
-        "archetype"
       ]
     },
     "RegionDefinition": {
@@ -2160,9 +2813,9 @@
           "description": "Level-based rules (workers, buildings, rooms, storage, production, construction costs)"
         },
         "productionProfile": {
-          "type": "json",
+          "type": "productionProfile",
           "default": {},
-          "description": "Production configuration"
+          "description": "Production profile: outputs[] and inputs[] (ResourceEntry arrays with ratePerHour), optional onStarve (starved|paused), optional enabled boolean"
         },
         "requirements": {
           "$ref": "#/complexTypes/Requirements",
@@ -2173,6 +2826,12 @@
           "$ref": "#/complexTypes/Requirements",
           "default": [],
           "description": "Visibility conditions"
+        },
+        "levelUpModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "Optional ModalDef whose spec is merged into the auto-generated level-up modal (header/body overrides + replaced buttons). Resolution: server emits a base modal with the new level + a Continue button; if set, the matching ModalDef.spec layers on top via mergeModalDefSpec()."
         },
         "data": {
           "type": "json",
@@ -2231,6 +2890,36 @@
           "$ref": "#/complexTypes/Requirements",
           "default": [],
           "description": "Visibility conditions"
+        },
+        "displayDefId": {
+          "type": "ref",
+          "refTable": "DisplayDef",
+          "nullable": true,
+          "description": "Visual styling reference"
+        },
+        "activeModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown while the building job is running"
+        },
+        "readyModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the building is ready to claim (falls back to activeModalDefId)"
+        },
+        "completedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the building succeeded"
+        },
+        "failedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the building failed (falls back to completedModalDefId)"
         },
         "data": {
           "type": "json",
@@ -2319,6 +3008,11 @@
           "nullable": true,
           "description": "CSS background value"
         },
+        "style": {
+          "$ref": "#/complexTypes/DisplayStyle",
+          "default": {},
+          "description": "Overlay, background layout, title & body font overrides, and (for Mission Category cards) inline button placement + per-state styling. The special `data._mode` sub-key is a UI-only hint used by the admin editor to remember the selected editing context; it has no effect on game rendering."
+        },
         "data": {
           "type": "json",
           "default": {},
@@ -2379,6 +3073,11 @@
           "default": 0,
           "description": "Display order"
         },
+        "inlineOnly": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, the category is treated as a leaf \u2014 players cannot drill into it; its missions can only be launched via inline pills on the parent category card"
+        },
         "data": {
           "type": "json",
           "default": {},
@@ -2419,21 +3118,6 @@
           "nullable": true,
           "description": "Flavor text"
         },
-        "type": {
-          "type": "string",
-          "required": true,
-          "description": "Mission type"
-        },
-        "category": {
-          "type": "string",
-          "nullable": true,
-          "description": "Grouping category"
-        },
-        "group": {
-          "type": "string",
-          "nullable": true,
-          "description": "Sub-group"
-        },
         "difficulty": {
           "type": "integer",
           "default": 0,
@@ -2449,6 +3133,18 @@
           "default": 100,
           "description": "Max success chance (0-100)"
         },
+        "injuryRate": {
+          "type": "number",
+          "default": 0,
+          "nullable": true,
+          "description": "Probability modifier for entity injury on mission failure (0.0\u20131.0). 0 or absent = no injuries. Per-entity chance = D/(TMP+D)*IR where D=difficulty, TMP=total team mission power, IR=injuryRate."
+        },
+        "injuryRecoveryTicks": {
+          "type": "integer",
+          "default": 0,
+          "nullable": true,
+          "description": "Base recovery duration in ticks for injured entities. Actual ticks = base*(1-VIT/(VIT+100)) rounded to nearest integer. 0 or absent = no injuries even if injuryRate>0."
+        },
         "timer": {
           "$ref": "#/complexTypes/Timer",
           "description": "Duration and skip settings"
@@ -2460,6 +3156,11 @@
         "failure": {
           "$ref": "#/complexTypes/OutcomeBlock",
           "description": "Failure outcome"
+        },
+        "tiers": {
+          "$ref": "#/complexTypes/OutcomeTiers",
+          "default": {},
+          "description": "Per-tier outcome blocks keyed by quality level: failure | common | uncommon | scare | rare | epic | mythic | legendary. When present, the 'failure' key fires on mission failure; the seven success keys are selected via a Gaussian bell curve weighted by the team's mission power. Each block: { rewards: OutcomeEntry[], clRequirement?: number }. Optional top-level 'sigma' (default 22) controls the bell-curve spread. Tier centers (CL): common=15, uncommon=45, scare=75, rare=105, epic=135, mythic=165, legendary=195."
         },
         "requirements": {
           "$ref": "#/complexTypes/Requirements",
@@ -2481,10 +3182,33 @@
           "default": [],
           "description": "Reward preview data for UI"
         },
+        "cost": {
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/CostEntry"
+          },
+          "default": [],
+          "description": "Cost entries deducted when the mission starts (see Cost Objects)"
+        },
         "enabled": {
           "type": "boolean",
           "default": true,
           "description": "Is active?"
+        },
+        "sortOrder": {
+          "type": "integer",
+          "default": 0,
+          "description": "Display order within category (ascending)"
+        },
+        "inline": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, shows as a quick-launch pill on the parent category card"
+        },
+        "inlineLabel": {
+          "type": "string",
+          "nullable": true,
+          "description": "Custom pill label; defaults to mission duration if omitted"
         },
         "displayDefId": {
           "type": "ref",
@@ -2497,6 +3221,30 @@
           "refTable": "MissionCategoryDef",
           "nullable": true,
           "description": "Category grouping"
+        },
+        "activeModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown while the mission job is running"
+        },
+        "readyModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the mission is ready to claim (falls back to activeModalDefId)"
+        },
+        "completedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the mission succeeded"
+        },
+        "failedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the mission failed (falls back to completedModalDefId)"
         },
         "data": {
           "type": "json",
@@ -2521,7 +3269,7 @@
       ]
     },
     "RecipeDef": {
-      "description": "Crafting recipe definitions with costs, timers, rewards, and requirements",
+      "description": "Crafting recipe definitions. Two-step probabilistic outcome: Step 1 pass/fail gate (passRate = effectiveCL / (effectiveCL + difficulty)), Step 2 Gaussian quality roll across 7 success tiers (failure tier excluded from quality pool).",
       "prismaModel": "RecipeDef",
       "tableName": "recipe_defs",
       "primaryKey": "id",
@@ -2552,23 +3300,34 @@
           "description": "Sub-group"
         },
         "cost": {
-          "$ref": "#/complexTypes/CostObject",
-          "default": {},
-          "description": "Crafting cost (map of resourceId to amount)"
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/CostEntry"
+          },
+          "default": [],
+          "description": "Crafting cost entries (array of {type, id, amount})"
         },
         "timer": {
           "$ref": "#/complexTypes/Timer",
           "description": "Duration and skip settings"
         },
-        "requiredKeeperLevel": {
-          "type": "integer",
-          "default": 1,
-          "description": "Min keeper level"
+        "difficulty": {
+          "type": "number",
+          "default": 0,
+          "description": "Pass/fail gate difficulty. passRate = effectiveCL / (effectiveCL + difficulty). 0 = always passes (no gate)."
         },
-        "rewards": {
-          "type": "json",
+        "tiers": {
+          "$ref": "#/complexTypes/OutcomeTiers",
           "default": {},
-          "description": "Crafting output"
+          "description": "Per-tier reward blocks. Keys: failure | common | uncommon | scare | rare | epic | mythic | legendary. 'failure' fires when the pass/fail gate fails; the seven success tiers are selected via a Gaussian bell curve. Each block: { rewards: OutcomeEntry[], clRequirement?: number }. Optional top-level 'sigma' (default 22) overrides the bell-curve spread. Tier centers (CL): common=15, uncommon=45, scare=75, rare=105, epic=135, mythic=165, legendary=195."
+        },
+        "multicraft": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "default": null,
+          "description": "Batch crafting config. null = single craft only. { mode: 'tiers'|'free', tiers?: number[], max?: number, timer?: 'flat'|'linear' }"
         },
         "requirements": {
           "$ref": "#/complexTypes/Requirements",
@@ -2579,6 +3338,36 @@
           "$ref": "#/complexTypes/Requirements",
           "default": [],
           "description": "Visibility conditions"
+        },
+        "displayDefId": {
+          "type": "ref",
+          "refTable": "DisplayDef",
+          "nullable": true,
+          "description": "Visual styling reference"
+        },
+        "activeModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown while the crafting job is running"
+        },
+        "readyModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the craft is ready to claim (falls back to activeModalDefId)"
+        },
+        "completedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the craft succeeded"
+        },
+        "failedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the craft failed (falls back to completedModalDefId)"
         },
         "data": {
           "type": "json",
@@ -2628,7 +3417,7 @@
         "inputSchema": {
           "type": "json",
           "default": {},
-          "description": "Expected payload JSON schema"
+          "description": "Expected payload JSON schema. For the createGiftForPlayer handler, the payload must include gift (a GiftSpec: either { giftDefId } or an inline InlineGiftDef) and may include an optional contextData object. Job source types (MissionJob, CraftingJob, BuildingJob) automatically attach job context via DB lookup."
         },
         "enabled": {
           "type": "boolean",
@@ -2671,7 +3460,7 @@
         "rewardSpec": {
           "$ref": "#/complexTypes/GiftRewardSpec",
           "default": {},
-          "description": "Reward on claim"
+          "description": "Reward on claim. String values support ${path.to.value} token syntax resolved against snapshotted contextData at claim time. Supports ${random(\"a\",\"b\")} for random selection."
         },
         "instant": {
           "type": "boolean",
@@ -2716,10 +3505,20 @@
         "outcomes": {
           "type": "array",
           "items": {
-            "$ref": "#/complexTypes/RewardEntry"
+            "oneOf": [
+              {
+                "$ref": "#/complexTypes/RewardEntry"
+              },
+              {
+                "$ref": "#/complexTypes/BundleEntry"
+              },
+              {
+                "$ref": "#/complexTypes/BundleRefEntry"
+              }
+            ]
           },
           "default": [],
-          "description": "Weighted outcome pool (same format as MissionDef rewards)"
+          "description": "Weighted outcome pool (same format as MissionDef rewards). May contain bundles and bundle_refs."
         },
         "rollCount": {
           "type": "integer",
@@ -2729,6 +3528,71 @@
         "enabled": {
           "type": "boolean",
           "default": true
+        }
+      }
+    },
+    "BundleDef": {
+      "description": "Reusable bundle of outcomes that can be referenced by any RewardEntry list via a {type:'bundle_ref', bundleDefId} entry. Lets a single bundle (e.g. 'Starter Pack') be defined once and reused across missions, lootboxes, recipes, gifts, and effects. References may override odds, pickMin, pickMax, and requirements at the call site.",
+      "prismaModel": "BundleDef",
+      "tableName": "bundle_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of what the bundle contains and when it's used"
+        },
+        "version": {
+          "type": "integer",
+          "default": 1
+        },
+        "bundle": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/complexTypes/RewardEntry"
+              },
+              {
+                "$ref": "#/complexTypes/BundleEntry"
+              },
+              {
+                "$ref": "#/complexTypes/BundleRefEntry"
+              }
+            ]
+          },
+          "default": [],
+          "description": "Outcome entries (same shape as MissionDef rewards / LootboxDef outcomes). May contain nested bundles and bundle_refs."
+        },
+        "odds": {
+          "type": "number",
+          "min": 0,
+          "max": 100,
+          "description": "Default odds applied when this bundle is referenced without an inline override"
+        },
+        "pickMin": {
+          "type": "integer",
+          "min": 0,
+          "description": "Default pickMin (entries-to-pick lower bound) applied when not overridden inline"
+        },
+        "pickMax": {
+          "type": "integer",
+          "min": 0,
+          "description": "Default pickMax (entries-to-pick upper bound) applied when not overridden inline"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Disabled bundles are skipped at resolution (no entries granted)"
         }
       }
     },
@@ -2839,16 +3703,812 @@
           "default": 0
         }
       }
+    },
+    "ShopItemDef": {
+      "description": "Defines a purchasable store item. Supports mixed currency/item costs, limited-time availability, and badge labels.",
+      "prismaModel": "ShopItemDef",
+      "tableName": "shop_item_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "default": "",
+          "description": "Short description shown on the card"
+        },
+        "tab": {
+          "type": "enum",
+          "enum": [
+            "featured",
+            "currencies",
+            "bundles",
+            "items"
+          ],
+          "default": "featured",
+          "description": "Store tab this item appears on"
+        },
+        "cost": {
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/ShopCostEntry"
+          },
+          "default": [],
+          "description": "Cost entries (mix of currency and items)"
+        },
+        "originalCost": {
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/ShopCostEntry"
+          },
+          "description": "Original cost for strikethrough display (optional)"
+        },
+        "contents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/ShopContentEntry"
+          },
+          "default": [],
+          "description": "What the player receives on purchase. Supports 'currency', 'item', and 'outpost_slots' entries. The 'outpost_slots' type grants location_slot.N unlock keys."
+        },
+        "badge": {
+          "type": "string",
+          "description": "Optional label badge (e.g. HOT, NEW, SALE)"
+        },
+        "badgeColor": {
+          "type": "string",
+          "description": "CSS color for the badge"
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL or asset key for the card image"
+        },
+        "displayOrder": {
+          "type": "integer",
+          "default": 0,
+          "description": "Sort order within the tab (lower = first)"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Visible in store?"
+        },
+        "limitedUntil": {
+          "type": "string",
+          "description": "ISO 8601 datetime; item hides after this time and shows a countdown"
+        }
+      }
+    },
+    "NftCollectionDef": {
+      "description": "Links an on-chain NFT collection to either an EntityDefinition or a LocationDefinition, enabling NFT-gated entity or location claims. Players sync their wallet's NFT holdings against active collections; each matched token creates or transfers the corresponding instance to them. Set entityDefinitionId for character/entity NFTs (requires a pre-import step). Set locationDefinitionId for location NFTs (LocationInstances are created on-demand during wallet sync \u2014 no pre-import needed). Exactly one of entityDefinitionId or locationDefinitionId should be set.",
+      "prismaModel": "NftCollectionDef",
+      "tableName": "nft_collection_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Admin-facing display name"
+        },
+        "chain": {
+          "type": "enum",
+          "enum": [
+            "CARDANO",
+            "ETH",
+            "BASE",
+            "MATIC"
+          ],
+          "required": true,
+          "description": "Blockchain this collection lives on"
+        },
+        "collectionId": {
+          "type": "string",
+          "required": true,
+          "description": "On-chain collection or policy ID used to look up tokens"
+        },
+        "entityDefinitionId": {
+          "type": "string",
+          "required": false,
+          "description": "References an EntityDefinition \u2014 the entity type created when a token is claimed. Use for character/entity NFT collections. Mutually exclusive with locationDefinitionId."
+        },
+        "locationDefinitionId": {
+          "type": "string",
+          "required": false,
+          "description": "References a LocationDefinition \u2014 the location type created when a token is claimed. Use for outpost/location NFT collections (e.g. Derp Outposts). LocationInstances are created on-demand during wallet sync with no pre-import step. Mutually exclusive with entityDefinitionId."
+        },
+        "mintMode": {
+          "type": "enum",
+          "enum": [
+            "one_per_token"
+          ],
+          "default": "one_per_token",
+          "description": "How many instances one token can claim (currently only one_per_token is supported)"
+        },
+        "active": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this collection is currently active for wallet syncing and claiming"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Freeform extra configuration. Supported keys: attributeMap (object) \u2014 maps raw NFT attribute key names (case-insensitive) to body schema slot names. Used when a collection's metadata uses prefixed keys (e.g. meta_Body) rather than slot names directly. Multiple raw keys may map to the same slot (e.g. meta_Leader and meta_Multiverse Leader both mapping to leader). Example: { \"meta_body\": \"body\", \"meta_faction\": \"faction\", \"meta_leader\": \"leader\", \"meta_multiverse leader\": \"leader\" }"
+        }
+      }
+    },
+    "EffectDef": {
+      "description": "Reusable effect blueprints for the Generic Effects System. Effects are universal modifiers that can boost stats, multiply rewards, speed up timers, grant traits, and more.",
+      "prismaModel": "EffectDef",
+      "tableName": "effect_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier (e.g. eff_xp_boost_30m)"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "nullable": true,
+          "description": "Flavor text describing the effect"
+        },
+        "iconKey": {
+          "type": "string",
+          "nullable": true,
+          "description": "Key used to resolve the display icon"
+        },
+        "category": {
+          "type": "enum",
+          "enum": "EffectCategory",
+          "required": true,
+          "description": "What the effect modifies"
+        },
+        "valueMode": {
+          "type": "enum",
+          "enum": "EffectValueMode",
+          "required": true,
+          "description": "How the value is applied"
+        },
+        "durationModel": {
+          "type": "enum",
+          "enum": "EffectDurationModel",
+          "required": true,
+          "description": "How the effect expires"
+        },
+        "stackingRule": {
+          "type": "enum",
+          "enum": "EffectStackingRule",
+          "default": "no_stack",
+          "description": "Behavior when re-applied to the same target"
+        },
+        "targetType": {
+          "type": "enum",
+          "enum": "EffectTargetType",
+          "required": true,
+          "description": "What the effect targets"
+        },
+        "value": {
+          "type": "number",
+          "nullable": true,
+          "description": "Scalar value (interpretation depends on valueMode)"
+        },
+        "stats": {
+          "$ref": "#/complexTypes/EffectStatMap",
+          "nullable": true,
+          "description": "Per-stat values for stat_boost category"
+        },
+        "trait": {
+          "type": "string",
+          "nullable": true,
+          "description": "Trait archetype name for trait_grant category"
+        },
+        "durationSec": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Duration in seconds (for timed duration model)"
+        },
+        "durationTicks": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Duration in game ticks (for tick_based duration model)"
+        },
+        "maxStacks": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Maximum stack count (for stack_capped stacking rule)"
+        },
+        "maxUses": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Number of uses before expiry (for count_based duration model)"
+        },
+        "cap": {
+          "type": "number",
+          "nullable": true,
+          "description": "Maximum total value when stacking"
+        },
+        "resourceId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Associated resource ID (for production_rate, storage_capacity, currency_multiplier, cost_discount)"
+        },
+        "sessionType": {
+          "type": "string",
+          "nullable": true,
+          "description": "Session scope key (for session duration model)"
+        },
+        "meta": {
+          "type": "json",
+          "default": {},
+          "description": "Freeform metadata"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this effect definition is active"
+        }
+      },
+      "indexes": [
+        "category",
+        "targetType"
+      ]
+    },
+    "ActiveEffect": {
+      "description": "Runtime records for currently-active effects applied to targets. Created when a non-instant effect is applied. Not a definition table \u2014 this is a runtime/instance table.",
+      "prismaModel": "ActiveEffect",
+      "tableName": "active_effects",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "default": "uuid()",
+          "description": "Unique identifier (auto-generated UUID)"
+        },
+        "effectDefId": {
+          "type": "ref",
+          "refTable": "EffectDef",
+          "required": true,
+          "description": "References an EffectDef id"
+        },
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "The player who owns this active effect"
+        },
+        "targetType": {
+          "type": "enum",
+          "enum": "EffectTargetType",
+          "required": true,
+          "description": "What this effect targets"
+        },
+        "targetId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the target (player ID, entity ID, etc.)"
+        },
+        "sourceType": {
+          "type": "enum",
+          "enum": "EffectSourceType",
+          "required": true,
+          "description": "Where this effect originated from"
+        },
+        "sourceId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the source (item instance ID, mission def ID, etc.)"
+        },
+        "category": {
+          "type": "enum",
+          "enum": "EffectCategory",
+          "required": true,
+          "description": "Copied from EffectDef at apply time"
+        },
+        "valueMode": {
+          "type": "enum",
+          "enum": "EffectValueMode",
+          "required": true,
+          "description": "Copied from EffectDef at apply time"
+        },
+        "value": {
+          "type": "number",
+          "default": 0,
+          "description": "Current effect value"
+        },
+        "stats": {
+          "$ref": "#/complexTypes/EffectStatMap",
+          "nullable": true,
+          "description": "Per-stat values (copied from EffectDef)"
+        },
+        "trait": {
+          "type": "string",
+          "nullable": true,
+          "description": "Trait name (copied from EffectDef)"
+        },
+        "currentStacks": {
+          "type": "integer",
+          "default": 1,
+          "description": "Current stack count"
+        },
+        "remainingUses": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Remaining uses (for count_based duration model)"
+        },
+        "sessionType": {
+          "type": "string",
+          "nullable": true,
+          "description": "Session scope key (for session duration model)"
+        },
+        "sessionId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Current session ID"
+        },
+        "expiresAt": {
+          "type": "datetime",
+          "nullable": true,
+          "description": "Wall-clock expiry (for timed duration model)"
+        },
+        "expiresAtTick": {
+          "type": "number",
+          "nullable": true,
+          "description": "Tick-based expiry (for tick_based duration model)"
+        }
+      },
+      "relations": {
+        "effectDef": {
+          "model": "EffectDef",
+          "field": "effectDefId",
+          "onDelete": "Cascade"
+        },
+        "user": {
+          "model": "User",
+          "field": "userId",
+          "onDelete": "Cascade"
+        }
+      },
+      "indexes": [
+        [
+          "userId",
+          "targetType",
+          "targetId"
+        ],
+        [
+          "userId",
+          "category"
+        ],
+        [
+          "targetType",
+          "targetId"
+        ]
+      ]
+    },
+    "SoundDef": {
+      "description": "Placeholder or real sound file definitions. Each SoundDef represents one audio asset (music track, SFX clip, UI beep, ambient loop). Admins upload files and assign keys; the AudioEngine loads them via /audio/config.",
+      "prismaModel": "SoundDef",
+      "tableName": "sound_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "UUID primary key"
+        },
+        "key": {
+          "type": "string",
+          "required": true,
+          "description": "Unique dot-namespaced action key (e.g. sfx.mission.success, music.main_menu). Used by the AudioEngine to look up sounds."
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Human-readable display name shown in the Admin Audio Manager"
+        },
+        "bus": {
+          "type": "enum",
+          "enum": "AudioBus",
+          "required": true,
+          "description": "Audio bus assignment: music, sfx, ui, or ambient. Controls which volume slider governs this sound."
+        },
+        "fileKey": {
+          "type": "string",
+          "nullable": true,
+          "description": "Object storage key for the uploaded audio file (e.g. audio/sfx_mission_success.mp3). null when no file has been uploaded yet."
+        },
+        "description": {
+          "type": "string",
+          "nullable": true,
+          "description": "Optional notes describing where this sound is used"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "When false, the AudioEngine ignores this sound definition even if a mapping references it"
+        },
+        "createdAt": {
+          "type": "datetime",
+          "description": "Record creation timestamp"
+        },
+        "updatedAt": {
+          "type": "datetime",
+          "description": "Record last-update timestamp"
+        }
+      },
+      "indexes": [
+        "key",
+        "bus"
+      ]
+    },
+    "SoundMapping": {
+      "description": "Maps game action keys to one or more SoundDef entries with optional weights for weighted-random selection. The AudioEngine reads the active mappings at boot via GET /audio/config and resolves a random sound when audioEngine.play(actionKey) is called.",
+      "prismaModel": "SoundMapping",
+      "tableName": "sound_mappings",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "UUID primary key"
+        },
+        "actionKey": {
+          "type": "string",
+          "required": true,
+          "description": "Game action key (e.g. sfx.mission.success). Multiple mappings with the same actionKey allow weighted-random sound selection."
+        },
+        "soundDefId": {
+          "type": "string",
+          "required": true,
+          "description": "FK to SoundDef.id \u2014 the sound to play for this mapping entry"
+        },
+        "weight": {
+          "type": "integer",
+          "default": 1,
+          "description": "Relative weight for weighted-random selection among mappings sharing the same actionKey. Higher weight = higher probability."
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "When false, this mapping entry is excluded from the audio config response"
+        },
+        "createdAt": {
+          "type": "datetime",
+          "description": "Record creation timestamp"
+        },
+        "updatedAt": {
+          "type": "datetime",
+          "description": "Record last-update timestamp"
+        }
+      },
+      "relations": {
+        "soundDef": {
+          "model": "SoundDef",
+          "field": "soundDefId",
+          "onDelete": "Cascade"
+        }
+      },
+      "indexes": [
+        "actionKey"
+      ]
+    },
+    "HomeBannerDef": {
+      "description": "Generic data-driven banner shown at the top of the homescreen. Multiple active banners produce a swipeable carousel; one becomes a single static card. Drives announcements, sales, season info, and event call-outs.",
+      "prismaModel": "HomeBannerDef",
+      "tableName": "home_banner_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier (e.g. banner_summer_sale)"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Admin-facing label"
+        },
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Big headline shown on the card"
+        },
+        "subtitle": {
+          "type": "string",
+          "nullable": true,
+          "description": "Small line above/below the title (optional)"
+        },
+        "description": {
+          "type": "string",
+          "nullable": true,
+          "description": "Body copy beneath the title (optional)"
+        },
+        "backgroundImage": {
+          "type": "string",
+          "nullable": true,
+          "description": "Asset key or URL for the card background"
+        },
+        "ctaLabel": {
+          "type": "string",
+          "nullable": true,
+          "description": "CTA button label (blank hides the button)"
+        },
+        "ctaRoute": {
+          "type": "string",
+          "nullable": true,
+          "description": "Route to navigate to on tap (e.g. /missions)"
+        },
+        "priority": {
+          "type": "integer",
+          "default": 0,
+          "description": "Higher priority appears earlier in the carousel"
+        },
+        "startsAt": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true,
+          "description": "Banner is hidden before this datetime"
+        },
+        "endsAt": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true,
+          "description": "Banner is hidden after this datetime; powers the countdown subtitle"
+        },
+        "status": {
+          "type": "enum",
+          "values": [
+            "active",
+            "draft",
+            "archived"
+          ],
+          "default": "active",
+          "description": "Visibility status"
+        },
+        "seasonId": {
+          "type": "string",
+          "nullable": true,
+          "refTable": "Season",
+          "description": "Optional Season link (substitutes title/endsAt from the Season row when config.deriveFromActiveSeason is true)"
+        },
+        "config": {
+          "type": "json",
+          "default": {},
+          "description": "Extra config: { autoAdvanceMs?: number, autoAdvance?: boolean, tagline?: string, deriveFromActiveSeason?: boolean }"
+        }
+      },
+      "indexes": [
+        "status",
+        "startsAt",
+        "endsAt"
+      ]
+    },
+    "GlobalActivePower": {
+      "description": "Time-limited global power modifier activated by admins. Active powers are merged into every player's effect resolution, applying their modifier to all players simultaneously. The tick processor persists status='expired' and broadcasts expiry via SSE.",
+      "prismaModel": "GlobalActivePower",
+      "tableName": "global_active_powers",
+      "primaryKey": "id",
+      "adminOnly": true,
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "UUID primary key"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "description": "Admin-facing label shown in toasts and admin panel"
+        },
+        "powerType": {
+          "type": "string",
+          "required": true,
+          "description": "Effect-resolver types map to an EffectCategory; tick_speed_boost acts directly on BoostEvent/TickRateInterval. One of: keeper_xp_boost, entity_xp_boost, mission_power_boost, mission_duration_reduction, crafting_duration_reduction, building_build_duration_reduction, building_upgrade_duration_reduction, injury_recovery_boost, tick_speed_boost"
+        },
+        "value": {
+          "type": "float",
+          "required": true,
+          "description": "Numeric modifier value (e.g. 50 for +50%, 1.5 for \u00d71.5)"
+        },
+        "valueMode": {
+          "type": "string",
+          "default": "percent_add",
+          "description": "How the value is applied: percent_add | flat_add | multiplier"
+        },
+        "durationMinutes": {
+          "type": "integer",
+          "required": true,
+          "description": "Duration in whole minutes"
+        },
+        "scheduledFor": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true,
+          "description": "Optional future ISO datetime at which the power should automatically activate. If set and in the future, the power is stored with status='scheduled' and activated by the tick processor when this time arrives."
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time",
+          "required": true,
+          "description": "When the power became/becomes active (equals scheduledFor when scheduled, otherwise server now at creation)"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time",
+          "required": true,
+          "description": "When the power expires (startTime + durationMinutes)"
+        },
+        "status": {
+          "type": "string",
+          "default": "active",
+          "description": "Lifecycle status: active | scheduled | cancelled | expired"
+        },
+        "triggeredByUserId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Admin user ID for audit trail"
+        }
+      },
+      "indexes": [
+        [
+          "status",
+          "endTime"
+        ]
+      ]
+    },
+    "LocationPowerUsage": {
+      "description": "Tracks per-(location-instance, power-key) daily usage for unique NFT location powers. Enforces a global UTC-day gate so each power can only be triggered once per UTC day regardless of who triggers it.",
+      "prismaModel": "LocationPowerUsage",
+      "tableName": "location_power_usages",
+      "primaryKey": "id",
+      "adminOnly": false,
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "UUID primary key"
+        },
+        "locationInstanceId": {
+          "type": "string",
+          "required": true,
+          "description": "FK \u2192 LocationInstance.id"
+        },
+        "powerKey": {
+          "type": "string",
+          "required": true,
+          "description": "The powerType string (e.g. tick_speed_boost)"
+        },
+        "lastUsedUtcDay": {
+          "type": "string",
+          "required": true,
+          "description": "UTC date string YYYY-MM-DD of last trigger"
+        },
+        "usageCount": {
+          "type": "integer",
+          "required": true,
+          "default": 1,
+          "description": "Number of triggers on lastUsedUtcDay; reset to 1 on a new UTC day. Enforced against dailyLimit in the power definition."
+        }
+      },
+      "uniqueConstraints": [
+        [
+          "locationInstanceId",
+          "powerKey"
+        ]
+      ],
+      "indexes": [
+        "locationInstanceId"
+      ]
+    }
+  },
+  "commands": {
+    "TriggerLocationPower": {
+      "description": "Triggers a unique power belonging to a specific NFT location. The caller must own the location (or have admin role). Checks/updates LocationPowerUsage for today's UTC date. All power types (including tick_boost, which is remapped to tick_speed_boost) route through GlobalPowerService.triggerPower.",
+      "payload": {
+        "locationId": {
+          "type": "string",
+          "required": true,
+          "description": "The LocationInstance.id to trigger from"
+        },
+        "powerKey": {
+          "type": "string",
+          "required": true,
+          "description": "The power type to trigger (e.g. tick_speed_boost)"
+        }
+      },
+      "errors": [
+        "ForbiddenException: caller does not own the location",
+        "BadRequestException: no unique powers defined, power key not found, or daily limit reached"
+      ]
+    }
+  },
+  "sseEvents": {
+    "boost.changed": {
+      "description": "Broadcast to all connected clients whenever the underlying tick-boost state changes. Emitted by GlobalPowerService when a tick_speed_boost global power is created, cancelled, or expires. Clients update local tick rate from this; toast notifications are driven by global_power.changed instead.",
+      "payload": {
+        "active": "Array<{ id, name, percentBoost, endTime }> \u2014 current active tick boosts",
+        "combinedPercent": "number \u2014 sum of all active percentBoost values"
+      }
+    }
+  },
+  "powerDefSchema": {
+    "description": "Reusable power blueprint stored in the power_defs table. Referenced by PowerRef objects in entity/location definition rules.uniques maps.",
+    "schema": {
+      "id": { "type": "string", "description": "Stable slug primary key (e.g. global_tick_boost). Lowercase snake_case." },
+      "name": { "type": "string", "description": "Human-readable display name shown to players" },
+      "description": { "type": "string", "optional": true, "description": "What this power does" },
+      "powerType": { "type": "string", "description": "tick_speed_boost | effect_backed" },
+      "effectDefId": { "type": "string", "optional": true, "description": "FK → EffectDef.id. Required for effect_backed powers." },
+      "defaultValue": { "type": "number", "default": 50, "description": "Default numeric modifier value" },
+      "defaultValueMode": { "type": "string", "default": "percent_add", "description": "flat_add | percent_add | multiplier | flat_set | bps | flat_grant" },
+      "defaultDurationMinutes": { "type": "integer", "default": 60, "description": "Default duration in minutes" },
+      "defaultDailyLimit": { "type": "integer", "default": 1, "description": "Default max activations per UTC day" },
+      "defaultScope": { "type": "string", "default": "global", "description": "global | player | entity | location" },
+      "selection": { "type": "object", "optional": true, "description": "Default EffectSelection JSON { scope, agg, filter? }" },
+      "enabled": { "type": "boolean", "default": true, "description": "Whether this power can be activated" }
+    }
+  },
+  "powerRefSchema": {
+    "description": "PowerRef is embedded in entity/location definition rules.uniques powers arrays. Can reference a PowerDef (preferred) or define an inline power (legacy fallback). powerDefId is optional; inline powers must carry powerType directly.",
+    "schema": {
+      "powerDefId": { "type": "string", "optional": true, "description": "FK → PowerDef.id. When present, the PowerDef supplies defaults for all other fields. Preferred form." },
+      "name": { "type": "string", "description": "Display name shown to players (copied from PowerDef at seed time for powerDefId refs)" },
+      "key": { "type": "string", "optional": true, "description": "Stable key for usage tracking in LocationPowerUsage/EntityPowerUsage (e.g. tick_boost). Used for powerDefId-backed refs." },
+      "powerType": { "type": "string", "optional": true, "description": "Inline-only: power type when no powerDefId is provided (e.g. tick_speed_boost, tick_boost). Omit for powerDefId refs — resolved from the PowerDef." },
+      "effectDefId": { "type": "string", "optional": true, "description": "Inline-only: FK → EffectDef.id for effect_backed inline powers." },
+      "effectOverrides": { "type": "object", "optional": true, "description": "Inline-only: EffectDef override map passed directly to the effect resolver." },
+      "value": { "type": "number", "optional": true, "description": "Overrides PowerDef.defaultValue (or the inline value for legacy powers)" },
+      "valueMode": { "type": "string", "optional": true, "description": "Overrides PowerDef.defaultValueMode" },
+      "durationMinutes": { "type": "integer", "optional": true, "description": "Overrides PowerDef.defaultDurationMinutes" },
+      "dailyLimit": { "type": "integer", "optional": true, "description": "Overrides PowerDef.defaultDailyLimit" },
+      "scope": { "type": "string", "optional": true, "description": "Overrides PowerDef.defaultScope. Derived into EffectSelection.scope when no explicit selection is provided." },
+      "selection": { "type": "object", "optional": true, "description": "Full EffectSelection override { scope, agg, filter? }. When absent, derived from scope field." }
+    }
+  },
+  "locationDefinitionUniques": {
+    "description": "The rules JSON on LocationDefinition supports an optional uniques map keyed by NFT asset ID string. Each entry defines per-NFT custom powers using the PowerRef format.",
+    "schema": {
+      "uniques": {
+        "type": "object",
+        "description": "Keys are NFT asset ID strings (e.g. CARDANO:policyId:assetId)",
+        "values": {
+          "powers": {
+            "type": "array",
+            "description": "Array of PowerRef objects. See powerRefSchema for field reference.",
+            "items": {
+              "powerDefId": { "type": "string", "description": "FK → PowerDef.id" },
+              "name": { "type": "string", "description": "Display name" },
+              "key": { "type": "string", "description": "Stable key for usage tracking" },
+              "value": { "type": "number", "optional": true },
+              "durationMinutes": { "type": "integer", "optional": true },
+              "dailyLimit": { "type": "integer", "optional": true },
+              "scope": { "type": "string", "optional": true }
+            }
+          }
+        }
+      }
     }
   },
   "tableList": [
     "Currency",
     "ItemDef",
     "EntityDefinition",
-    "BodySchema",
-    "EquipmentSchema",
-    "ProgressionProfile",
-    "TraitDefinition",
     "RegionDefinition",
     "LocationDefinition",
     "BuildingDef",
@@ -2860,24 +4520,22 @@
     "EventDefinition",
     "GiftDef",
     "LootboxDef",
+    "BundleDef",
     "CheckInDef",
-    "QuestDef"
+    "QuestDef",
+    "ShopItemDef",
+    "NftCollectionDef",
+    "EffectDef",
+    "SoundDef",
+    "SoundMapping",
+    "HomeBannerDef",
+    "GlobalActivePower",
+    "LocationPowerUsage",
+    "PowerDef"
   ],
   "crossReferences": {
     "description": "Foreign key relationships between definition tables",
     "references": [
-      {
-        "from": "EntityDefinition.bodySchemaId",
-        "to": "BodySchema.id"
-      },
-      {
-        "from": "EntityDefinition.equipmentSchemaId",
-        "to": "EquipmentSchema.id"
-      },
-      {
-        "from": "EntityDefinition.progressionProfileId",
-        "to": "ProgressionProfile.id"
-      },
       {
         "from": "LocationDefinition.regionId",
         "to": "RegionDefinition.id"
@@ -2897,6 +4555,18 @@
       {
         "from": "MissionDef.missionCategoryDefId",
         "to": "MissionCategoryDef.id"
+      },
+      {
+        "from": "PowerDef.effectDefId",
+        "to": "EffectDef.id"
+      },
+      {
+        "from": "ActiveEffect.effectDefId",
+        "to": "EffectDef.id"
+      },
+      {
+        "from": "SoundMapping.soundDefId",
+        "to": "SoundDef.id"
       }
     ]
   }

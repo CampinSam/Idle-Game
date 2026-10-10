@@ -1,0 +1,52 @@
+name: Deploy Frontend to Vercel
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+
+jobs:
+  deploy:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy to Vercel (production)
+        id: deploy
+        working-directory: apps/web
+        run: |
+          DEPLOY_OUTPUT=$(pnpm dlx vercel --prod --yes --json 2>&1)
+          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | jq -r '.url // empty')
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "ERROR: Could not extract deployment URL from Vercel CLI output."
+            echo "$DEPLOY_OUTPUT"
+            exit 1
+          fi
+          DEPLOY_URL="https://${DEPLOY_URL}"
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Log deployment URL
+        run: echo "Deployed to ${{ steps.deploy.outputs.url }}"

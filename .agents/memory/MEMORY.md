@@ -1,0 +1,12 @@
+- [Schema migration policy](dev-migration-divergence.md) — prisma migrate dev is mandatory for all schema changes; db push is forbidden (production only sees migration files).
+- [Enum reorder pattern](enum-reorder-pattern.md) — reordering a PostgreSQL enum with an active partial index requires: drop partial index first, then convert column→text→new enum, recreate index.
+- [Nested flex percentage flex-basis pitfall](flex-nested-percentage-basis.md) — page-root wrappers inside <Outlet /> should use h-full not flex-1; bottom-pinned panels belong inside the card (flex-shrink-0), not outside it.
+- [iOS scroll + animation fill-mode](ios-scroll-animation-fillmode.md) — transform on page-transition-wrapper (via fill-mode:both) blocks touch scroll on iOS; fix + touch-pan-y pattern.
+- [NFT sweep architecture](nft-sweep-architecture.md) — entity-centric sweep replaces per-user sweep; login uses DB-only claimFromCachedOwnership; syncUserCollections uses strict RPC methods.
+- [UUID PK migration pattern](uuid-pk-migration-pattern.md) — economy tables (Currency, ItemDefinition, LootboxDef, BundleDef) migrated to UUID PKs with key slug alias; service lookup rules and seed-sync wiring.
+- [World cluster UUID lookup patterns](world-cluster-uuid-lookups.md) — slug-based game rules (buildingDefId, roomDefId) must look up by `key`; entity/location def lookups from commands use OR dual; createStarterOutpost resolves slug by key before FK insert.
+- [Admin roles self-heal pattern](admin-roles-self-heal.md) — db push --accept-data-loss truncated admin_roles; BootstrapService.seedBuiltInRoles() upserts on every startup; seed.ts syncs snapshot back to Object Storage post-deploy.
+- [Prisma NOT filter excludes NULLs](prisma-not-null-pitfall.md) — NOT: { field: 0 } in Prisma silently drops NULL rows; use OR [{ field: null }, { field: { gt: 0 } }] instead.
+- [Bootstrap + definition cache architecture](bootstrap-definition-cache.md) — two in-process cache layers eliminate per-request DB hits on definition and catalog tables; admin CRUD auto-invalidates both.
+- [Migration replay safety](migration-replay-safety.md) — clean replay success does not prove a partially baselined populated DB can deploy safely; verify both paths separately.
+- [Isolated local PostgreSQL](isolated-local-postgres.md) — the Replit shell reaps untracked child daemons; isolated database smoke checks need a managed background task and a writable socket directory.

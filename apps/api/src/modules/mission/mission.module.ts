@@ -9,8 +9,11 @@ import { InventoryModule } from '../inventory/inventory.module';
 import { NotificationModule } from '../notification/notification.module';
 import { EventModule } from '../event/event.module';
 import { TelemetryModule } from '../telemetry/telemetry.module';
+import { SynergyModule } from '../synergy/synergy.module';
+import { UiModule } from '../ui/ui.module';
+import { GameConstantsModule } from '../game-constants/game-constants.module';
 @Module({
-  imports: [EntityModule, CurrencyModule, PlayerModule, TickModule, InventoryModule, NotificationModule, EventModule, TelemetryModule],
+  imports: [EntityModule, CurrencyModule, PlayerModule, TickModule, InventoryModule, NotificationModule, EventModule, TelemetryModule, SynergyModule, UiModule, GameConstantsModule],
   providers: [MissionService],
   controllers: [MissionController],
   exports: [MissionService],

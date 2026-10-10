@@ -1,4 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
+import { assertCommandRequest, assertCommandResponse } from '@derp/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommandRouter } from './command.router';
 import { IdempotencyService } from '../infrastructure/idempotency.service';
@@ -16,6 +22,7 @@ export interface CommandOutput {
   patches: Patch[];
   ui: UiIntent[];
   cursor: { delta: string };
+  meta?: Record<string, any>;
 }
 
 @Injectable()
@@ -31,6 +38,14 @@ export class CommandService {
   ) {}
 
   async execute(userId: string, input: CommandInput): Promise<CommandOutput> {
+    try {
+      assertCommandRequest(input);
+    } catch (error) {
+      throw new BadRequestException(
+        `Invalid command request: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
     const handler = this.router.resolve(input.type);
     const requestHash = this.idempotency.hashRequest(input.payload);
 
@@ -48,13 +63,23 @@ export class CommandService {
           this.logger.debug(
             `Idempotent replay for user=${userId} cmd=${input.type} key=${input.idempotencyKey}`,
           );
-          return existing.responseJson as CommandOutput;
+          return this.validateResponse(existing.responseJson, 'Persisted idempotent replay');
         }
 
         return this.playerLock.executeWithLock(userId, tx, async (lockedTx) => {
           const handlerResult = await handler.execute(
             { userId, tx: lockedTx },
             input.payload,
+          );
+          // Validate handler output before any delta or idempotency write.
+          this.validateResponse(
+            {
+              patches: handlerResult?.patches,
+              ui: handlerResult?.ui,
+              cursor: { delta: '0' },
+              ...(handlerResult?.meta ? { meta: handlerResult.meta } : {}),
+            },
+            'Command handler',
           );
 
           const delta = await (lockedTx as any).playerDelta.create({
@@ -69,7 +94,9 @@ export class CommandService {
             patches: handlerResult.patches,
             ui: handlerResult.ui,
             cursor: { delta: delta.id.toString() },
+            ...(handlerResult.meta ? { meta: handlerResult.meta } : {}),
           };
+          this.validateResponse(output, 'Command response');
 
           await this.idempotency.store(
             lockedTx,
@@ -85,8 +112,8 @@ export class CommandService {
       },
       {
         maxWait: 10000,
-        timeout: 30000,
-        isolationLevel: 'Serializable',
+        timeout: 60000,
+        isolationLevel: 'ReadCommitted',
       },
     );
 
@@ -96,5 +123,16 @@ export class CommandService {
     });
 
     return result;
+  }
+
+  private validateResponse(value: unknown, source: string): CommandOutput {
+    try {
+      assertCommandResponse(value);
+      return value;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `${source} produced an invalid command response: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 }

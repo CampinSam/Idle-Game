@@ -1,4 +1,41 @@
-const API_BASE = '/api';
+import {
+  assertBootstrapResponse,
+  assertCommandRequest,
+  assertCommandResponse,
+  assertDeltaResponse,
+  assertDeltaResetResponse,
+} from '@derp/shared';
+import type {
+  BootstrapResponse,
+  CommandRequest,
+  CommandResponse,
+  DeltaResetResponse,
+  DeltaResponse,
+  SynergyPreview,
+} from '@derp/shared';
+
+export type {
+  BootstrapResponse,
+  CommandRequest,
+  CommandResponse,
+  DeltaResetResponse,
+  DeltaResponse,
+  Patch,
+  SynergyPreview,
+  UiIntent,
+} from '@derp/shared';
+
+const _rawApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+const API_BASE = _rawApiUrl ? _rawApiUrl.replace(/\/$/, '') : '/api';
+
+let _idemCounter = 0;
+function newIdempotencyKey(scope: string): string {
+  _idemCounter++;
+  // Random + counter + time gives a key the server can dedupe on; same value
+  // is reused if the SAME logical operation is retried by the same call site.
+  const rand = Math.random().toString(36).slice(2, 10);
+  return `${scope}-${Date.now().toString(36)}-${_idemCounter}-${rand}`;
+}
 
 class ApiClient {
   private token: string | null = null;
@@ -25,6 +62,10 @@ class ApiClient {
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.message || `Request failed: ${res.status}`);
+    }
+
+    if (res.status === 204 || res.headers.get('content-length') === '0') {
+      return undefined as unknown as T;
     }
 
     return res.json();
@@ -59,6 +100,16 @@ class ApiClient {
     return this.request<any>(`/entities/${id}`);
   }
 
+  getEntityEvents(id: string) {
+    return this.request<any[]>(`/entities/${id}/events`);
+  }
+
+  getEntityPowerUsage(id: string) {
+    return this.request<Record<string, { chargeUnits: number; maxChargeUnits: number; costPerUse: number; usesAvailable: number; lastChargeAppliedAtTick: string | null }>>(
+      `/entities/${id}/power-usage`,
+    );
+  }
+
   // Locations
   getLocations() {
     return this.request<any[]>('/locations');
@@ -68,30 +119,49 @@ class ApiClient {
     return this.request<any>(`/locations/${id}`);
   }
 
-  claimLocation(id: string) {
-    return this.request<any>(`/locations/${id}/claim`, { method: 'POST' });
+  getLocationPowerUsage(id: string) {
+    return this.request<Record<string, { chargeUnits: number; maxChargeUnits: number; costPerUse: number; usesAvailable: number; lastChargeAppliedAtTick: string | null }>>(
+      `/locations/${id}/power-usage`,
+    );
+  }
+
+  claimLocation(id: string, idempotencyKey?: string) {
+    return this.request<any>(`/locations/${id}/claim`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`loc-claim-${id}`) },
+    });
   }
 
   getAvailableBuildings(locationId: string) {
     return this.request<any>(`/locations/${locationId}/available-buildings`);
   }
 
-  buildBuilding(locationId: string, buildingDefId: string) {
+  buildBuilding(locationId: string, buildingDefId: string, idempotencyKey?: string) {
     return this.request<any>(`/locations/${locationId}/build`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`bld-${locationId}-${buildingDefId}`) },
       body: JSON.stringify({ buildingDefId }),
     });
   }
 
-  completeBuilding(locationId: string, buildingId: string) {
+  completeBuilding(locationId: string, buildingId: string, idempotencyKey?: string) {
     return this.request<any>(`/locations/${locationId}/buildings/${buildingId}/complete`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`bld-complete-${buildingId}`) },
     });
   }
 
-  upgradeBuilding(locationId: string, buildingId: string) {
+  upgradeBuilding(locationId: string, buildingId: string, idempotencyKey?: string) {
     return this.request<any>(`/locations/${locationId}/buildings/${buildingId}/upgrade`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`bld-upgrade-${buildingId}`) },
+    });
+  }
+
+  toggleBuilding(locationId: string, buildingId: string, enabled: boolean) {
+    return this.request<any>(`/locations/${locationId}/buildings/${buildingId}/toggle`, {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
     });
   }
 
@@ -112,16 +182,45 @@ class ApiClient {
     return this.request<any[]>('/missions/history');
   }
 
-  startMission(defId: string, entityIds: string[]) {
+  startMission(defId: string, entityIds: string[], idempotencyKey?: string) {
     return this.request<any>('/missions/start', {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`mission-start-${defId}`) },
       body: JSON.stringify({ defId, entityIds }),
     });
   }
 
-  completeMission(missionId: string) {
+  completeMission(missionId: string, idempotencyKey?: string) {
     return this.request<any>(`/missions/${missionId}/complete`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`mission-complete-${missionId}`) },
+    });
+  }
+
+  missionSynergyPreview(defId: string, entityIds: string[], signal?: AbortSignal) {
+    return this.request<SynergyPreview>('/missions/synergy-preview', {
+      method: 'POST',
+      body: JSON.stringify({ defId, entityIds }),
+      signal,
+    });
+  }
+
+  getMissionJobStats(jobId: string) {
+    return this.request<any>(`/missions/${jobId}/stats`);
+  }
+
+  getMissionLeadIn(defId: string) {
+    return this.request<any>(`/missions/${defId}/lead-in`);
+  }
+
+  jobPreview(
+    dto: { jobType: string; defId: string; entityIds?: string[]; entityId?: string; quantity?: number; locationId?: string },
+    signal?: AbortSignal,
+  ) {
+    return this.request<any>('/jobs/preview', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+      signal,
     });
   }
 
@@ -130,6 +229,11 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ jobIds }),
     });
+  }
+
+  // Shop
+  getShopItems() {
+    return this.request<any[]>('/shop/items');
   }
 
   // Crafting
@@ -141,17 +245,81 @@ class ApiClient {
     return this.request<any[]>('/crafting/active');
   }
 
-  startCrafting(recipeId: string, entityId: string) {
-    return this.request<any>('/crafting/start', {
+  collectCrafting(jobId: string, idempotencyKey?: string) {
+    return this.request<any>(`/crafting/${jobId}/collect`, {
       method: 'POST',
-      body: JSON.stringify({ recipeId, entityId }),
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`craft-collect-${jobId}`) },
     });
   }
 
-  collectCrafting(jobId: string) {
-    return this.request<any>(`/crafting/${jobId}/collect`, {
-      method: 'POST',
-    });
+  getCraftingForecast(includeAll = false, locationId?: string) {
+    const params = new URLSearchParams();
+    if (includeAll) params.set('includeAll', '1');
+    if (locationId) params.set('locationId', locationId);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return this.request<{
+      cap: number;
+      tiers: Array<{ key: string; label: string; center: number }>;
+      workshopTier: number;
+      luckFloor: number;
+      slotsTotal: number;
+      slotsUsed: number;
+      slotsOpen: number;
+      timerMultiplier: number;
+      recipeTierCap: number;
+      entities: Array<{
+        entityId: string;
+        name: string;
+        level: number;
+        status: string;
+        idle: boolean;
+        stats: { FOC: number; LCK: number };
+        craftingLuck: number;
+        rawCraftingLuck: number;
+        luckFloor: number;
+        probabilities: Array<{ key: string; label: string; probability: number }>;
+        expectedQuality: string;
+        expectedQualityLabel: string;
+      }>;
+    }>(`/crafting/forecast${qs}`);
+  }
+
+  getCraftingWorkshops() {
+    return this.request<Array<{
+      buildingId: string;
+      buildingDefId: string;
+      name: string;
+      level: number;
+      enabled: boolean;
+      locationId: string;
+      locationName?: string;
+      displayDef?: {
+        id: string;
+        borderColor?: string | null;
+        backgroundImage?: string | null;
+        cardBackground?: string | null;
+        style?: any;
+      } | null;
+    }>>('/crafting/workshops');
+  }
+
+  getCraftingWorkshopAtLocation(locationId: string) {
+    return this.request<{
+      buildingId: string;
+      buildingDefId: string;
+      name: string;
+      level: number;
+      enabled: boolean;
+      locationId: string;
+      locationName?: string;
+      displayDef?: {
+        id: string;
+        borderColor?: string | null;
+        backgroundImage?: string | null;
+        cardBackground?: string | null;
+        style?: any;
+      } | null;
+    }>(`/crafting/workshops/${encodeURIComponent(locationId)}`);
   }
 
   getCurrencies() {
@@ -160,6 +328,10 @@ class ApiClient {
 
   getItemDefs() {
     return this.request<any[]>('/inventory/items');
+  }
+
+  getEffectDefs() {
+    return this.request<any[]>('/effects/defs');
   }
 
   getInventory() {
@@ -175,11 +347,7 @@ class ApiClient {
   }
 
   getTickInfo() {
-    return this.request<{ currentTick: number; currentRate: number; serverTime: string }>('/tick/current');
-  }
-
-  getActiveBoosts() {
-    return this.request<any[]>('/tick/boosts');
+    return this.request<{ currentTick: number; currentRate: number; serverTime: string; activeBoosts: Array<{ id: string; name: string; multiplier: number; endTime: string }> }>('/tick/current');
   }
 
   createBoost(data: { name: string; description?: string; multiplier: number; durationMinutes: number }) {
@@ -223,8 +391,22 @@ class ApiClient {
     return this.request<any>(`/jobs/${jobId}`);
   }
 
-  skipJob(jobId: string) {
-    return this.request<{ skipped: boolean; costs: Record<string, number> }>(`/jobs/${jobId}/skip`, { method: 'POST' });
+  getContentDocument(id: string) {
+    return this.request<any>(`/content-documents/${id}`);
+  }
+
+  skipJob(jobId: string, idempotencyKey?: string) {
+    return this.request<{ skipped: boolean; costs: Record<string, number>; job?: any }>(`/jobs/${jobId}/skip`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`job-skip-${jobId}`) },
+    });
+  }
+
+  cancelJob(jobId: string, idempotencyKey?: string) {
+    return this.request<{ cancelled: boolean }>(`/jobs/${jobId}/cancel`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`job-cancel-${jobId}`) },
+    });
   }
 
   dismissNotification(id: string) {
@@ -243,8 +425,11 @@ class ApiClient {
     return this.request<any>(`/gifts/${id}`);
   }
 
-  claimGift(id: string) {
-    return this.request<any>(`/gifts/${id}/claim`, { method: 'POST' });
+  claimGift(id: string, idempotencyKey?: string) {
+    return this.request<any>(`/gifts/${id}/claim`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`gift-claim-${id}`) },
+    });
   }
 
   getMetaEnums() {
@@ -255,34 +440,69 @@ class ApiClient {
     return this.request<Record<string, any>>('/meta/rules');
   }
 
-  getModalSpec(params: { jobId?: string; notificationId?: string; giftId?: string }) {
+  getModalSpec(params: { jobId?: string; notificationId?: string; giftId?: string; buildingDefId?: string; locationId?: string; buildingId?: string; depositXp?: boolean; levelUp?: boolean; modalKey?: string }) {
     const q = new URLSearchParams();
     if (params.jobId) q.set('jobId', params.jobId);
     if (params.notificationId) q.set('notificationId', params.notificationId);
     if (params.giftId) q.set('giftId', params.giftId);
+    if (params.buildingDefId) q.set('buildingDefId', params.buildingDefId);
+    if (params.locationId) q.set('locationId', params.locationId);
+    if (params.buildingId) q.set('buildingId', params.buildingId);
+    if (params.depositXp) q.set('depositXp', 'true');
+    if (params.levelUp) q.set('levelUp', 'true');
+    if (params.modalKey) q.set('modalKey', params.modalKey);
     return this.request<any>(`/ui/modal?${q.toString()}`);
   }
 
+  get<T>(path: string): Promise<T> {
+    return this.request<T>(path);
+  }
+
+  rawRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
+    return this.request<T>(path, {
+      method,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  getScreenComposition(screenKey: string): Promise<import('@derp/shared').GameDefinitionRow> {
+    return this.request<import('@derp/shared').GameDefinitionRow>(`/screens/${screenKey}`);
+  }
+
   bootstrap() {
-    return this.requestV1<BootstrapResponse>('/v1/bootstrap');
+    return this.requestV1<BootstrapResponse>('/v1/bootstrap', assertBootstrapResponse);
   }
 
   sendCommand(input: CommandRequest) {
-    return this.requestV1<CommandResponse>('/v1/commands', {
+    assertCommandRequest(input);
+    return this.requestV1<CommandResponse>('/v1/commands', assertCommandResponse, {
       method: 'POST',
       body: JSON.stringify(input),
     });
   }
 
   fetchDelta(sinceCursor: string) {
-    return this.requestV1<DeltaResponse | DeltaResetResponse>(`/v1/delta?since=${sinceCursor}`);
+    return this.requestV1<DeltaResponse | DeltaResetResponse>(
+      `/v1/delta?since=${encodeURIComponent(sinceCursor)}`,
+      (value) => {
+        if (value !== null && typeof value === 'object' && (value as Record<string, unknown>).resetRequired === true) {
+          assertDeltaResetResponse(value);
+        } else {
+          assertDeltaResponse(value);
+        }
+      },
+    );
   }
 
   getToken() {
     return this.token;
   }
 
-  private async requestV1<T>(path: string, options: RequestInit = {}): Promise<T> {
+  private async requestV1<T>(
+    path: string,
+    validate: (value: unknown) => void,
+    options: RequestInit = {},
+  ): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...((options.headers as Record<string, string>) || {}),
@@ -297,63 +517,165 @@ class ApiClient {
       headers,
     });
 
-    const contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      throw new Error(`Server returned non-JSON response (${res.status})`);
-    }
-
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.message || `Request failed: ${res.status}`);
     }
 
-    return res.json();
+    if (res.status === 204 || res.headers.get('content-length') === '0') {
+      throw new Error(`Server returned an empty response for ${path}`);
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error(`Server returned non-JSON response (${res.status})`);
+    }
+
+    const body: unknown = await res.json();
+    validate(body);
+    return body as T;
+  }
+
+  // Wallet auth
+  walletNonce(chain: string, address: string) {
+    return this.request<{ nonce: string; message: string }>('/auth/wallet/nonce', {
+      method: 'POST',
+      body: JSON.stringify({ chain, address }),
+    });
+  }
+
+  walletVerify(chain: string, address: string, signature: string, key?: string) {
+    return this.request<
+      | { accessToken: string; player: any }
+      | { linked: true }
+      | { needsOnboarding: true; walletToken: string; chain: string; address: string }
+    >('/auth/wallet/verify', {
+      method: 'POST',
+      body: JSON.stringify({ chain, address, signature, key }),
+    });
+  }
+
+  walletCompleteOnboarding(walletToken: string, username: string, email?: string, password?: string) {
+    return this.request<{ accessToken: string; player: any }>('/auth/wallet/complete', {
+      method: 'POST',
+      body: JSON.stringify({ walletToken, username, email, password }),
+    });
+  }
+
+  forgotPassword(email: string) {
+    return fetch(`${API_BASE}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, appUrl: window.location.origin }),
+    });
+  }
+
+  resetPassword(token: string, password: string) {
+    return this.request<void>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+  }
+
+  setPassword(password: string) {
+    return this.request<void>('/auth/set-password', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+  }
+
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.request<void>('/auth/change-password', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  }
+
+  walletNonceAuthed(chain: string, address: string, _token: string) {
+    return this.request<{ nonce: string; message: string }>('/auth/wallet/nonce', {
+      method: 'POST',
+      body: JSON.stringify({ chain, address }),
+    });
+  }
+
+  walletVerifyAuthed(chain: string, address: string, signature: string, _token: string, key?: string) {
+    return this.request<{ linked: true }>('/auth/wallet/link', {
+      method: 'POST',
+      body: JSON.stringify({ chain, address, signature, key }),
+    });
+  }
+
+  // Linked wallets
+  getLinkedWallets() {
+    return this.request<any[]>('/player/wallets');
+  }
+
+  removeLinkedWallet(id: string) {
+    return this.request<{ success: true }>(`/player/wallets/${id}`, { method: 'DELETE' });
+  }
+
+  setWalletPrimary(id: string) {
+    return this.request<{ success: true }>(`/player/wallets/${id}/primary`, { method: 'POST' });
+  }
+
+  addManualWallet(chain: string, address: string) {
+    return this.request<{ linked: true }>(`/player/wallets/manual`, {
+      method: 'POST',
+      body: JSON.stringify({ chain, address }),
+    });
+  }
+
+  // NFT collections
+  syncNftCollections() {
+    return this.request<{ claimed: number; alreadyClaimed: number; notImported: number; unclaimed: number; reconciliationSkippedCollections: string[]; entities: any[]; locations: any[] }>('/nft/collections/sync', {
+      method: 'POST',
+    });
+  }
+
+  getNftEntities() {
+    return this.request<any[]>('/nft/collections/entities');
+  }
+
+  // On-chain wallet
+  getDepositInfo() {
+    return this.request<any>('/crypto/deposit-info');
+  }
+
+  buildDepositTx(body: { amount: number; utxosCborHex: string[]; policyId?: string; assetName?: string }) {
+    return this.request<{ unsignedTxCborHex: string }>('/crypto/build-deposit-tx', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  submitDepositTx(signedTxCborHex: string) {
+    return this.request<{ txHash: string }>('/crypto/submit-deposit-tx', {
+      method: 'POST',
+      body: JSON.stringify({ signedTxCborHex }),
+    });
+  }
+
+  decodeAddress(hexAddress: string) {
+    return this.request<{ bech32: string }>('/crypto/decode-address', {
+      method: 'POST',
+      body: JSON.stringify({ hexAddress }),
+    });
+  }
+
+  requestWithdrawal(amount: number, destinationAddress: string, currencyId?: string) {
+    return this.request<{ id: string }>('/crypto/withdraw', {
+      method: 'POST',
+      body: JSON.stringify({ amount, destinationAddress, ...(currencyId ? { currencyId } : {}) }),
+    });
+  }
+
+  getWithdrawals(limit = 10) {
+    return this.request<any[]>(`/crypto/withdrawals?limit=${limit}`);
+  }
+
+  getDeposits(limit = 20) {
+    return this.request<any[]>(`/crypto/deposits?limit=${limit}`);
   }
 }
-
-export interface BootstrapResponse {
-  serverTime: number;
-  snapshot: {
-    player: any;
-    state: any;
-    inventory?: any;
-    jobs?: any;
-    notifications?: any;
-    currencies?: any;
-  };
-  cursor: { delta: string };
-}
-
-export interface CommandRequest {
-  type: string;
-  payload: Record<string, any>;
-  idempotencyKey: string;
-}
-
-export interface CommandResponse {
-  patches: Patch[];
-  ui: UiIntent[];
-  cursor: { delta: string };
-}
-
-export interface DeltaResponse {
-  from: string;
-  to: string;
-  patches: Patch[];
-  ui: UiIntent[];
-}
-
-export interface DeltaResetResponse {
-  resetRequired: true;
-}
-
-export type Patch =
-  | { op: 'upsert'; entity: string; id: string; data: any }
-  | { op: 'delete'; entity: string; id: string };
-
-export type UiIntent =
-  | { type: 'modal'; key: string; title: string; body: any; buttons: any[] }
-  | { type: 'toast'; tone: 'success' | 'error' | 'info'; message: string }
-  | { type: 'navigate'; deepLink: string };
 
 export const api = new ApiClient();

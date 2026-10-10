@@ -1,18 +1,21 @@
-import type { Requirement, RewardOrBundle, EffectOrBundle } from './mission';
+import type { RewardOrBundle, EffectOrBundle } from './mission';
+import type { Requirements } from './rich-selection';
+import type { Timer, SkipCostEntry } from './timer';
 
 export type CraftingRecipeId = string;
+
+export type CostEntry = SkipCostEntry;
 
 export interface CraftingRecipe {
   id: CraftingRecipeId;
   name: string;
   description: string;
-  cost: Record<string, number>;
-  timer: import('./timer').Timer;
-  requiredKeeperLevel: number;
+  cost: CostEntry[];
+  timer: Timer;
   rewards?: RewardOrBundle[];
-  requirements?: Requirement[];
+  requirements?: Requirements;
   effects?: EffectOrBundle[];
-  visibilityRequirements?: Requirement[];
+  visibilityRequirements?: Requirements;
 }
 
 export type CraftingJobStatus = 'active' | 'ready_notified' | 'completed' | 'collected';
@@ -36,4 +39,28 @@ export interface CraftingResult {
 export interface StartCraftingDto {
   recipeId: CraftingRecipeId;
   entityId: string;
+}
+
+export type DustingTimerScaling = 'flat' | 'per_unit';
+
+export interface DustingTierBlock {
+  rewards: any[];
+  clRequirement?: number;
+}
+
+export interface DustingData {
+  instant: boolean;
+  timer: Timer;
+  timerScaling: DustingTimerScaling;
+  difficulty: number;
+  tiers: Record<string, DustingTierBlock>;
+}
+
+export interface StartDustingPayload {
+  itemInstanceId: string;
+  quantity: number;
+}
+
+export interface CollectDustingPayload {
+  jobId: string;
 }

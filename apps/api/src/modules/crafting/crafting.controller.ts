@@ -1,21 +1,16 @@
-import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
-import { IsString } from 'class-validator';
+import { Controller, Get, Post, Param, Query, UseGuards, Headers } from '@nestjs/common';
 import { CraftingService } from './crafting.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-
-class StartCraftingDto {
-  @IsString()
-  recipeId: string;
-
-  @IsString()
-  entityId: string;
-}
+import { IdempotencyService } from '../infrastructure/idempotency.service';
 
 @Controller('crafting')
 @UseGuards(JwtAuthGuard)
 export class CraftingController {
-  constructor(private craftingService: CraftingService) {}
+  constructor(
+    private craftingService: CraftingService,
+    private idempotency: IdempotencyService,
+  ) {}
 
   @Get('recipes')
   getRecipes(@CurrentUser() user: { id: string }) {
@@ -27,13 +22,45 @@ export class CraftingController {
     return this.craftingService.getActiveJobs(user.id);
   }
 
-  @Post('start')
-  startCrafting(@CurrentUser() user: { id: string }, @Body() dto: StartCraftingDto) {
-    return this.craftingService.startCrafting(user.id, dto.recipeId, dto.entityId);
+  @Get('forecast')
+  getLuckForecast(
+    @CurrentUser() user: { id: string },
+    @Query('includeAll') includeAll?: string,
+    @Query('locationId') locationId?: string,
+    @Query('recipeId') recipeId?: string,
+  ) {
+    return this.craftingService.getLuckForecast(user.id, {
+      includeAll: includeAll === '1' || includeAll === 'true',
+      locationId: locationId || undefined,
+      recipeId: recipeId || undefined,
+    });
+  }
+
+  @Get('workshops')
+  getWorkshops(@CurrentUser() user: { id: string }) {
+    return this.craftingService.getWorkshops(user.id);
+  }
+
+  @Get('workshops/:locationId')
+  getWorkshopAtLocation(
+    @CurrentUser() user: { id: string },
+    @Param('locationId') locationId: string,
+  ) {
+    return this.craftingService.assertWorkshopAtLocation(user.id, locationId);
   }
 
   @Post(':id/collect')
-  collectCrafting(@CurrentUser() user: { id: string }, @Param('id') id: string) {
-    return this.craftingService.collectCrafting(user.id, id);
+  collectCrafting(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.idempotency.executeIdempotent(
+      user.id,
+      'POST:/crafting/:id/collect',
+      idempotencyKey,
+      { jobId: id },
+      () => this.craftingService.collectCrafting(user.id, id),
+    );
   }
 }

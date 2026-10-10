@@ -1,0 +1,61 @@
+uploads = []
+
+[[generated]]
+id = "tHoCB5MVWlWBNepzdNACN"
+uri = "file://apps/web/public/gem-packs/handful.png"
+type = "image"
+title = "handful gems small pile"
+
+[[generated]]
+id = "ovjizVuZdi-Oy1rZMUSHH"
+uri = "file://apps/web/public/gem-packs/satchel.png"
+type = "image"
+title = "satchel pouch gems spilling"
+
+[[generated]]
+id = "xRNDxB7-eaAwVCtRJQg9X"
+uri = "file://apps/web/public/gem-packs/chest.png"
+type = "image"
+title = "treasure chest overflowing gems"
+
+[[generated]]
+id = "rHztQcaggujL-a6QAKmQG"
+uri = "file://apps/web/public/gem-packs/mountain.png"
+type = "image"
+title = "mountain of gems crystals"
+
+[[generated]]
+id = "-PqDjvluTyQgJgXcOReIW"
+uri = "file://apps/web/public/gem-packs/vault.png"
+type = "image"
+title = "vault open emerald gem hoard"
+
+[[generated]]
+id = "NJv1mw-5-qQp3VSLeATE0"
+uri = "file://apps/web/public/gem-packs/trove.png"
+type = "image"
+title = "legendary trove golden gems epic"
+
+[[outputs]]
+id = "BJGuzLXQq9qw-FZnxrrk0"
+uri = "file://prod-export.json"
+type = "unspecified"
+title = "Production definition data export"
+
+[[outputs]]
+id = "u15WECdgGFN0aHJAGR_2x"
+uri = "file://content-creator-guide.txt"
+type = "text"
+title = "Content Creator Guide (plain text)"
+
+[[outputs]]
+id = "9COqON3dbsHjs068hNW6a"
+uri = "file://content-creator-guide.pdf"
+type = "pdf"
+title = "Content Creator Guide (PDF)"
+
+[[outputs]]
+id = "ok0YiMfFTLSbentdT3Rkq"
+uri = "file://derp-universe-onboarding.pdf"
+type = "pdf"
+title = "Derp Universe — Content Creator & Admin Onboarding Guide"

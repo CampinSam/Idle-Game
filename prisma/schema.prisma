@@ -7,79 +7,210 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum CurrencyType {
-  SOFT
-  HARD
-  PREMIUM
-  SEASONAL
-  EVENT
-  GUILD
-}
-
 model User {
-  id             String   @id @default(uuid())
-  username       String   @unique
-  email          String   @unique
-  passwordHash   String?
-  authProvider   String?
-  providerId     String?
-  walletAddress  String?
-  ecosystemId    String?
-  keeperLevel    Int      @default(1)
-  keeperXp       BigInt   @default(0)
-  prestigeTokens Int      @default(0)
-  flags          Json     @default("{}")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  entities           Entity[]
-  locationInstances  LocationInstance[]
-  jobs               Job[]
-  notifications      Notification[]
-  currencyBalances   UserCurrencyBalance[]
-  currencyLedger     CurrencyLedger[]
-  itemInstances      ItemInstance[]     @relation("UserItemInstances")
-  itemLedger         ItemLedger[]
-  giftInstances      GiftInstance[]
-  playerDeltas       PlayerDelta[]
-  playerEvents       PlayerEvent[]
-  checkInInstances   CheckInInstance[]
-  questInstances     QuestInstance[]
+  id                String                @id @default(uuid())
+  username          String                @unique
+  email             String                @unique
+  passwordHash      String?
+  authProvider      String?
+  providerId        String?
+  walletAddress     String?
+  ecosystemId       String?
+  keeperLevel       Int                   @default(1)
+  keeperXp          BigInt                @default(0)
+  prestigeTokens    Int                   @default(0)
+  flags             Json                  @default("{}")
+  primaryLocationId String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  stripeCustomerId  String?
+  activeEffects     ActiveEffect[]
+  checkInInstances  CheckInInstance[]
+  cryptoWithdrawals      CryptoWithdrawal[]
+  resolvedDeposits       UnresolvedDeposit[] @relation("ResolvedDeposits")
+  creditedDeposits       UnresolvedDeposit[] @relation("CreditedDeposits")
+  currencyLedger    CurrencyLedger[]
+  entities          Entity[]
+  giftInstances     GiftInstance[]
+  itemInstances     ItemInstance[]        @relation("UserItemInstances")
+  itemLedger        ItemLedger[]
+  jobs              Job[]
+  linkedWallets     LinkedWallet[]
+  locationInstances LocationInstance[]
+  notifications     Notification[]
+  passwordResets    PasswordReset[]
+  playerDeltas      PlayerDelta[]
+  playerEvents      PlayerEvent[]
+  purchases         Purchase[]
+  questInstances    QuestInstance[]
+  currencyBalances  UserCurrencyBalance[]
+  unlocks           UserUnlock[]
 
   @@unique([authProvider, providerId])
   @@index([ecosystemId])
   @@map("users")
 }
 
-model Currency {
-  id          String       @id
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
+model LinkedWallet {
+  id             String   @id @default(uuid())
+  userId         String
+  chain          String
+  address        String
+  paymentAddress String?
+  isPrimary      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chain, address])
+  @@index([userId])
+  @@map("linked_wallets")
+}
+
+model WalletNonce {
+  id        String   @id @default(uuid())
+  address   String
+  chain     String
+  nonce     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([chain, address])
+  @@map("wallet_nonces")
+}
+
+model NftCollectionDef {
+  id                   String         @id @default(uuid())
+  key                  String         @unique
+  name                 String
+  chain                String
+  collectionId         String
+  entityDefinitionId   String?
+  locationDefinitionId String?
+  itemDefinitionId     String?
+  mintMode             String         @default("one_per_token")
+  active               Boolean        @default(true)
+  data                 Json           @default("{}")
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  nftAssets            NftAsset[]
+  itemInstances        ItemInstance[]
+
+  @@unique([chain, collectionId])
+  @@map("nft_collection_defs")
+}
+
+model SelectionRuleDef {
+  id          String   @id @default(uuid())
+  key         String   @unique
   name        String
-  symbol      String?
-  iconKey     String?
-  type        CurrencyType
-  seasonId    String?
-  isTradeable Boolean      @default(false)
-  isSpendable Boolean      @default(true)
-  decimals    Int          @default(0)
-  cap         BigInt?
+  description String?
+  tags        String[]
+  selection   Json
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  @@index([enabled])
+  @@map("selection_rule_defs")
+}
 
-  balances    UserCurrencyBalance[]
-  ledger      CurrencyLedger[]
+model SynergyRule {
+  id              String    @id @default(uuid())
+  key             String    @unique
+  name            String
+  description     String?
+  enabled         Boolean   @default(true)
+  sourceSelector  Json      @default("{}")
+  targetSelector  Json      @default("{}")
+  context         Json      @default("{}")
+  effects         Json
+  priority        Int       @default(100)
+  stackGroup      String?
+  stackMode       StackMode @default(additive)
+  maxApplications Int       @default(1)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
+  @@index([enabled])
+  @@map("synergy_rules")
+}
+
+model NftAsset {
+  nftAssetId    String           @id
+  collectionId  String
+  chain         String
+  policyId      String
+  tokenName     String
+  ownerAddress  String?
+  name          String?
+  imageUrl      String?
+  rawMetadata   Json             @default("{}")
+  nftAttributes Json             @default("{}")
+  lastSyncedAt  DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  collection    NftCollectionDef @relation(fields: [collectionId], references: [id])
+
+  @@index([collectionId])
+  @@index([ownerAddress])
+  @@map("nft_assets")
+}
+
+model Currency {
+  id           String                @id @default(uuid())
+  key          String                @unique
+  name         String
+  symbol       String?
+  iconKey      String?
+  type         CurrencyType
+  seasonId     String?
+  isTradeable  Boolean               @default(false)
+  isSpendable  Boolean               @default(true)
+  decimals     Int                   @default(0)
+  cap          BigInt?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  enabled      Boolean               @default(true)
+  showInTopBar             Boolean               @default(false)
+  sortOrder                Int                   @default(0)
+  cntEcosystem             String?
+  cntWalletType            String?
+  cntPolicyId              String?
+  cntAssetName             String?
+  cntPriceAda              Float?
+  cntMinWithdrawalType     WithdrawalMinType?
+  cntMinWithdrawalAmount   Float?
+  cntWithdrawalFee         BigInt?
+  cntAutoApprovalThreshold BigInt?
+  ledger                   CurrencyLedger[]
+  balances                 UserCurrencyBalance[]
+
+  @@unique([cntPolicyId, cntAssetName], name: "unique_cnt_policy_asset")
   @@map("currencies")
 }
 
 model UserCurrencyBalance {
   userId     String
   currencyId String
-  balance    BigInt      @default(0)
-  updatedAt  DateTime    @updatedAt
-
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  currency   Currency    @relation(fields: [currencyId], references: [id], onDelete: Restrict)
+  balance    BigInt   @default(0)
+  updatedAt  DateTime @updatedAt
+  currency   Currency @relation(fields: [currencyId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, currencyId])
   @@index([currencyId])
@@ -88,140 +219,71 @@ model UserCurrencyBalance {
 }
 
 model CurrencyLedger {
-  id         BigInt     @id @default(autoincrement())
+  id         BigInt   @id @default(autoincrement())
   userId     String
   currencyId String
-
   delta      BigInt
   reason     String
   sourceType String?
   sourceId   String?
-  metadata   Json       @default("{}")
-  createdAt  DateTime   @default(now())
-
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  currency   Currency   @relation(fields: [currencyId], references: [id], onDelete: Restrict)
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+  currency   Currency @relation(fields: [currencyId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([currencyId, createdAt(sort: Desc)])
   @@map("currency_ledger")
 }
 
-// ═══════════════════════════════════════════════════
-// ENTITY (CHARACTER) DEFINITION TABLES
-// ═══════════════════════════════════════════════════
-
 model EntityDefinition {
-  id                     String   @id
-  speciesId              String
-  bodySchemaId           String
-  equipmentSchemaId      String
-  progressionProfileId   String
-  rules                  Json     @default("{}")
-  data                   Json     @default("{}")
-
-  bodySchema             BodySchema           @relation(fields: [bodySchemaId], references: [id])
-  equipmentSchema        EquipmentSchema      @relation(fields: [equipmentSchemaId], references: [id])
-  progressionProfile     ProgressionProfile   @relation(fields: [progressionProfileId], references: [id])
-
-  entities               Entity[]
-
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id             String   @id @default(uuid())
+  key            String   @unique
+  name           String
+  speciesId      String
+  slots          Json     @default("{}")
+  equipmentSlots Json     @default("{}")
+  traits         Json     @default("{}")
+  rules          Json     @default("{}")
+  data           Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  init           Json
+  progression    Json
+  ascension      Json
+  mastery        Json
+  entities       Entity[]
 
   @@index([speciesId])
   @@map("entity_definitions")
 }
 
-model BodySchema {
-  id    String   @id
-  slots Json     @default("[]")
-  data  Json     @default("{}")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  entityDefinitions EntityDefinition[]
-
-  @@map("body_schemas")
-}
-
-model ProgressionProfile {
-  id               String   @id
-  leveling         Boolean  @default(true)
-  ascension        Boolean  @default(true)
-  mastery          Boolean  @default(true)
-  prestigeEligible Boolean  @default(true)
-  maxLevel         Int      @default(50)
-  ascensionCap     Int      @default(5)
-  data             Json     @default("{}")
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  entityDefinitions EntityDefinition[]
-
-  @@map("progression_profiles")
-}
-
-model EquipmentSchema {
-  id     String   @id
-  schema Json     @default("{}")
-  data   Json     @default("{}")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  entityDefinitions EntityDefinition[]
-
-  @@map("equipment_schemas")
-}
-
-model TraitDefinition {
-  id            String   @id
-  archetype     String
-  slotStats     Json     @default("{}")
-  tags          Json     @default("[]")
-  data          Json     @default("{}")
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([archetype])
-  @@map("trait_definitions")
-}
-
-// ═══════════════════════════════════════════════════
-// ENTITY (CHARACTER) INSTANCE TABLES
-// ═══════════════════════════════════════════════════
-
 model Entity {
-  id              String   @id @default(uuid())
-  ownerUserId     String
-  ecosystemId     String?
-  nftAssetId      String?  @unique
-
-  definitionId    String
-  speciesId       String
-  role            String   @default("player_unit")
-
-  display         Json     @default("{}")
-  progression     Json     @default("{}")
-  stats           Json     @default("{}")
-  traits          Json     @default("{}")
-  archetypeVector Json     @default("{}")
-  affinities      Json     @default("{}")
-  state           Json     @default("{}")
-
-  version         Int      @default(1)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  owner           User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  definition      EntityDefinition @relation(fields: [definitionId], references: [id])
-
-  equipment       EntityEquipment[]
-  workerAssignments LocationWorkerAssignment[]
+  id                 String                     @id @default(uuid())
+  ownerUserId        String?
+  ecosystemId        String?
+  nftAssetId         String?                    @unique
+  nftCollectionDefId String?
+  definitionId       String
+  speciesId          String
+  role               String                     @default("player_unit")
+  display            Json                       @default("{}")
+  progression        Json                       @default("{}")
+  stats              Json                       @default("{}")
+  traits             Json                       @default("{}")
+  archetypeVector    Json                       @default("{}")
+  affinities         Json                       @default("{}")
+  state              Json                       @default("{}")
+  injuredUntilTick   Int?
+  seed               Int?
+  version            Int                        @default(1)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  definition         EntityDefinition           @relation(fields: [definitionId], references: [id])
+  owner              User?                      @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  equipment          EntityEquipment[]
+  powerUsages        EntityPowerUsage[]
+  workerAssignments  LocationWorkerAssignment[]
 
   @@index([ownerUserId])
   @@index([ecosystemId])
@@ -231,133 +293,122 @@ model Entity {
 }
 
 model EntityEquipment {
-  id              String   @id @default(uuid())
-  entityId        String
-  itemInstanceId  String
-  slotClaims      Json     @default("[]")
-  equippedAt      DateTime @default(now())
-
-  entity          Entity   @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  id             String   @id @default(uuid())
+  entityId       String
+  itemInstanceId String
+  slotClaims     Json     @default("[]")
+  equippedAt     DateTime @default(now())
+  entity         Entity   @relation(fields: [entityId], references: [id], onDelete: Cascade)
 
   @@index([entityId])
   @@map("entity_equipment")
 }
 
-// ═══════════════════════════════════════════════════
-// LOCATION / OUTPOST DEFINITION TABLES
-// ═══════════════════════════════════════════════════
-
 model RegionDefinition {
-  id          String   @id
-  displayName String
-  biome       String?
-  modifiers   Json     @default("{}")
-  data        Json     @default("{}")
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id                  String               @id @default(uuid())
+  key                 String               @unique
+  displayName         String
+  biome               String?
+  imageKey            String?
+  accentColor         String?
+  modifiers           Json                 @default("{}")
+  data                Json                 @default("{}")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
   locationDefinitions LocationDefinition[]
 
   @@map("region_definitions")
 }
 
 model LocationDefinition {
-  id                       String   @id
-  kind                     String   @default("outpost_fungible")
-  regionId                 String?
-  isUnique                 Boolean  @default(false)
-  rules                    Json     @default("{}")
-  productionProfile        Json     @default("{}")
-  data                     Json     @default("{}")
-  requirements             Json     @default("[]")
-  visibilityRequirements   Json     @default("[]")
-
-  region            RegionDefinition? @relation(fields: [regionId], references: [id], onDelete: SetNull)
-
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  instances         LocationInstance[]
+  id                     String             @id @default(uuid())
+  key                    String             @unique
+  kind                   String             @default("outpost_fungible")
+  regionId               String?
+  isUnique               Boolean            @default(false)
+  rules                  Json               @default("{}")
+  productionProfile      Json               @default("{}")
+  data                   Json               @default("{}")
+  requirements           Json               @default("[]")
+  visibilityRequirements Json               @default("[]")
+  levelUpModalDefId      String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  region                 RegionDefinition?  @relation(fields: [regionId], references: [id])
+  instances              LocationInstance[]
 
   @@index([regionId])
   @@map("location_definitions")
 }
 
 model BuildingDef {
-  id                       String   @id
-  name                     String
-  description              String?
-  tags                     Json     @default("[]")
-  rules                    Json     @default("{}")
-  data                     Json     @default("{}")
-  requirements             Json     @default("[]")
-  visibilityRequirements   Json     @default("[]")
-  activeModalDefId         String?
-  completedModalDefId      String?
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  buildingInstances    LocationBuildingInstance[]
+  id                     String                     @id @default(uuid())
+  key                    String                     @unique
+  name                   String
+  description            String?
+  iconKey                String?
+  category               String?
+  tags                   Json                       @default("[]")
+  rules                  Json                       @default("{}")
+  data                   Json                       @default("{}")
+  requirements           Json                       @default("[]")
+  visibilityRequirements Json                       @default("[]")
+  activeModalDefId       String?
+  readyModalDefId        String?
+  completedModalDefId    String?
+  failedModalDefId       String?
+  displayDefId           String?
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+  displayDef             DisplayDef?                @relation(fields: [displayDefId], references: [id])
+  buildingInstances      LocationBuildingInstance[]
 
   @@map("building_defs")
 }
 
 model RoomDef {
-  id                       String   @id
-  name                     String
-  description              String?
-  tags                     Json     @default("[]")
-  rules                    Json     @default("{}")
-  data                     Json     @default("{}")
-  requirements             Json     @default("[]")
-  visibilityRequirements   Json     @default("[]")
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  roomInstances    LocationRoomInstance[]
+  id                     String                 @id @default(uuid())
+  key                    String                 @unique
+  name                   String
+  description            String?
+  tags                   Json                   @default("[]")
+  rules                  Json                   @default("{}")
+  data                   Json                   @default("{}")
+  requirements           Json                   @default("[]")
+  visibilityRequirements Json                   @default("[]")
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  roomInstances          LocationRoomInstance[]
 
   @@map("room_defs")
 }
 
-// ═══════════════════════════════════════════════════
-// LOCATION / OUTPOST INSTANCE TABLES
-// ═══════════════════════════════════════════════════
-
 model LocationInstance {
-  id              String   @id @default(uuid())
-  ownerUserId     String
-  ecosystemId     String?
-  nftAssetId      String?  @unique
-
-  definitionId    String
-  regionId        String?
-  kind            String   @default("outpost_fungible")
-  isUnique        Boolean  @default(false)
-
-  level           Int      @default(1)
-  xp              BigInt   @default(0)
-
-  threatLevel     Int      @default(0)
-  corruptionLevel Int      @default(0)
-
-  lastCollectionTick BigInt @default(0)
-
-  storage         Json     @default("{}")
-  state           Json     @default("{}")
-  enabled         Boolean  @default(true)
-
-  version         Int      @default(1)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  owner           User               @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  definition      LocationDefinition @relation(fields: [definitionId], references: [id])
-
-  buildings       LocationBuildingInstance[]
-  workerAssignments LocationWorkerAssignment[]
+  id                 String                     @id @default(uuid())
+  ownerUserId        String?
+  ecosystemId        String?
+  nftAssetId         String?                    @unique
+  definitionId       String
+  regionId           String?
+  kind               String                     @default("outpost_fungible")
+  isUnique           Boolean                    @default(false)
+  level              Int                        @default(1)
+  xp                 BigInt                     @default(0)
+  threatLevel        Int                        @default(0)
+  corruptionLevel    Int                        @default(0)
+  lastCollectionTick BigInt                     @default(0)
+  storage            Json                       @default("{}")
+  state              Json                       @default("{}")
+  enabled            Boolean                    @default(true)
+  version            Int                        @default(1)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  name               String?
+  buildings          LocationBuildingInstance[]
+  definition         LocationDefinition         @relation(fields: [definitionId], references: [id])
+  owner              User?                      @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  powerUsages        LocationPowerUsage[]
+  workerAssignments  LocationWorkerAssignment[]
 
   @@index([ownerUserId])
   @@index([ecosystemId])
@@ -366,19 +417,17 @@ model LocationInstance {
 }
 
 model LocationBuildingInstance {
-  id              String   @id @default(uuid())
-  locationId      String
-  buildingDefId   String
-  level           Int      @default(1)
-  state           Json     @default("{}")
-  enabled         Boolean  @default(true)
-
-  location        LocationInstance @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  buildingDef     BuildingDef      @relation(fields: [buildingDefId], references: [id], onDelete: Restrict)
-  rooms           LocationRoomInstance[]
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String                 @id @default(uuid())
+  locationId    String
+  buildingDefId String
+  level         Int                    @default(1)
+  state         Json                   @default("{}")
+  enabled       Boolean                @default(true)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  buildingDef   BuildingDef            @relation(fields: [buildingDefId], references: [id])
+  location      LocationInstance       @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  rooms         LocationRoomInstance[]
 
   @@index([locationId])
   @@index([buildingDefId])
@@ -386,18 +435,16 @@ model LocationBuildingInstance {
 }
 
 model LocationRoomInstance {
-  id                  String   @id @default(uuid())
-  buildingInstanceId  String
-  roomDefId           String
-  level               Int      @default(1)
-  state               Json     @default("{}")
-  enabled             Boolean  @default(true)
-
-  building            LocationBuildingInstance @relation(fields: [buildingInstanceId], references: [id], onDelete: Cascade)
-  roomDef             RoomDef          @relation(fields: [roomDefId], references: [id], onDelete: Restrict)
-
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String                   @id @default(uuid())
+  buildingInstanceId String
+  roomDefId          String
+  level              Int                      @default(1)
+  state              Json                     @default("{}")
+  enabled            Boolean                  @default(true)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  building           LocationBuildingInstance @relation(fields: [buildingInstanceId], references: [id], onDelete: Cascade)
+  roomDef            RoomDef                  @relation(fields: [roomDefId], references: [id])
 
   @@index([buildingInstanceId])
   @@index([roomDefId])
@@ -405,25 +452,20 @@ model LocationRoomInstance {
 }
 
 model LocationWorkerAssignment {
-  id         String   @id @default(uuid())
+  id         String           @id @default(uuid())
   locationId String
   entityId   String
-  roleTag    String   @default("production")
-  bonus      Json     @default("{}")
-  assignedAt DateTime @default(now())
-
-  location   LocationInstance @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  roleTag    String           @default("production")
+  bonus      Json             @default("{}")
+  assignedAt DateTime         @default(now())
   entity     Entity           @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  location   LocationInstance @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   @@unique([locationId, entityId])
   @@index([locationId])
   @@index([entityId])
   @@map("location_worker_assignments")
 }
-
-// ═══════════════════════════════════════════════════
-// EXISTING MODELS (unchanged)
-// ═══════════════════════════════════════════════════
 
 model IdempotencyKey {
   id           String   @id
@@ -446,7 +488,6 @@ model PlayerDelta {
   patches   Json
   ui        Json?
   createdAt DateTime @default(now())
-
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, id])
@@ -454,234 +495,282 @@ model PlayerDelta {
 }
 
 model DisplayDef {
-  id              String   @id
-  name            String
-  borderColor     String?
-  backgroundImage String?
-  cardBackground  String?
-  data            Json     @default("{}")
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
+  id                  String               @id @default(uuid())
+  key                 String               @unique
+  name                String
+  borderColor         String?
+  backgroundImage     String?
+  cardBackground      String?
+  style               Json                 @default("{}")
+  data                Json                 @default("{}")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  buildingDefs        BuildingDef[]
   missionCategoryDefs MissionCategoryDef[]
   missionDefs         MissionDef[]
+  recipeDefs          RecipeDef[]
 
   @@map("display_defs")
 }
 
 model MissionCategoryDef {
-  id                       String      @id
-  name                     String
-  parentId                 String?
-  parent                   MissionCategoryDef?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children                 MissionCategoryDef[] @relation("CategoryHierarchy")
-  displayDefId             String?
-  displayDef               DisplayDef? @relation(fields: [displayDefId], references: [id], onDelete: SetNull)
-  tags                     Json        @default("[]")
-  requirements             Json        @default("[]")
-  visibilityRequirements   Json        @default("[]")
-  enabled                  Boolean     @default(true)
-  sortOrder                Int         @default(0)
-  data                     Json        @default("{}")
-
-  createdAt                DateTime    @default(now())
-  updatedAt                DateTime    @updatedAt
-
-  missionDefs              MissionDef[]
+  id                     String               @id @default(uuid())
+  key                    String               @unique
+  name                   String
+  parentId               String?
+  displayDefId           String?
+  tags                   Json                 @default("[]")
+  requirements           Json                 @default("[]")
+  visibilityRequirements Json                 @default("[]")
+  enabled                Boolean              @default(true)
+  sortOrder              Int                  @default(0)
+  inlineOnly             Boolean              @default(false)
+  data                   Json                 @default("{}")
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  displayDef             DisplayDef?          @relation(fields: [displayDefId], references: [id])
+  parent                 MissionCategoryDef?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children               MissionCategoryDef[] @relation("CategoryHierarchy")
+  missionDefs            MissionDef[]
 
   @@map("mission_category_defs")
 }
 
 model MissionDef {
-  id                       String             @id
-  name                     String
-  description              String?
-  type                     String
-  category                 String?
-  group                    String?
-  difficulty               Int                @default(0)
-  minSuccessChance         Int                @default(0)
-  maxSuccessChance         Int                @default(100)
-  timer                    Json               @default("{\"duration\":0,\"boostable\":true,\"skipable\":false,\"skip_cost\":{},\"skip_type\":\"absolute\"}")
-  success                  Json               @default("{\"rewards\":[],\"effects\":[],\"text\":[]}")
-  failure                  Json               @default("{\"rewards\":[],\"effects\":[],\"text\":[]}")
-  requirements             Json               @default("[]")
-  visibilityRequirements   Json               @default("[]")
-  tags                     Json               @default("[]")
-  rewardPreview            Json               @default("[]")
-  enabled                  Boolean            @default(true)
-  displayDefId             String?
-  displayDef               DisplayDef?        @relation(fields: [displayDefId], references: [id], onDelete: SetNull)
-  missionCategoryDefId     String?
-  missionCategoryDef       MissionCategoryDef? @relation(fields: [missionCategoryDefId], references: [id], onDelete: SetNull)
-  activeModalDefId         String?
-  completedModalDefId      String?
-  data                     Json               @default("{}")
-
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
+  id                     String              @id @default(uuid())
+  key                    String              @unique
+  name                   String
+  description            String?
+  difficulty             Int                 @default(0)
+  minSuccessChance       Int                 @default(0)
+  maxSuccessChance       Int                 @default(100)
+  injuryRate             Float?              @default(0)
+  injuryRecoveryTicks    Int?                @default(0)
+  mode                   String              @default("single")
+  phases                 Json?
+  rewardsMode            String              @default("final_bundle")
+  maxFailures            Int?
+  timer                  Json                @default("{\"duration\": 0, \"skipable\": false, \"boostable\": true, \"skip_cost\": [], \"skip_type\": \"absolute\"}")
+  tiers                  Json                @default("{}")
+  success                Json?
+  failure                Json?
+  requirements           Json                @default("[]")
+  visibilityRequirements Json                @default("[]")
+  tags                   Json                @default("[]")
+  rewardPreview          Json                @default("[]")
+  cost                   Json                @default("[]")
+  enabled                Boolean             @default(true)
+  sortOrder              Int                 @default(0)
+  inline                 Boolean             @default(false)
+  inlineLabel            String?
+  displayDefId           String?
+  missionCategoryDefId   String?
+  activeModalDefId       String?
+  readyModalDefId        String?
+  completedModalDefId    String?
+  failedModalDefId       String?
+  data                   Json                @default("{}")
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  launchRequirements     Json?
+  leadInModalDefId       String?
+  displayDef             DisplayDef?         @relation(fields: [displayDefId], references: [id])
+  missionCategoryDef     MissionCategoryDef? @relation(fields: [missionCategoryDefId], references: [id])
 
   @@index([missionCategoryDefId])
   @@map("mission_defs")
 }
 
 model RecipeDef {
-  id                       String   @id
-  name                     String
-  description              String?
-  category                 String?
-  group                    String?
-  cost                     Json     @default("{}")
-  timer                    Json     @default("{\"duration\":0,\"boostable\":true,\"skipable\":false,\"skip_cost\":{},\"skip_type\":\"absolute\"}")
-  requiredKeeperLevel      Int      @default(1)
-  rewards                  Json     @default("{}")
-  requirements             Json     @default("[]")
-  effects                  Json     @default("[]")
-  visibilityRequirements   Json     @default("[]")
-  activeModalDefId         String?
-  completedModalDefId      String?
-  data                     Json     @default("{}")
-
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                     String      @id @default(uuid())
+  key                    String      @unique
+  name                   String
+  description            String?
+  category               String?
+  group                  String?
+  cost                   Json        @default("[]")
+  timer                  Json        @default("{\"duration\": 0, \"skipable\": false, \"boostable\": true, \"skip_cost\": [], \"skip_type\": \"absolute\"}")
+  requirements           Json        @default("[]")
+  effects                Json        @default("[]")
+  visibilityRequirements Json        @default("[]")
+  activeModalDefId       String?
+  readyModalDefId        String?
+  completedModalDefId    String?
+  failedModalDefId       String?
+  data                   Json        @default("{}")
+  displayDefId           String?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+  difficulty             Float       @default(0)
+  multicraft             Json?
+  tiers                  Json        @default("{}")
+  displayDef             DisplayDef? @relation(fields: [displayDefId], references: [id])
 
   @@map("recipe_defs")
 }
 
-enum JobType {
-  MissionJob
-  CraftingJob
-  BuildingJob
-}
-
 model Job {
-  id            String   @id @default(uuid())
-  userId        String
-  ecosystemId   String?
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type          JobType
-  defId         String
-  status        String   @default("active")
-  timer         Json     @default("{}")
-  team          Json     @default("[]")
-  results       Json?
-  data          Json     @default("{}")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(uuid())
+  userId           String
+  ecosystemId      String?
+  type             JobType
+  defId            String
+  status           String   @default("active")
+  timer            Json     @default("{}")
+  team             Json     @default("[]")
+  results          Json?
+  data             Json     @default("{}")
+  currentPhase     Int      @default(0)
+  phaseResults     Json?
+  accumulatedState Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  readyAtTick      Int?
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([ecosystemId])
   @@index([userId, type, status])
   @@index([type, status])
   @@index([defId])
+  @@index([readyAtTick, status])
   @@map("jobs")
 }
 
 model TickRateInterval {
-  id                String   @id @default(uuid())
-  ticksPerSecond    Float    @default(1.0)
+  id                String      @id @default(uuid())
+  ticksPerSecond    Float       @default(1.0)
   effectiveFromTime DateTime
   effectiveFromTick Float
   boostEventId      String?
+  createdAt         DateTime    @default(now())
   boostEvent        BoostEvent? @relation(fields: [boostEventId], references: [id])
-  createdAt         DateTime @default(now())
 
   @@index([effectiveFromTime])
   @@map("tick_rate_intervals")
 }
 
 model BoostEvent {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  multiplier  Float
-  startTime   DateTime
-  endTime     DateTime
-  status      String   @default("scheduled")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  intervals   TickRateInterval[]
+  id           String             @id @default(uuid())
+  name         String
+  description  String?
+  multiplier   Float
+  startTime    DateTime
+  endTime      DateTime
+  status       String             @default("scheduled")
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  percentBoost Float              @default(0)
+  intervals    TickRateInterval[]
 
   @@index([status])
   @@index([startTime])
   @@map("boost_events")
 }
 
-enum ItemRarity {
-  COMMON
-  UNCOMMON
-  SCARCE
-  ADVANCED
-  RARE
-  ULTRA_RARE
-  EPIC
-  MYTHIC
-  LEGENDARY
+model PowerGrant {
+  id                   String               @id @default(uuid())
+  /// 'entity' | 'location' | 'player' | 'global'
+  targetType           String
+  /// entityId, locationInstanceId, userId, or '_global'
+  targetId             String
+  powerKey             String
+  /// FK → PowerDef; null for legacy inline-only powers
+  powerDefId           String?
+  /// Inline overrides: value, valueMode, durationMinutes, scope, selection, effectOverrides
+  overrides            Json?
+  /// 'nft_unique' | 'admin' | 'season' | 'consumable'
+  sourceType           String
+  /// nftAssetId, seasonId, consumable item instance id, etc.
+  sourceId             String?
+  expiresAt            DateTime?
+  /// null = infinite; when 0 the grant is exhausted and treated as inactive
+  remainingChargeUnits Float?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  powerDef             PowerDef?            @relation(fields: [powerDefId], references: [id])
+  entityUsages         EntityPowerUsage[]
+  locationUsages       LocationPowerUsage[]
+  useEvents            PowerUseEvent[]
+
+  @@unique([targetType, targetId, powerKey, sourceType, sourceId])
+  @@index([targetType, targetId])
+  @@index([targetId])
+  @@index([expiresAt])
+  @@map("power_grants")
 }
 
-enum ItemType {
-  MATERIAL
-  POTION
-  CONSUMABLE
-  GEAR
-  QUEST
-  LOOTBOX
-  GIFT_PACKAGE
+model PowerUseEvent {
+  id                  String     @id @default(uuid())
+  powerGrantId        String
+  triggeredByUserId   String?
+  /// Server tick number at the moment the power fired
+  triggeredAtTick     BigInt
+  /// Charge units consumed by this use (matches chargeConfig.costPerUse at fire time)
+  spentUnits          Float      @default(1.0)
+  /// 'entity' | 'location' | 'player' | 'global' — mirrors PowerGrant.targetType of the trigger source
+  triggerSourceType   String?
+  /// entityId / locationInstanceId / userId that triggered the power
+  triggerSourceId     String?
+  createdAt           DateTime   @default(now())
+  powerGrant          PowerGrant @relation(fields: [powerGrantId], references: [id], onDelete: Cascade)
+
+  @@index([powerGrantId, triggeredAtTick])
+  @@map("power_use_events")
 }
 
-enum ItemCategory {
-  MISC
-  CRAFTING
-  COMBAT
-  EXPLORATION
-  QUEST_ITEMS
-  ENHANCEMENT
+model LocationPowerUsage {
+  id                  String           @id @default(uuid())
+  locationInstanceId  String
+  powerGrantId        String           @unique
+  chargeUnits         Float
+  lastChargeAppliedAt BigInt?
+  locationInstance    LocationInstance @relation(fields: [locationInstanceId], references: [id], onDelete: Cascade)
+  powerGrant          PowerGrant       @relation(fields: [powerGrantId], references: [id], onDelete: Cascade)
+
+  @@index([locationInstanceId])
+  @@map("location_power_usages")
+}
+
+model EntityPowerUsage {
+  id                  String     @id @default(uuid())
+  entityId            String
+  powerGrantId        String     @unique
+  chargeUnits         Float
+  lastChargeAppliedAt BigInt?
+  entity              Entity     @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  powerGrant          PowerGrant @relation(fields: [powerGrantId], references: [id], onDelete: Cascade)
+
+  @@index([entityId])
+  @@map("entity_power_usages")
 }
 
 model ItemDefinition {
-  id              String       @id
-  version         Int          @default(1)
-
-  type            ItemType
-  rarity          ItemRarity   @default(COMMON)
-
-  name            String
-  description     String?
-  iconKey         String?
-  iconUrl         String?
-  uiColor         String?
-  category        ItemCategory @default(MISC)
-  groups          String[]     @default([])
-
-  tags            String[]     @default([])
-
-  stackable       Boolean      @default(false)
-  maxStack        Int?
-
-  uniqueInstance  Boolean      @default(false)
-  tradable        Boolean      @default(true)
-  bindOnEquip     Boolean      @default(false)
-  bindOnPickup    Boolean      @default(false)
-
-  hasState        Boolean      @default(false)
-  stateSchema     Json?
-
-  equipData       Json?
-  statModifiers   Json?
-  passiveEffects  Json?
-  consumableData  Json?
-  craftingData    Json?
-  data            Json?
-
-  seasonId        String?
-
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  instances       ItemInstance[]
-  ledger          ItemLedger[]
+  id             String         @id @default(uuid())
+  key            String         @unique
+  type           ItemType
+  rarity         ItemRarity     @default(COMMON)
+  name           String
+  description    String?
+  iconKey        String?
+  uiColor        String?
+  category       ItemCategory   @default(MISC)
+  groups         String[]       @default([])
+  tags           String[]       @default([])
+  stackable      Boolean        @default(false)
+  maxStack       Int?
+  uniqueInstance Boolean        @default(false)
+  lootboxDefId   String?
+  equipData      Json?
+  passiveEffects Json?
+  consumableData Json?
+  dustingData    Json?
+  data           Json?
+  seasonId       String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  instances      ItemInstance[]
+  ledger         ItemLedger[]
 
   @@index([type])
   @@index([rarity])
@@ -690,48 +779,43 @@ model ItemDefinition {
 }
 
 model ItemInstance {
-  id             String   @id @default(uuid())
-
-  userId         String
-  user           User     @relation("UserItemInstances", fields: [userId], references: [id], onDelete: Cascade)
-
-  definitionId   String
-  definition     ItemDefinition @relation(fields: [definitionId], references: [id])
-
-  quantity       Int      @default(1)
-
-  state          Json?
-
-  equippedToId   String?
-
-  bound          Boolean  @default(false)
-
-  tradeLocked    Boolean  @default(false)
-
-  data           Json?
-
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                  String              @id @default(uuid())
+  userId              String
+  definitionId        String
+  quantity            Int                 @default(1)
+  state               Json?
+  equippedToId        String?
+  bound               Boolean             @default(false)
+  tradeLocked         Boolean             @default(false)
+  data                Json?
+  nftAssetId          String?
+  nftCollectionDefId  String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  definition          ItemDefinition      @relation(fields: [definitionId], references: [id])
+  user                User                @relation("UserItemInstances", fields: [userId], references: [id], onDelete: Cascade)
+  nftCollection       NftCollectionDef?   @relation(fields: [nftCollectionDefId], references: [id])
 
   @@index([userId])
   @@index([definitionId])
   @@index([equippedToId])
+  @@index([nftAssetId])
+  @@index([nftCollectionDefId])
   @@map("item_instances")
 }
 
 model ItemLedger {
-  id         BigInt   @id @default(autoincrement())
+  id         BigInt         @id @default(autoincrement())
   userId     String
   itemId     String
   delta      BigInt
   reason     String
   sourceType String?
   sourceId   String?
-  metadata   Json     @default("{}")
-  createdAt  DateTime @default(now())
-
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  item       ItemDefinition  @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  metadata   Json           @default("{}")
+  createdAt  DateTime       @default(now())
+  item       ItemDefinition @relation(fields: [itemId], references: [id])
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([itemId, createdAt(sort: Desc)])
@@ -741,7 +825,6 @@ model ItemLedger {
 model Notification {
   id          String    @id @default(uuid())
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type        String
   category    String
   priority    String
@@ -756,6 +839,7 @@ model Notification {
   readAt      DateTime?
   dismissedAt DateTime?
   archivedAt  DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, sourceType, sourceId, type], name: "notifications_source_unique")
   @@index([userId, createdAt(sort: Desc)])
@@ -766,30 +850,25 @@ model Notification {
   @@map("notifications")
 }
 
-enum GiftStatus {
-  UNCLAIMED
-  CLAIMED
-  EXPIRED
-  REVOKED
-}
-
 model EventDefinition {
-  id              String   @id
-  name            String
-  version         Int      @default(1)
-  kind            String   @default("system")
-  handlerKey      String
-  security        Json     @default("{}")
-  inputSchema     Json     @default("{}")
-  enabled         Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  version     Int      @default(1)
+  kind        String   @default("system")
+  handlerKey  String
+  security    Json     @default("{}")
+  inputSchema Json     @default("{}")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("event_definitions")
 }
 
 model ModalDef {
-  id          String   @id
+  id          String   @id @default(uuid())
+  key         String   @unique
   name        String
   description String?
   version     Int      @default(1)
@@ -801,40 +880,52 @@ model ModalDef {
   @@map("modal_defs")
 }
 
+model DefaultModalDef {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  version     Int      @default(1)
+  spec        Json     @default("{}")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("default_modal_defs")
+}
+
 model GiftDef {
-  id              String   @id
-  name            String
-  version         Int      @default(1)
-  presentation    Json     @default("{}")
-  claimRules      Json     @default("{}")
-  rewardSpec      Json     @default("{}")
-  instant         Boolean  @default(true)
-  enabled         Boolean  @default(true)
-  modalDefId      String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           String   @id @default(uuid())
+  key          String   @unique
+  name         String
+  version      Int      @default(1)
+  presentation Json     @default("{}")
+  claimRules   Json     @default("{}")
+  rewardSpec   Json     @default("{}")
+  instant      Boolean  @default(true)
+  enabled      Boolean  @default(true)
+  modalDefId   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@map("gift_defs")
 }
 
 model GiftInstance {
-  id              String     @id @default(uuid())
-  userId          String
-  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  giftDefId       String
-  giftDefVersion  Int
-
-  status          GiftStatus @default(UNCLAIMED)
-  createdAt       DateTime   @default(now())
-  expiresAt       DateTime?
-
-  sourceType      String?
-  sourceId        String?
-  idempotencyKey  String?    @unique
-
-  snapshot        Json
-  claim           Json?
-  claimTxId       String?    @unique
+  id             String     @id @default(uuid())
+  userId         String
+  giftDefId      String?
+  giftDefVersion Int
+  status         GiftStatus @default(UNCLAIMED)
+  createdAt      DateTime   @default(now())
+  expiresAt      DateTime?
+  sourceType     String?
+  sourceId       String?
+  idempotencyKey String?    @unique
+  snapshot       Json
+  claim          Json?
+  claimTxId      String?    @unique
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@map("gift_instances")
@@ -854,12 +945,9 @@ model GiftClaimTx {
   @@map("gift_claim_txs")
 }
 
-// ═══════════════════════════════════════════════════
-// LOOTBOX SYSTEM
-// ═══════════════════════════════════════════════════
-
 model LootboxDef {
-  id          String   @id
+  id          String   @id @default(uuid())
+  key         String   @unique
   name        String
   description String?
   version     Int      @default(1)
@@ -873,42 +961,51 @@ model LootboxDef {
   @@map("lootbox_defs")
 }
 
-// ═══════════════════════════════════════════════════
-// PLAYER TELEMETRY
-// ═══════════════════════════════════════════════════
+model BundleDef {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  version     Int      @default(1)
+  bundle      Json     @default("[]")
+  odds        Float?
+  pickMin     Int?
+  pickMax     Int?
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("bundle_defs")
+}
 
 model PlayerEvent {
   id        BigInt   @id @default(autoincrement())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   eventType String
   key       String?
   amount    Float    @default(1)
   data      Json     @default("{}")
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, eventType])
   @@index([userId, createdAt])
   @@map("player_events")
 }
 
-// ═══════════════════════════════════════════════════
-// DAILY CHECK-IN SYSTEM
-// ═══════════════════════════════════════════════════
-
 model CheckInDef {
-  id            String   @id
+  id            String            @id @default(uuid())
+  key           String            @unique
   name          String
   description   String?
-  rewards       Json     @default("[]")
-  cycleLength   Int      @default(7)
-  requireStreak Boolean  @default(false)
-  allowReclaim  Boolean  @default(false)
-  frequency     Json     @default("{\"type\":\"daily\"}")
-  enabled       Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
+  rewards       Json              @default("[]")
+  cycleLength   Int               @default(7)
+  requireStreak Boolean           @default(false)
+  allowReclaim  Boolean           @default(false)
+  frequency     Json              @default("{\"type\": \"daily\"}")
+  enabled       Boolean           @default(true)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   instances     CheckInInstance[]
 
   @@map("checkin_defs")
@@ -917,74 +1014,75 @@ model CheckInDef {
 model CheckInInstance {
   id            String     @id @default(uuid())
   userId        String
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   checkInDefId  String
-  checkInDef    CheckInDef @relation(fields: [checkInDefId], references: [id], onDelete: Cascade)
   streak        Int        @default(0)
   lastClaimedAt DateTime?
   totalClaimed  Int        @default(0)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+  checkInDef    CheckInDef @relation(fields: [checkInDefId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, checkInDefId])
   @@index([userId])
   @@map("checkin_instances")
 }
 
-// ═══════════════════════════════════════════════════
-// QUEST SYSTEM
-// ═══════════════════════════════════════════════════
-
 model QuestDef {
-  id           String   @id
-  name         String
-  description  String?
-  category     String?
-  objectives   Json     @default("[]")
-  rewardSpec   Json     @default("{}")
-  requirements Json     @default("[]")
-  repeatable   Boolean  @default(false)
-  enabled      Boolean  @default(true)
-  sortOrder    Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                  String          @id @default(uuid())
+  key                 String          @unique
+  name                String
+  description         String?
+  category            String?
+  cadence             String          @default("oneoff")
+  objectives          Json            @default("[]")
+  rewardSpec          Json            @default("{}")
+  requirements        Json            @default("[]")
+  repeatable          Boolean         @default(false)
+  enabled             Boolean         @default(true)
+  sortOrder           Int             @default(0)
+  version             Int             @default(1)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  permanentEffectSpec Json?
+  tier                Int             @default(1)
+  instances           QuestInstance[]
 
-  instances    QuestInstance[]
-
+  @@index([cadence, enabled])
+  @@index([category, enabled])
   @@map("quest_defs")
 }
 
 model QuestInstance {
-  id           String    @id @default(uuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  questDefId   String
-  questDef     QuestDef  @relation(fields: [questDefId], references: [id], onDelete: Cascade)
-  progress     Json      @default("[]")
-  status       String    @default("active")
-  startedAt    DateTime  @default(now())
-  completedAt  DateTime?
-  claimedAt    DateTime?
+  id              String    @id @default(uuid())
+  userId          String
+  questDefId      String
+  progress        Json      @default("[]")
+  status          String    @default("active")
+  windowStartedAt DateTime?
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  claimedAt       DateTime?
+  questDef        QuestDef  @relation(fields: [questDefId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, questDefId])
   @@index([userId, status])
   @@map("quest_instances")
 }
 
-// ═══════════════════════════════════════════════════
-// SEASONAL CONTENT
-// ═══════════════════════════════════════════════════
-
 model Season {
-  id          String   @id
+  id          String          @id @default(uuid())
+  key         String          @unique
   name        String
   ecosystemId String?
   startsAt    DateTime
   endsAt      DateTime
-  status      String   @default("scheduled") // scheduled, active, ended
-  config      Json     @default("{}")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status      String          @default("scheduled")
+  config      Json            @default("{}")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  homeBanners HomeBannerDef[]
 
   @@index([status])
   @@index([ecosystemId])
@@ -992,19 +1090,696 @@ model Season {
   @@map("seasons")
 }
 
-// ═══════════════════════════════════════════════════
-// OUTBOX (reliable event publishing)
-// ═══════════════════════════════════════════════════
+model HomeBannerDef {
+  id              String    @id @default(uuid())
+  key             String    @unique
+  name            String
+  title           String
+  subtitle        String?
+  description     String?
+  backgroundImage String?
+  ctaLabel        String?
+  ctaRoute        String?
+  priority        Int       @default(0)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  status          String    @default("active")
+  seasonId        String?
+  config          Json      @default("{}")
+  display         Json      @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  season          Season?   @relation(fields: [seasonId], references: [id])
+
+  @@index([status])
+  @@index([startsAt])
+  @@index([endsAt])
+  @@map("home_banner_defs")
+}
+
+model ShopItemDef {
+  id            String    @id @default(cuid())
+  name          String
+  description   String    @default("")
+  tab           String    @default("featured")
+  cost          Json
+  originalCost  Json?
+  contents      Json
+  badge         String?
+  badgeColor    String?
+  imageUrl      String?
+  displayOrder  Int       @default(0)
+  enabled       Boolean   @default(true)
+  limitedUntil  DateTime?
+  createdAt     DateTime  @default(now())
+  sectionId     String?
+  availableFrom DateTime?
+
+  @@map("shop_item_defs")
+}
+
+model ShopHeroDef {
+  id              String    @id @default(cuid())
+  headline        String
+  subText         String?
+  imageUrl        String?
+  backgroundColor String?
+  ctaLabel        String?
+  ctaTarget       String?
+  sortOrder       Int       @default(0)
+  enabled         Boolean   @default(true)
+  limitedUntil    DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@map("shop_hero_defs")
+}
+
+model ShopTabDef {
+  id                 String           @id @default(uuid())
+  key                String           @unique
+  name               String
+  tabType            String           @default("items")
+  layout             String           @default("grid-2")
+  sortOrder          Int              @default(0)
+  enabled            Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  ungroupedPlacement String           @default("before")
+  sections           ShopSectionDef[]
+
+  @@map("shop_tab_defs")
+}
+
+model ShopSectionDef {
+  id        String     @id @default(cuid())
+  tabId     String
+  label     String
+  subtitle  String?
+  sortOrder Int        @default(0)
+  tab       ShopTabDef @relation(fields: [tabId], references: [id])
+
+  @@map("shop_section_defs")
+}
+
+/// Idempotency guard: one row per processed on-chain tx hash.
+/// Inserted inside the same transaction as the credit; unique PK
+/// prevents double-credit even under concurrent pollers.
+model ProcessedCryptoTx {
+  txHash      String   @id
+  processedAt DateTime @default(now())
+
+  @@map("processed_crypto_txs")
+}
+
+model CryptoWalletConfig {
+  id                           String   @id @default("default")
+  hotWalletAddress             String   @default("")
+  blockfrostProjectId          String   @default("")
+  depositScanPage              Int      @default(0)
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+  hotWalletSkeyEncrypted       String   @default("")
+  hotWalletKeyPendingDownload  Boolean  @default(false)
+  adaWithdrawalFee             BigInt   @default(5000000)
+  adaMinWithdrawalAmount       BigInt   @default(2000000)
+
+  @@map("crypto_wallet_configs")
+}
+
+model CryptoWithdrawal {
+  id                 String           @id @default(uuid())
+  userId             String
+  currencyId         String
+  amount             BigInt
+  fee                BigInt           @default(0)
+  adaServiceFee      BigInt           @default(0)
+  adaNetworkFee      BigInt           @default(0)
+  destinationAddress String
+  status             WithdrawalStatus @default(PENDING)
+  autoApproved       Boolean          @default(false)
+  txHash             String?
+  adminNote          String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("crypto_withdrawals")
+}
+
+model UnresolvedDeposit {
+  id                String    @id @default(uuid())
+  txHash            String    @unique
+  blockTime         Int
+  senderAddresses   Json
+  amounts           Json
+  reason            String
+  resolvedAt        DateTime?
+  resolvedByUserId  String?
+  creditedUserId    String?
+  createdAt         DateTime  @default(now())
+  resolvedBy        User?     @relation("ResolvedDeposits", fields: [resolvedByUserId], references: [id])
+  creditedUser      User?     @relation("CreditedDeposits", fields: [creditedUserId], references: [id])
+
+  @@index([resolvedAt])
+  @@map("unresolved_deposits")
+}
+
+model Purchase {
+  id                 String                @id @default(uuid())
+  userId             String
+  packId             String
+  gemAmount          Int
+  paymentMethod      PurchasePaymentMethod
+  status             PurchaseStatus        @default(PENDING)
+  stripeSessionId    String?               @unique
+  chain              String?
+  destinationAddress String?
+  amountExpected     BigInt?
+  txHash             String?               @unique
+  expiresAt          DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  rateSnapshot       Json?
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status, paymentMethod])
+  @@index([stripeSessionId])
+  @@map("purchases")
+}
+
+model CryptoRateConfig {
+  currencyCode           String   @id
+  oracleUrl              String
+  pollIntervalSeconds    Int      @default(300)
+  twaWindowSeconds       Int      @default(3600)
+  fallbackLovelacePerUsd BigInt   @default(2000000)
+  enabled                Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("crypto_rate_configs")
+}
+
+model CryptoRateSample {
+  id             BigInt   @id @default(autoincrement())
+  currencyCode   String
+  usdPrice       Float
+  lovelacePerUsd BigInt
+  fetchedAt      DateTime @default(now())
+
+  @@index([currencyCode, fetchedAt(sort: Desc)])
+  @@map("crypto_rate_samples")
+}
+
+model EffectDef {
+  id            String              @id @default(uuid())
+  key           String              @unique
+  name          String
+  description   String?
+  iconKey       String?
+  category      String
+  valueMode     String
+  durationModel String
+  stackingRule  String              @default("no_stack")
+  targetType    String
+  value         Float?
+  stats         Json?
+  trait         String?
+  durationSec   Int?
+  durationTicks Int?
+  maxStacks     Int?
+  maxUses       Int?
+  cap           Float?
+  resourceId    String?
+  sessionType   String?
+  meta          Json                @default("{}")
+  enabled       Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  activeEffects ActiveEffect[]
+  globalPowers  GlobalActivePower[] @relation("GlobalActivePowerEffectDef")
+  powerDefs     PowerDef[]
+
+  @@index([category])
+  @@index([targetType])
+  @@map("effect_defs")
+}
+
+/// Reusable power blueprint. Embedded PowerRef JSON in entity/location definitions
+/// references a PowerDef by powerDefId (UUID or key slug) and may override individual fields.
+model PowerDef {
+  id                     String       @id @default(uuid())
+  key                    String       @unique
+  name                   String
+  description            String?
+  /// 'tick_speed_boost' | 'effect_backed' | 'keeper_xp_boost' | 'entity_xp_boost' | etc.
+  powerType              String
+  /// FK → EffectDef; null for tick_speed_boost powers
+  effectDefId            String?
+  defaultValue           Float        @default(0)
+  defaultValueMode       String       @default("percent_add")
+  defaultDurationMinutes Int          @default(30)
+  /// Tick-based charge configuration. Null = 1-charge / no recharge (backward compat).
+  /// Shape: { maxChargeUnits, costPerUse, initialChargeUnits, rechargeRules[] }
+  chargeConfig           Json?
+  /// 'global' | 'player' | 'entity' | 'location'
+  defaultScope           String       @default("global")
+  /// Optional default EffectSelection JSON
+  selection              Json?
+  enabled                Boolean      @default(true)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  effectDef              EffectDef?   @relation(fields: [effectDefId], references: [id])
+  grants                 PowerGrant[]
+
+  @@index([enabled])
+  @@index([powerType])
+  @@map("power_defs")
+}
+
+model ActiveEffect {
+  id            String    @id @default(uuid())
+  effectDefId   String
+  userId        String
+  targetType    String
+  targetId      String
+  sourceType    String
+  sourceId      String
+  category      String
+  valueMode     String
+  value         Float     @default(0)
+  stats         Json?
+  trait         String?
+  currentStacks Int       @default(1)
+  remainingUses Int?
+  sessionType   String?
+  sessionId     String?
+  expiresAt     DateTime?
+  expiresAtTick Float?
+  createdAt     DateTime  @default(now())
+  effectDef     EffectDef @relation(fields: [effectDefId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, targetType, targetId])
+  @@index([userId, category])
+  @@index([targetType, targetId])
+  @@index([expiresAt])
+  @@index([sessionType, sessionId])
+  @@map("active_effects")
+}
+
+model TelemetryDef {
+  id          String           @id @default(uuid())
+  name        String
+  description String?
+  enabled     Boolean          @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  subEvents   Json             @default("[]")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  counts      TelemetryCount[]
+
+  @@index([enabled])
+  @@map("telemetry_defs")
+}
+
+model TelemetryCount {
+  telemetryDefId    String
+  subEventKey       String
+  count             BigInt       @default(0)
+  lastIncrementedAt DateTime     @default(now())
+  telemetryDef      TelemetryDef @relation(fields: [telemetryDefId], references: [id], onDelete: Cascade)
+
+  @@id([telemetryDefId, subEventKey])
+  @@index([telemetryDefId])
+  @@map("telemetry_counts")
+}
+
+model SoundDef {
+  id          String         @id @default(cuid())
+  key         String         @unique
+  name        String
+  fileKey     String?
+  bus         AudioBus
+  description String?
+  enabled     Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  mappings    SoundMapping[]
+
+  @@index([bus])
+  @@index([enabled])
+  @@map("sound_defs")
+}
+
+model SoundMapping {
+  id         String   @id @default(cuid())
+  actionKey  String
+  soundDefId String
+  weight     Int      @default(1)
+  enabled    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  soundDef   SoundDef @relation(fields: [soundDefId], references: [id], onDelete: Cascade)
+
+  @@index([actionKey])
+  @@index([soundDefId])
+  @@index([enabled])
+  @@map("sound_mappings")
+}
 
 model Outbox {
-  id          BigInt   @id @default(autoincrement())
+  id          BigInt    @id @default(autoincrement())
   eventType   String
   payload     Json
-  status      String   @default("pending") // pending, delivered, failed
-  attempts    Int      @default(0)
+  status      String    @default("pending")
+  attempts    Int       @default(0)
   processedAt DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([status, createdAt])
   @@map("outbox")
+}
+
+model VisualEffectDef {
+  id           String   @id @default(uuid())
+  key          String   @unique
+  name         String
+  description  String?
+  cssAnimation String
+  durationMs   Int      @default(1500)
+  easing       String   @default("ease-in-out")
+  params       Json     @default("{}")
+  enabled      Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tagDefs      TagDef[]
+
+  @@map("visual_effect_defs")
+}
+
+model TagDef {
+  id              String           @id @default(uuid())
+  key             String           @unique
+  label           String
+  category        String           @default("system")
+  color           String           @default("#ffffff")
+  backgroundColor String           @default("#2a2a3a")
+  borderColor     String           @default("#3a3a4a")
+  opacity         Float            @default(1.0)
+  fontSize        String?
+  effectKey       String?
+  effectKeys      String[]         @default([])
+  enabled         Boolean          @default(true)
+  sortOrder       Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  effect          VisualEffectDef? @relation(fields: [effectKey], references: [key])
+
+  @@index([category])
+  @@index([effectKey])
+  @@map("tag_defs")
+}
+
+model SystemIconDef {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_icon_defs")
+}
+
+model GlobalActivePower {
+  id                String     @id @default(uuid())
+  label             String
+  durationMinutes   Int
+  startTime         DateTime   @default(now())
+  endTime           DateTime
+  status            String     @default("active")
+  triggeredByUserId String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  scheduledFor      DateTime?
+  effectDefId       String?
+  effectOverrides   Json?
+  selection         Json?
+  effectDef         EffectDef? @relation("GlobalActivePowerEffectDef", fields: [effectDefId], references: [id])
+
+  @@index([status, endTime])
+  @@map("global_active_powers")
+}
+
+model AdminRole {
+  id              String         @id @default(uuid())
+  key             String         @unique
+  name            String
+  slug            String         @unique
+  permissionFlags Json           @default("{}") @map("permission_flags")
+  isBuiltIn       Boolean        @default(true) @map("is_built_in")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  accounts        AdminAccount[]
+
+  @@map("admin_roles")
+}
+
+model AdminAccount {
+  id                     String          @id @default(uuid())
+  username               String          @unique
+  passwordHash           String          @map("password_hash")
+  roleId                 String          @map("role_id")
+  contentScopes          String[]        @map("content_scopes")
+  permissionFlagsOverride Json           @default("{}") @map("permission_flags_override")
+  enabled                Boolean         @default(true)
+  createdAt              DateTime        @default(now()) @map("created_at")
+  updatedAt              DateTime        @updatedAt @map("updated_at")
+  role                   AdminRole       @relation(fields: [roleId], references: [id])
+  auditLogs              AdminAuditLog[]
+  authoredDrafts         ContentDraft[]  @relation("DraftAuthor")
+  reviewedDrafts         ContentDraft[]  @relation("DraftReviewer")
+
+  @@index([roleId])
+  @@map("admin_accounts")
+}
+
+model AdminAuditLog {
+  id        BigInt        @id @default(autoincrement())
+  adminId   String?       @map("admin_id")
+  action    String
+  tableName String?       @map("table_name")
+  recordId  String?       @map("record_id")
+  diff      Json?
+  metadata  Json          @default("{}")
+  createdAt DateTime      @default(now()) @map("created_at")
+  admin     AdminAccount? @relation(fields: [adminId], references: [id])
+
+  @@index([adminId, createdAt(sort: Desc)])
+  @@index([tableName, createdAt(sort: Desc)])
+  @@map("admin_audit_logs")
+}
+
+model GameDefinition {
+  id        String    @id @default(cuid())
+  type      String
+  key       String
+  version   Int       @default(1)
+  data      Json
+  isActive  Boolean   @default(false)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([type, key, version])
+  @@index([type, key, isActive])
+  @@map("game_definitions")
+}
+
+model ContentDraft {
+  id            String                @id @default(uuid())
+  tableName     String                @map("table_name")
+  recordId      String                @map("record_id")
+  operation     ContentDraftOperation
+  payload       Json
+  status        ContentDraftStatus    @default(pending)
+  authorId      String                @map("author_id")
+  reviewerId    String?               @map("reviewer_id")
+  reviewComment String?               @map("review_comment")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+  author        AdminAccount          @relation("DraftAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  reviewer      AdminAccount?         @relation("DraftReviewer", fields: [reviewerId], references: [id])
+
+  @@index([tableName, status])
+  @@index([authorId, status])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("content_drafts")
+}
+
+model MetricSnapshot {
+  id         String   @id @default(uuid())
+  metricName String   @map("metric_name")
+  date       DateTime
+  value      Float
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([metricName, date])
+  @@index([metricName, date(sort: Desc)])
+  @@map("metric_snapshots")
+}
+
+enum StackMode {
+  additive
+  best_only
+  highest_abs_only
+  unique
+}
+
+enum PurchasePaymentMethod {
+  STRIPE
+  CRYPTO_EVM
+  CRYPTO_CARDANO
+}
+
+enum PurchaseStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  EXPIRED
+}
+
+enum CurrencyType {
+  SOFT
+  HARD
+  PREMIUM
+  SEASONAL
+  EVENT
+  GUILD
+  CRYPTO
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SENT
+  PROCESSING
+  FAILED
+}
+
+enum WithdrawalMinType {
+  QUANTITY
+  ADA_VALUE
+  USD_VALUE
+}
+
+enum JobType {
+  MissionJob
+  CraftingJob
+  BuildingJob
+  DustingJob
+}
+
+enum ItemRarity {
+  COMMON
+  UNCOMMON
+  SCARE
+  RARE
+  EPIC
+  MYTHIC
+  LEGENDARY
+  UNIQUE
+}
+
+enum ItemType {
+  MATERIAL
+  CONSUMABLE
+  GEAR
+  QUEST
+  LOOTBOX
+  GIFT_PACKAGE
+}
+
+enum ItemCategory {
+  MISC
+  CRAFTING
+  COMBAT
+  EXPLORATION
+  QUEST_ITEMS
+  ENHANCEMENT
+}
+
+enum GiftStatus {
+  UNCLAIMED
+  CLAIMED
+  EXPIRED
+  REVOKED
+}
+
+enum AudioBus {
+  music
+  sfx
+  ui
+  ambient
+}
+
+enum ContentDraftOperation {
+  create
+  update
+  delete
+}
+
+enum ContentDraftStatus {
+  pending
+  applying
+  approved
+  rejected
+}
+
+/// Tunable game-wide numeric constants editable by admins without redeploying.
+/// Each row stores a single float value keyed by a human-readable slug.
+model GameConstant {
+  key         String   @id
+  value       Float
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("game_constants")
+}
+
+/// Registry of every unlock key that the game knows about.
+/// grant_unlock outcomes silently skip keys not present in this table.
+model UnlockDef {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  name         String
+  description  String?
+  requirements Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("unlock_defs")
+}
+
+/// One row per concrete unlock key granted to a player.
+/// Wildcard grant_unlock patterns are expanded at grant-time against UnlockDef,
+/// so only exact keys ever live in this table.
+model UserUnlock {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  grantedAt DateTime @default(now())
+  source    String?
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@map("user_unlocks")
 }

@@ -5,18 +5,78 @@ export interface PubSubMessage {
   deltaId: string;
 }
 
+export type BroadcastMessage =
+  | {
+      // Authoritative tick anchor broadcast every ~30 s and on rate changes.
+      // Carries enough data for the client to re-anchor its interpolation clock.
+      type: 'tick.sync';
+      currentTick: number;
+      tickRate: number;
+      serverTime: string;
+      boosts: Array<{ id: string; name: string; multiplier: number; endTime: string }>;
+    }
+  | {
+      // Whole-list replacement of the active home banner set. Emitted by the
+      // admin service after a HomeBannerDef create/update/delete so every
+      // connected client refreshes its carousel without a re-bootstrap.
+      type: 'home_banners.updated';
+      banners: any[];
+    }
+  | {
+      // Broadcast when a global active power is created, cancelled, or expires.
+      // `active` is the current list of all active powers after the change.
+      // `changes` lists each power that started or ended in this event.
+      type: 'global_power.changed';
+      active: Array<{
+        id: string;
+        label: string;
+        effectDefId: string | null;
+        effectDefName: string | null;
+        effectCategory: string | null;
+        value: number;
+        valueMode: string;
+        durationMinutes: number;
+        startTime: string;
+        endTime: string;
+        status: string;
+        selection: Record<string, any> | null;
+        triggeredByUserId?: string;
+      }>;
+      changes: Array<{
+        event: 'started' | 'ended';
+        id: string;
+        label: string;
+        durationMinutes: number;
+      }>;
+    }
+  | {
+      // Broadcast when any tick boost starts, ends, or is cancelled.
+      // The frontend SyncEngine fires a transient toast per event.
+      type: 'boost.changed';
+      active: Array<{
+        id: string;
+        name: string;
+        percentBoost: number;
+        endTime: string;
+      }>;
+      combinedPercent: number;
+    };
+
 export abstract class PubSubService {
   abstract publish(channel: string, message: PubSubMessage): void;
   abstract subscribe(
     channel: string,
     handler: (message: PubSubMessage) => void,
   ): () => void;
+  abstract publishBroadcast(message: BroadcastMessage): void;
+  abstract subscribeBroadcast(handler: (message: BroadcastMessage) => void): () => void;
 }
 
 @Injectable()
 export class InMemoryPubSubService extends PubSubService {
   private readonly logger = new Logger(InMemoryPubSubService.name);
   private listeners = new Map<string, Set<(msg: PubSubMessage) => void>>();
+  private broadcastListeners = new Set<(msg: BroadcastMessage) => void>();
 
   publish(channel: string, message: PubSubMessage): void {
     const subs = this.listeners.get(channel);
@@ -41,6 +101,23 @@ export class InMemoryPubSubService extends PubSubService {
     this.listeners.get(channel)!.add(handler);
     return () => {
       this.listeners.get(channel)?.delete(handler);
+    };
+  }
+
+  publishBroadcast(message: BroadcastMessage): void {
+    for (const handler of this.broadcastListeners) {
+      try {
+        handler(message);
+      } catch (err) {
+        this.logger.error(`Broadcast handler error`, err);
+      }
+    }
+  }
+
+  subscribeBroadcast(handler: (message: BroadcastMessage) => void): () => void {
+    this.broadcastListeners.add(handler);
+    return () => {
+      this.broadcastListeners.delete(handler);
     };
   }
 }
@@ -70,6 +147,15 @@ export class RedisPubSubService extends PubSubService {
     _handler: (message: PubSubMessage) => void,
   ): () => void {
     this.logger.warn(`RedisPubSubService.subscribe called on channel=${channel} — ioredis not yet wired`);
+    return () => {};
+  }
+
+  publishBroadcast(_message: BroadcastMessage): void {
+    this.logger.warn(`RedisPubSubService.publishBroadcast called — ioredis not yet wired`);
+  }
+
+  subscribeBroadcast(_handler: (message: BroadcastMessage) => void): () => void {
+    this.logger.warn(`RedisPubSubService.subscribeBroadcast called — ioredis not yet wired`);
     return () => {};
   }
 }

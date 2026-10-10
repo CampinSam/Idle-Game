@@ -1,0 +1,24 @@
+{
+  "preset": "ts-jest",
+  "testEnvironment": "node",
+  "rootDir": "..",
+  "roots": ["<rootDir>/test/integration"],
+  "testMatch": ["**/*.integration-spec.ts"],
+  "globalSetup": "<rootDir>/test/integration/global-setup.ts",
+  "moduleNameMapper": {
+    "^@derp/math$": "<rootDir>/../../packages/math/src/index.ts",
+    "^@derp/shared$": "<rootDir>/../../packages/shared/src/index.ts"
+  },
+  "transform": {
+    "^.+\\.tsx?$": ["ts-jest", {
+      "diagnostics": false,
+      "tsconfig": {
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "strict": false
+      }
+    }]
+  },
+  "testTimeout": 30000,
+  "maxWorkers": 1
+}

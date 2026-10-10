@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { SelectionContext } from '../selection/selection.types';
 
 export interface TelemetryEvent {
   id: bigint;
@@ -9,6 +10,7 @@ export interface TelemetryEvent {
   amount: number;
   data: Record<string, unknown>;
   createdAt: Date;
+  selectionContext?: SelectionContext;
 }
 
 export interface TelemetrySubscriber {
@@ -33,6 +35,7 @@ export class TelemetryService {
     amount: number = 1,
     data: Record<string, unknown> = {},
     tx?: any,
+    selectionContext?: SelectionContext,
   ): Promise<TelemetryEvent> {
     const db = tx || this.prisma;
 
@@ -54,6 +57,7 @@ export class TelemetryService {
       amount: event.amount,
       data: (event.data as Record<string, unknown>) ?? {},
       createdAt: event.createdAt,
+      selectionContext,
     };
 
     for (const sub of this.subscribers) {

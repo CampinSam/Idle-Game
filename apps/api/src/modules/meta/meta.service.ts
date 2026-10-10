@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { RARITY_TIERS } from '@derp/shared';
 
 @Injectable()
 export class MetaService {
   getEnums(): Record<string, string[]> {
     return {
       currencyType: ['SOFT', 'HARD', 'PREMIUM', 'SEASONAL', 'EVENT', 'GUILD'],
-      itemType: ['MATERIAL', 'POTION', 'CONSUMABLE', 'GEAR', 'QUEST'],
-      itemRarity: ['COMMON', 'UNCOMMON', 'SCARCE', 'ADVANCED', 'RARE', 'ULTRA_RARE', 'EPIC', 'MYTHIC', 'LEGENDARY'],
+      itemType: ['MATERIAL', 'CONSUMABLE', 'GEAR', 'QUEST'],
+      itemRarity: RARITY_TIERS.map(r => r.toUpperCase()),
       itemCategory: ['MISC', 'CRAFTING', 'COMBAT', 'EXPLORATION', 'QUEST_ITEMS', 'ENHANCEMENT'],
       xpCurve: ['linear', 'exp', 'custom'],
       growthRate: ['flat', 'linear', 'exp'],

@@ -8,10 +8,12 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { assertStreamEvent } from '@derp/shared';
 import { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
-import { PubSubService, PubSubMessage } from '../infrastructure/pubsub.service';
+import { PubSubService, PubSubMessage, BroadcastMessage } from '../infrastructure/pubsub.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PurchaseEventBus } from '../payment/purchase-event.bus';
 
 const HEARTBEAT_INTERVAL = 15000;
 const MAX_REPLAY = 100;
@@ -24,6 +26,7 @@ export class StreamController {
     private pubsub: PubSubService,
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private purchaseEventBus: PurchaseEventBus,
   ) {}
 
   @Get('stream')
@@ -73,9 +76,28 @@ export class StreamController {
       },
     );
 
+    const unsubscribeBroadcast = this.pubsub.subscribeBroadcast(
+      (msg: BroadcastMessage) => {
+        this.sendEvent(res, msg.type, msg);
+      },
+    );
+
+    const unsubscribePurchase = this.purchaseEventBus.subscribe((event) => {
+      if (event.userId === userId) {
+        this.sendEvent(res, 'purchase.confirmed', {
+          purchaseId: event.purchaseId,
+          gemAmount: event.gemAmount,
+          packId: event.packId,
+          paymentMethod: event.paymentMethod,
+        });
+      }
+    });
+
     const cleanup = () => {
       clearInterval(heartbeat);
       unsubscribe();
+      unsubscribeBroadcast();
+      unsubscribePurchase();
     };
 
     req.on('close', cleanup);
@@ -88,13 +110,30 @@ export class StreamController {
     data: any,
     id?: string,
   ): void {
+    let serializedData: string;
+    try {
+      serializedData = JSON.stringify(data, (_key, value) =>
+        typeof value === 'bigint' ? value.toString() : value,
+      );
+      if (serializedData === undefined) throw new TypeError('SSE data is not JSON serializable');
+      assertStreamEvent(event, JSON.parse(serializedData));
+    } catch (error) {
+      this.logger.error(
+        `Refusing to emit invalid or unserializable SSE event "${event}": ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return;
+    }
+
     try {
       if (id) {
         res.write(`id: ${id}\n`);
       }
       res.write(`event: ${event}\n`);
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-    } catch {
+      res.write(`data: ${serializedData}\n\n`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to emit SSE event "${event}": ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

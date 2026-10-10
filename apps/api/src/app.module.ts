@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { LoggerModule } from 'nestjs-pino';
+import { randomUUID } from 'crypto';
 import { join } from 'path';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthController } from './health.controller';
@@ -32,14 +34,110 @@ import { ObjectStorageModule } from './integrations/object-storage/object-storag
 import { TelemetryModule } from './modules/telemetry/telemetry.module';
 import { CheckInModule } from './modules/checkin/checkin.module';
 import { QuestModule } from './modules/quest/quest.module';
+import { NftModule } from './modules/nft/nft.module';
+import { ShopModule } from './modules/shop/shop.module';
+import { PaymentModule } from './modules/payment/payment.module';
+import { EffectModule } from './modules/effect/effect.module';
+import { AudioModule } from './modules/audio/audio.module';
+import { ClientErrorsModule } from './modules/client-errors/client-errors.module';
+import { SynergyModule } from './modules/synergy/synergy.module';
+import { SelectionModule } from './modules/selection/selection.module';
+import { ScreensModule } from './modules/screens/screens.module';
+import { ContentDocumentModule } from './modules/content-document/content-document.module';
+import { DefinitionCacheModule } from './modules/definition-cache/definition-cache.module';
+
+const isProductionLog = process.env.NODE_ENV === 'production';
 
 const imports: any[] = [
   ConfigModule.forRoot({ isGlobal: true }),
-  ThrottlerModule.forRoot([{
-    name: 'commands',
-    ttl: 60_000,   // 1 minute window
-    limit: 120,    // max 120 commands per minute per user (~2/sec)
-  }]),
+  // Structured JSON logging in prod, pretty-printed in dev. Per-request
+  // child logger carries the `req.id` so any log emitted while servicing
+  // a request can be traced back to that request — critical for debugging
+  // command-pipeline failures in production.
+  LoggerModule.forRoot({
+    pinoHttp: {
+      level: process.env.LOG_LEVEL || (isProductionLog ? 'info' : 'debug'),
+      genReqId: (req) =>
+        (req.headers['x-request-id'] as string | undefined) || randomUUID(),
+      customLogLevel: (_req, res, err) => {
+        const status = res.statusCode;
+        if (err || status >= 500) return 'error';
+        if (status >= 400) return 'warn';
+        return 'info';
+      },
+      // Never log credentials, even by accident. The redact paths cover
+      // both Express request shape and arbitrary nested payloads we might
+      // log directly via `logger.info({ user, ... })`.
+      redact: {
+        paths: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.headers["x-admin-key"]',
+          '*.password',
+          '*.token',
+          '*.accessToken',
+          '*.refreshToken',
+          '*.JWT_SECRET',
+          '*.ADMIN_SECRET',
+        ],
+        censor: '[REDACTED]',
+      },
+      transport: isProductionLog
+        ? undefined
+        : {
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              singleLine: false,
+              translateTime: 'SYS:HH:MM:ss.l',
+              ignore: 'pid,hostname,req,res,responseTime',
+            },
+          },
+    },
+  }),
+  ThrottlerModule.forRoot([
+    {
+      name: 'commands',
+      ttl: 60_000,   // 1 minute window
+      limit: 120,    // max 120 commands per minute per user (~2/sec)
+    },
+    {
+      // Per-IP throttle on the auth surface (login, register, wallet verify).
+      // 10/min is well above legitimate use (a human logs in at most a
+      // handful of times per minute) and well below what's useful for
+      // brute-forcing a password or hammering wallet-nonce generation.
+      name: 'auth',
+      ttl: 60_000,
+      limit: 10,
+    },
+    {
+      // Cap on `/v1/client-errors` so a misbehaving client (or attacker
+      // probing the endpoint) can't fill our log stream. 60/min/IP is
+      // generous for a real session — the client also caps at 25 per
+      // session in `clientErrorReporter.ts`.
+      name: 'clientErrors',
+      ttl: 60_000,
+      limit: 60,
+    },
+    {
+      // Synergy-preview runs full resolver evaluation (DB + matching logic)
+      // on every debounced team change. 30/min is well above normal gameplay
+      // (a player picks a team at most a few times per minute) while
+      // preventing a malicious client from hammering the DB.
+      name: 'synergyPreview',
+      ttl: 60_000,
+      limit: 30,
+    },
+    {
+      // Tight per-IP limit on forgot-password to prevent inbox flooding or
+      // email-quota exhaustion. 3 requests per 15 minutes is well above any
+      // legitimate use case (a user forgets their password at most once per
+      // session) while stopping automated spray attacks cold.
+      name: 'forgotPassword',
+      ttl: 15 * 60_000,
+      limit: 3,
+    },
+  ]),
   PrismaModule,
   GameRulesModule,
   InfrastructureModule,
@@ -67,6 +165,17 @@ const imports: any[] = [
   TelemetryModule,
   CheckInModule,
   QuestModule,
+  NftModule,
+  ShopModule,
+  PaymentModule,
+  EffectModule,
+  AudioModule,
+  ClientErrorsModule,
+  SynergyModule,
+  SelectionModule,
+  ScreensModule,
+  ContentDocumentModule,
+  DefinitionCacheModule,
 ];
 
 if (process.env.NODE_ENV === 'production') {
@@ -74,6 +183,25 @@ if (process.env.NODE_ENV === 'production') {
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'web', 'dist'),
       exclude: ['/api/(.*)', '/v1/(.*)', '/media/(.*)'],
+      serveStaticOptions: {
+        // The service worker and web manifest must never be cached by the
+        // browser; otherwise a stale SW pins the site to an old build.
+        // Hashed JS/CSS bundles still get the express.static defaults.
+        setHeaders: (res, filePath) => {
+          const base = filePath.split(/[\\/]/).pop() ?? '';
+          // index.html, SW, and manifest must never be cached — they are the
+          // entry points that reference hashed bundles; a stale copy pins
+          // players to an old build even after a redeploy.
+          if (
+            base === 'index.html' ||
+            base === 'sw.js' ||
+            base === 'registerSW.js' ||
+            base === 'manifest.webmanifest'
+          ) {
+            res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+          }
+        },
+      },
     }),
   );
 }

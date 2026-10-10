@@ -1,12 +1,16 @@
-import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, Headers } from '@nestjs/common';
 import { LocationService } from './location.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { IdempotencyService } from '../infrastructure/idempotency.service';
 
 @Controller('locations')
 @UseGuards(JwtAuthGuard)
 export class LocationController {
-  constructor(private locationService: LocationService) {}
+  constructor(
+    private locationService: LocationService,
+    private idempotency: IdempotencyService,
+  ) {}
 
   @Get()
   getLocations(@CurrentUser() user: { id: string }) {
@@ -18,14 +22,29 @@ export class LocationController {
     return this.locationService.getLocation(user.id, id);
   }
 
+  @Get(':id/power-usage')
+  getPowerUsage(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.locationService.getPowerUsage(user.id, id);
+  }
+
   @Get(':id/available-buildings')
   getAvailableBuildings(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.locationService.getAvailableBuildings(user.id, id);
   }
 
   @Post(':id/claim')
-  claimLocation(@CurrentUser() user: { id: string }, @Param('id') id: string) {
-    return this.locationService.claimLocation(user.id, id);
+  claimLocation(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.idempotency.executeIdempotent(
+      user.id,
+      `POST:/locations/${id}/claim`,
+      idempotencyKey,
+      { locationId: id },
+      () => this.locationService.claimLocation(user.id, id),
+    );
   }
 
   @Post(':id/build')
@@ -33,8 +52,15 @@ export class LocationController {
     @CurrentUser() user: { id: string },
     @Param('id') id: string,
     @Body() body: { buildingDefId: string },
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.locationService.buildBuilding(user.id, id, body.buildingDefId);
+    return this.idempotency.executeIdempotent(
+      user.id,
+      `POST:/locations/${id}/build`,
+      idempotencyKey,
+      { locationId: id, buildingDefId: body.buildingDefId },
+      () => this.locationService.buildBuilding(user.id, id, body.buildingDefId),
+    );
   }
 
   @Post(':id/buildings/:buildingId/complete')
@@ -42,8 +68,15 @@ export class LocationController {
     @CurrentUser() user: { id: string },
     @Param('id') id: string,
     @Param('buildingId') buildingId: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.locationService.completeBuilding(user.id, id, buildingId);
+    return this.idempotency.executeIdempotent(
+      user.id,
+      `POST:/locations/${id}/buildings/${buildingId}/complete`,
+      idempotencyKey,
+      { locationId: id, buildingId },
+      () => this.locationService.completeBuilding(user.id, id, buildingId),
+    );
   }
 
   @Post(':id/buildings/:buildingId/upgrade')
@@ -51,8 +84,15 @@ export class LocationController {
     @CurrentUser() user: { id: string },
     @Param('id') id: string,
     @Param('buildingId') buildingId: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.locationService.upgradeBuilding(user.id, id, buildingId);
+    return this.idempotency.executeIdempotent(
+      user.id,
+      `POST:/locations/${id}/buildings/${buildingId}/upgrade`,
+      idempotencyKey,
+      { locationId: id, buildingId },
+      () => this.locationService.upgradeBuilding(user.id, id, buildingId),
+    );
   }
 
   @Post(':id/workers/assign')

@@ -2,13 +2,14 @@ interface SkeletonProps {
   width?: string;
   height?: string;
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export function Skeleton({ width = '100%', height = '1em', className = '' }: SkeletonProps) {
+export function Skeleton({ width = '100%', height = '1em', className = '', style }: SkeletonProps) {
   return (
     <span
       className={`skeleton ${className}`}
-      style={{ display: 'block', width, height }}
+      style={{ display: 'block', width, height, ...style }}
       aria-hidden="true"
     />
   );
@@ -16,40 +17,46 @@ export function Skeleton({ width = '100%', height = '1em', className = '' }: Ske
 
 export function HomePageSkeleton() {
   return (
-    <div className="hp" aria-busy="true" aria-label="Loading...">
-      <div className="hp-section">
-        <div className="hp-season-banner" style={{ background: 'var(--bg-card)', borderRadius: 12, minHeight: 100 }}>
+    <div
+      className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y p-3.5"
+      aria-busy="true"
+      aria-label="Loading..."
+    >
+      <div className="mb-4">
+        <div
+          className="rounded-xl min-h-[100px] bg-bg-card"
+        >
           <Skeleton height="100px" />
         </div>
       </div>
 
-      <div className="hp-combined-card">
-        <div className="hp-combined-top" style={{ padding: '16px' }}>
+      <div className="bg-gradient-to-br from-[#1a1640] to-[#221a50] border border-[rgba(139,92,246,0.25)] rounded-[14px] overflow-hidden mb-4">
+        <div className="p-4">
           <Skeleton width="140px" height="14px" />
-          <div style={{ margin: '12px 0', display: 'flex', gap: 12 }}>
-            <Skeleton width="64px" height="64px" className="skeleton" style={{ borderRadius: 8 } as React.CSSProperties} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="mt-3 flex gap-3">
+            <Skeleton width="64px" height="64px" style={{ borderRadius: 8 }} />
+            <div className="flex-1 flex flex-col gap-2">
               <Skeleton height="14px" />
               <Skeleton height="14px" width="70%" />
             </div>
           </div>
         </div>
 
-        <div className="hp-combined-divider" />
+        <div className="h-px bg-gradient-to-r from-transparent via-[rgba(139,92,246,0.3)] to-transparent" />
 
-        <div className="hp-combined-bottom" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="px-4 py-3 flex flex-col gap-3">
           <Skeleton width="100px" height="14px" />
           <Skeleton height="48px" />
           <Skeleton height="48px" />
         </div>
       </div>
 
-      <div className="hp-section">
-        <div className="hp-keeper-card" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16 }}>
+      <div className="mb-4">
+        <div className="bg-gradient-to-br from-[#1a1640] to-[#221a50] border border-[rgba(139,92,246,0.25)] rounded-[14px] p-4 flex flex-col gap-3">
           <Skeleton width="120px" height="14px" />
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div className="flex gap-3 items-center">
             <Skeleton width="60px" height="60px" />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="flex-1 flex flex-col gap-2">
               <Skeleton height="12px" width="80%" />
               <Skeleton height="8px" />
             </div>

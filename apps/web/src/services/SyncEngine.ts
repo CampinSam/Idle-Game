@@ -1,8 +1,24 @@
 import { Store } from '@reduxjs/toolkit';
+import { assertStreamEvent } from '@derp/shared';
+import type { StreamEventName, UiIntent } from '@derp/shared';
 import { api } from './api';
-import type { DeltaResponse } from './api';
-import { setStatus, setSnapshot, applyPatches, setError, resetSync } from '../store/syncSlice';
+import type { DeltaResponse } from '@derp/shared';
+import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickSync, setHomeBanners, setGlobalPowers } from '../store/syncSlice';
+import { setSystemIconRegistry } from '../utils/iconResolver';
+import { applyServerTime } from './clockSync';
 import type { RootState } from '../store';
+
+export type GlobalPowerChangeHandler = (
+  event: 'started' | 'ended',
+  change: { id: string; label: string; durationMinutes: number },
+) => void;
+
+export type BoostChangeHandler = (data: {
+  active: Array<{ id: string; name: string; percentBoost: number; endTime: string }>;
+  combinedPercent: number;
+}) => void;
+
+export type BootstrapUiIntentHandler = (intents: UiIntent[]) => void;
 
 const HEARTBEAT_TIMEOUT_MS = 45_000;
 const RECONNECT_BASE_MS = 1_000;
@@ -15,9 +31,47 @@ export class SyncEngine {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
   private destroyed = false;
+  private hasEverConnected = false;
+  private globalPowerHandlers = new Set<GlobalPowerChangeHandler>();
+  private boostChangeHandlers = new Set<BoostChangeHandler>();
+  private bootstrapUiIntentHandlers = new Set<BootstrapUiIntentHandler>();
 
   constructor(store: Store<RootState>) {
     this.store = store;
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+  }
+
+  onGlobalPowerChange(handler: GlobalPowerChangeHandler): () => void {
+    this.globalPowerHandlers.add(handler);
+    return () => this.globalPowerHandlers.delete(handler);
+  }
+
+  onBoostChange(handler: BoostChangeHandler): () => void {
+    this.boostChangeHandlers.add(handler);
+    return () => this.boostChangeHandlers.delete(handler);
+  }
+
+  onBootstrapUiIntents(handler: BootstrapUiIntentHandler): () => void {
+    this.bootstrapUiIntentHandlers.add(handler);
+    return () => this.bootstrapUiIntentHandlers.delete(handler);
+  }
+
+  private emitGlobalPowerChange(event: 'started' | 'ended', change: any) {
+    for (const handler of this.globalPowerHandlers) {
+      try { handler(event, change); } catch { /* ignore */ }
+    }
+  }
+
+  private emitBoostChange(data: any) {
+    for (const handler of this.boostChangeHandlers) {
+      try { handler(data); } catch { /* ignore */ }
+    }
+  }
+
+  private emitBootstrapUiIntents(intents: UiIntent[]) {
+    for (const handler of this.bootstrapUiIntentHandlers) {
+      try { handler(intents); } catch { /* ignore */ }
+    }
   }
 
   async start(): Promise<void> {
@@ -29,24 +83,47 @@ export class SyncEngine {
       const response = await api.bootstrap();
       if (this.destroyed) return;
 
+      applyServerTime(response.serverTime);
       this.store.dispatch(setSnapshot(response));
+      const systemIconDefs: Array<{ id: string }> = (response.snapshot.state as any)?.systemIconDefs ?? [];
+      setSystemIconRegistry(systemIconDefs.map((d) => d.id));
+      this.hasEverConnected = true;
       this.store.dispatch(setStatus('connected'));
       this.openStream();
+      if (Array.isArray(response.ui) && response.ui.length > 0) {
+        this.emitBootstrapUiIntents(response.ui);
+      }
     } catch (err: any) {
       if (this.destroyed) return;
       console.error('[SyncEngine] Bootstrap failed:', err);
       this.store.dispatch(setError(err.message || 'Bootstrap failed'));
-      this.store.dispatch(setStatus('disconnected'));
+      // After a successful initial connection, keep stale data visible by
+      // staying in 'reconnecting' rather than switching to 'disconnected'.
+      // 'disconnected' is reserved for the initial load failure (no data yet).
+      const nextStatus = this.hasEverConnected ? 'reconnecting' : 'disconnected';
+      this.store.dispatch(setStatus(nextStatus));
       this.scheduleReconnect();
     }
   }
 
   stop(): void {
     this.destroyed = true;
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.closeStream();
     this.clearReconnect();
     this.store.dispatch(resetSync());
   }
+
+  private onVisibilityChange = () => {
+    if (document.visibilityState !== 'visible') return;
+    const status = this.store.getState().sync.status;
+    if (status !== 'connected' && status !== 'bootstrapping') {
+      // Tab became visible while disconnected/reconnecting — skip the
+      // remaining backoff timer and reconnect immediately.
+      this.clearReconnect();
+      this.start();
+    }
+  };
 
   private openStream(): void {
     if (this.destroyed) return;
@@ -59,28 +136,73 @@ export class SyncEngine {
     const params = new URLSearchParams({ token });
     if (cursor) params.set('cursor', cursor);
 
-    const url = `/api/v1/stream?${params.toString()}`;
-    // Note: SSE uses /api/v1 directly since EventSource can't set custom headers
+    const _rawApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+    const sseBase = _rawApiUrl ? _rawApiUrl.replace(/\/$/, '') : '/api';
+    const url = `${sseBase}/v1/stream?${params.toString()}`;
+    // Note: SSE uses the API base directly since EventSource can't set custom headers
     const es = new EventSource(url);
     this.eventSource = es;
 
-    es.addEventListener('hello', (e) => {
+    const listen = (eventName: StreamEventName, handler: (data: any) => void) => {
+      es.addEventListener(eventName, (event: Event) => {
+        let data: unknown;
+        try {
+          data = JSON.parse((event as MessageEvent).data);
+          assertStreamEvent(eventName, data);
+        } catch (err: any) {
+          this.handleInvalidStreamEvent(eventName, err);
+          return;
+        }
+        handler(data);
+      });
+    };
+
+    listen('hello', () => {
       this.reconnectAttempts = 0;
       this.store.dispatch(setStatus('connected'));
       this.store.dispatch(setError(null));
       this.resetHeartbeat();
     });
 
-    es.addEventListener('ping', () => {
+    listen('ping', () => {
       this.resetHeartbeat();
     });
 
-    es.addEventListener('delta.available', (e) => {
+    listen('delta.available', () => {
       this.resetHeartbeat();
       this.fetchAndApplyDelta();
     });
 
-    es.addEventListener('reset.required', () => {
+    listen('tick.sync', (msg) => {
+      applyServerTime(Date.parse(msg.serverTime));
+      this.store.dispatch(setTickSync({
+        currentTick: msg.currentTick,
+        tickRate: msg.tickRate,
+        serverTime: msg.serverTime,
+        boosts: msg.boosts,
+        receivedAt: Date.now(),
+      }));
+    });
+
+    listen('home_banners.updated', (msg) => {
+      // Whole-list replacement broadcast emitted by the admin service after
+      // any HomeBannerDef create/update/delete. Clients refresh the carousel
+      // without waiting for a re-bootstrap.
+      this.store.dispatch(setHomeBanners(msg.banners));
+    });
+
+    listen('global_power.changed', (msg) => {
+      this.store.dispatch(setGlobalPowers(msg.active));
+      for (const change of msg.changes) {
+        this.emitGlobalPowerChange(change.event, change);
+      }
+    });
+
+    listen('boost.changed', (msg) => {
+      this.emitBoostChange(msg);
+    });
+
+    listen('reset.required', () => {
       console.warn('[SyncEngine] Server requested reset, re-bootstrapping...');
       this.closeStream();
       this.start();
@@ -93,6 +215,16 @@ export class SyncEngine {
       this.store.dispatch(setStatus('reconnecting'));
       this.scheduleReconnect();
     };
+  }
+
+  private handleInvalidStreamEvent(eventName: StreamEventName, error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error);
+    const errorMessage = `Invalid ${eventName} stream event: ${message}`;
+    console.error(`[SyncEngine] ${errorMessage}`);
+    this.closeStream();
+    this.store.dispatch(setError(errorMessage));
+    this.store.dispatch(setStatus('reconnecting'));
+    this.scheduleReconnect();
   }
 
   private closeStream(): void {
@@ -160,6 +292,14 @@ export class SyncEngine {
       }
 
       const deltaRes = res as DeltaResponse;
+
+      if (Array.isArray(deltaRes.ui) && deltaRes.ui.some((u) => u.type === 'full_reset')) {
+        console.warn('[SyncEngine] Admin full-reset signal received, re-bootstrapping...');
+        this.closeStream();
+        await this.start();
+        return;
+      }
+
       if (deltaRes.patches.length > 0) {
         this.store.dispatch(applyPatches({
           patches: deltaRes.patches,

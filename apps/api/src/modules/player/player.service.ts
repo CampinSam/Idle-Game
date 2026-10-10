@@ -24,6 +24,7 @@ export class PlayerService {
       username: user.username,
       email: user.email,
       walletAddress: user.walletAddress,
+      hasPassword: !!user.passwordHash,
       keeperLevel: user.keeperLevel,
       keeperXp: Number(user.keeperXp),
       xpToNextLevel: XP_PER_LEVEL(user.keeperLevel),
@@ -36,8 +37,9 @@ export class PlayerService {
     };
   }
 
-  async addKeeperXp(userId: string, xp: number) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  async addKeeperXp(userId: string, xp: number, tx?: any) {
+    const db = tx || this.prisma;
+    const user = await db.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Player not found');
 
     let newXp = Number(user.keeperXp) + xp;
@@ -48,7 +50,7 @@ export class PlayerService {
       newLevel++;
     }
 
-    await this.prisma.user.update({
+    await db.user.update({
       where: { id: userId },
       data: { keeperXp: BigInt(newXp), keeperLevel: newLevel },
     });

@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
-import { PatchBuilder, buildEntityPatch } from '../patch-builder';
+import { PatchBuilder, buildEntityPatch, buildCurrencyPatches, buildItemPatches } from '../patch-builder';
 import { MissionService } from '../../mission/mission.service';
+import { NotificationService } from '../../notification/notification.service';
 
 @Injectable()
 export class StartMissionHandler implements CommandHandler {
-  constructor(private missionService: MissionService) {}
+  constructor(
+    private missionService: MissionService,
+    private notificationService: NotificationService,
+  ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { defId, entityIds } = payload;
@@ -21,9 +25,28 @@ export class StartMissionHandler implements CommandHandler {
       await buildEntityPatch(pb, ctx.tx, entityId);
     }
 
+    await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
+    await buildItemPatches(pb, ctx.tx, ctx.userId);
+
+    const notification = await this.notificationService.upsertJobNotification({
+      userId: ctx.userId,
+      jobId: result.id,
+      type: 'mission_started',
+      category: 'missions',
+      priority: 'low',
+      title: 'Mission Started',
+      body: 'Your mission is underway.',
+      deepLink: { missionRunId: result.id },
+      readAt: new Date(),
+    }, ctx.tx);
+    pb.upsertNotification(notification);
+
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'info' as const, message: 'Mission started!' }],
+      ui: [],
+      meta: {
+        synergyPreview: result.synergyPreview,
+      },
     };
   }
 }

@@ -7,8 +7,9 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { TickModule } from '../tick/tick.module';
 import { EventModule } from '../event/event.module';
-import { LocationSettlementService } from '../location/location-settlement.service';
-import { CheckInModule } from '../checkin/checkin.module';
+import { LocationModule } from '../location/location.module';
+import { TelemetryModule } from '../telemetry/telemetry.module';
+import { NftModule } from '../nft/nft.module';
 
 @Module({
   imports: [
@@ -23,9 +24,11 @@ import { CheckInModule } from '../checkin/checkin.module';
     }),
     TickModule,
     EventModule,
-    CheckInModule,
+    LocationModule,
+    TelemetryModule,
+    NftModule,
   ],
-  providers: [AuthService, JwtStrategy, LocationSettlementService],
+  providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
   exports: [AuthService, JwtModule],
 })

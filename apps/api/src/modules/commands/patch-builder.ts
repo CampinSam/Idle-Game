@@ -1,23 +1,10 @@
+import { InternalServerErrorException } from '@nestjs/common';
+import { assertPatch } from '@derp/shared';
 import { Patch } from './command.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { serializeLocation } from './location-serializer.util';
-
-function serializeEntity(entity: any) {
-  const progression = (entity.progression as any) || {};
-  if (progression && typeof progression.xp === 'bigint') {
-    progression.xp = Number(progression.xp);
-  }
-  const display = (entity.display as any) || {};
-  const state = (entity.state as any) || {};
-  return {
-    ...entity,
-    progression,
-    name: display.name || entity.speciesId || 'Entity',
-    level: progression.level || 1,
-    xp: Number(progression.xp || 0),
-    status: state.status || 'idle',
-  };
-}
+import { serializeEntityFull } from '../entity/entity-stats.util';
+import { evaluateTopLevelRules } from '../game-rules/evaluate-top-level-rules.util';
 
 function serializeJob(job: any) {
   const timer = job.timer as any;
@@ -30,6 +17,9 @@ function serializeJob(job: any) {
     team: job.team,
     data: job.data,
     results: job.results,
+    currentPhase: job.currentPhase ?? 0,
+    phaseResults: job.phaseResults ?? null,
+    accumulatedState: job.accumulatedState ?? null,
     startTick: timer?.startTick ?? null,
     durationTicks: timer?.durationTicks ?? null,
   };
@@ -57,8 +47,14 @@ export class PatchBuilder {
     return this;
   }
 
-  upsertEntity(entity: any): this {
-    this.patches.push({ op: 'upsert', entity: 'entity', id: entity.id, data: serializeEntity(entity) });
+  /**
+   * Pushes an entity upsert patch using a *pre-serialized* payload. Callers
+   * that want the canonical equipment-aware payload (with `baseStats` and
+   * `equippedStats`) should use `buildEntityPatch` instead, which awaits
+   * `serializeEntityFull` and forwards here.
+   */
+  upsertEntity(entityData: any): this {
+    this.patches.push({ op: 'upsert', entity: 'entity', id: entityData.id, data: entityData });
     return this;
   }
 
@@ -67,12 +63,26 @@ export class PatchBuilder {
     return this;
   }
 
+  upsertAchievement(instance: any): this {
+    // Pass through the full row including the included `questDef`
+    // so the frontend can render names/descriptions without a second
+    // fetch. Achievement instances are QuestInstance rows with
+    // category='achievement' on their questDef.
+    this.patches.push({
+      op: 'upsert',
+      entity: 'achievement',
+      id: instance.id,
+      data: instance,
+    });
+    return this;
+  }
+
   deleteItem(itemId: string): this {
     this.patches.push({ op: 'delete', entity: 'item', id: itemId });
     return this;
   }
 
-  upsertPlayer(user: any): this {
+  upsertPlayer(user: any, unlocks: string[] = []): this {
     this.patches.push({
       op: 'upsert',
       entity: 'player',
@@ -84,6 +94,8 @@ export class PatchBuilder {
         keeperXp: user.keeperXp?.toString?.() ?? user.keeperXp,
         prestigeTokens: user.prestigeTokens,
         flags: user.flags,
+        primaryLocationId: user.primaryLocationId ?? null,
+        unlocks,
       },
     });
     return this;
@@ -127,18 +139,74 @@ export class PatchBuilder {
     return this;
   }
 
+  upsertActiveEffect(effect: any): this {
+    this.patches.push({
+      op: 'upsert',
+      entity: 'activeEffect',
+      id: effect.id,
+      data: {
+        id: effect.id,
+        effectDefId: effect.effectDefId,
+        targetType: effect.targetType,
+        targetId: effect.targetId,
+        sourceType: effect.sourceType,
+        sourceId: effect.sourceId,
+        category: effect.category,
+        valueMode: effect.valueMode,
+        value: effect.value,
+        stats: effect.stats,
+        trait: effect.trait,
+        currentStacks: effect.currentStacks,
+        remainingUses: effect.remainingUses,
+        sessionType: effect.sessionType,
+        sessionId: effect.sessionId,
+        expiresAt: effect.expiresAt instanceof Date ? effect.expiresAt.toISOString() : (effect.expiresAt ?? null),
+        expiresAtTick: effect.expiresAtTick,
+        createdAt: effect.createdAt instanceof Date ? effect.createdAt.toISOString() : effect.createdAt,
+      },
+    });
+    return this;
+  }
+
+  deleteActiveEffect(id: string): this {
+    this.patches.push({ op: 'delete', entity: 'activeEffect', id });
+    return this;
+  }
+
   upsert(entity: string, id: string, data: any): this {
-    this.patches.push({ op: 'upsert', entity, id, data });
+    this.patches.push({ op: 'upsert', entity: entity as Patch['entity'], id, data });
     return this;
   }
 
   delete(entity: string, id: string): this {
-    this.patches.push({ op: 'delete', entity, id });
+    this.patches.push({ op: 'delete', entity: entity as Patch['entity'], id });
     return this;
   }
 
   build(): Patch[] {
-    return this.patches;
+    let wirePatches: unknown;
+    try {
+      const json = JSON.stringify(this.patches, (_key, value) =>
+        typeof value === 'bigint' ? value.toString() : value,
+      );
+      if (json === undefined) throw new TypeError('Patch array is not JSON serializable');
+      wirePatches = JSON.parse(json);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `PatchBuilder output could not be serialized: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    (wirePatches as unknown[]).forEach((patch, index) => {
+      try {
+        assertPatch(patch, `patches[${index}]`);
+      } catch (error) {
+        throw new InternalServerErrorException(
+          `PatchBuilder produced an invalid patch: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    });
+    return wirePatches as Patch[];
   }
 }
 
@@ -169,15 +237,18 @@ export async function fetchBuildingJobs(prisma: PrismaService | any, userId: str
 }
 
 export async function fetchCurrencyIds(prisma: PrismaService | any): Promise<Set<string>> {
-  const currencies = await (prisma as any).currency.findMany({ select: { id: true } });
-  return new Set(currencies.map((c: any) => c.id));
+  const currencies = await (prisma as any).currency.findMany({ select: { key: true } });
+  return new Set(currencies.map((c: any) => c.key));
 }
 
 export async function fetchCurrencyMap(prisma: PrismaService | any, userId: string): Promise<Record<string, number>> {
-  const rows = await (prisma as any).userCurrencyBalance.findMany({ where: { userId } });
+  const rows = await (prisma as any).userCurrencyBalance.findMany({
+    where: { userId },
+    include: { currency: { select: { key: true } } },
+  });
   const map: Record<string, number> = {};
   for (const row of rows) {
-    map[row.currencyId] = Number(row.balance);
+    map[row.currency.key] = Number(row.balance);
   }
   return map;
 }
@@ -198,7 +269,10 @@ export async function fetchActiveJobs(tx: any, userId: string) {
 export async function fetchEntity(tx: any, entityId: string) {
   return tx.entity.findUnique({
     where: { id: entityId },
-    include: { equipment: true },
+    include: {
+      equipment: true,
+      definition: true,
+    },
   });
 }
 
@@ -228,10 +302,78 @@ export async function buildItemPatches(pb: PatchBuilder, tx: any, userId: string
 
 export async function buildEntityPatch(pb: PatchBuilder, tx: any, entityId: string) {
   const entity = await fetchEntity(tx, entityId);
-  if (entity) pb.upsertEntity(entity);
+  if (!entity) return;
+  const payload = await serializeEntityFull(tx, entity);
+  pb.upsertEntity(payload);
 }
 
 export async function buildPlayerPatch(pb: PatchBuilder, tx: any, userId: string) {
   const user = await tx.user.findUnique({ where: { id: userId } });
-  if (user) pb.upsertPlayer(user);
+  if (!user) return;
+  const unlockRows: { key: string }[] = await tx.userUnlock.findMany({ where: { userId }, select: { key: true } });
+  pb.upsertPlayer(user, unlockRows.map(u => u.key));
+}
+
+export async function fetchActiveEffects(tx: any, userId: string, currentTick?: number) {
+  const now = new Date();
+  const orClauses: any[] = [
+    { expiresAt: null, expiresAtTick: null },
+    { expiresAt: { gt: now } },
+  ];
+  if (currentTick !== undefined) {
+    orClauses.push({ expiresAtTick: { gt: currentTick } });
+  }
+  return tx.activeEffect.findMany({
+    where: { userId, OR: orClauses },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
+export async function buildActiveEffectPatches(pb: PatchBuilder, tx: any, userId: string, currentTick?: number) {
+  const effects = await fetchActiveEffects(tx, userId, currentTick);
+  for (const effect of effects) pb.upsertActiveEffect(effect);
+}
+
+/**
+ * Re-evaluates `requirementStatus` for every mission category def and mission
+ * def using the player's current flags (as visible inside `tx`). Emits
+ * `{ op:'upsert', entity:'categoryDef'|'missionDef' }` patches so the client
+ * can unlock gated categories/missions in the same render cycle that applies
+ * the mission-completion patches — no separate HTTP refetch needed.
+ *
+ * Call this only when flags were actually changed (e.g. resolvedFlagCount > 0)
+ * to keep the patch payload small.
+ */
+export async function buildMissionDefStatusPatches(
+  pb: PatchBuilder,
+  tx: any,
+  userId: string,
+  gameRules: any,
+  cache: import('../definition-cache/definition-cache.service').DefinitionCacheService,
+): Promise<void> {
+  const user = await (tx as any).user.findUnique({ where: { id: userId } });
+  if (!user) return;
+
+  const unlockRows: { key: string }[] = await (tx as any).userUnlock.findMany({ where: { userId }, select: { key: true } });
+  const userUnlocks = unlockRows.map((u: { key: string }) => u.key);
+  const reqContext = gameRules.buildRequirementContext(user, { userUnlocks });
+
+  const categories = cache.getAll('missionCategoryDef').sort((a: any, b: any) => a.sortOrder - b.sortOrder);
+  for (const cat of categories) {
+    const requirementStatus = cat.requirements
+      ? evaluateTopLevelRules(cat.requirements, reqContext, gameRules)
+      : [];
+    pb.upsert('categoryDef', cat.id, { requirementStatus });
+  }
+
+  const missionDefs = cache.getAll('missionDef').sort((a: any, b: any) => a.sortOrder - b.sortOrder);
+  for (const def of missionDefs) {
+    const requirementStatus = def.requirements
+      ? evaluateTopLevelRules(def.requirements, reqContext, gameRules)
+      : [];
+    const launchRequirementStatus = def.launchRequirements
+      ? evaluateTopLevelRules(def.launchRequirements, reqContext, gameRules)
+      : [];
+    pb.upsert('missionDef', def.id, { requirementStatus, launchRequirementStatus });
+  }
 }

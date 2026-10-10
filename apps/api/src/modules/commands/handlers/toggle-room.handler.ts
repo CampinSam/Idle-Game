@@ -17,7 +17,7 @@ export class ToggleRoomHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'info' as const, message: enabled ? 'Room enabled' : 'Room disabled' }],
+      ui: [],
     };
   }
 }

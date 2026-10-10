@@ -68,6 +68,14 @@ const authSlice = createSlice({
     clearError(state) {
       state.error = null;
     },
+    setAuth(state, action: { payload: { token: string; player: any } }) {
+      state.token = action.payload.token;
+      state.player = action.payload.player;
+      state.initializing = false;
+      state.loading = false;
+      api.setToken(action.payload.token);
+      localStorage.setItem('derp_token', action.payload.token);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -105,5 +113,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, setAuth } = authSlice.actions;
 export default authSlice.reducer;

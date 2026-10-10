@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import type { CommandResponse, UiIntent } from '../services/api';
 import { useAppDispatch } from '../store';
 import { applyPatches } from '../store/syncSlice';
+import { useNotifications } from '../context/NotificationContext';
 
 let commandCounter = 0;
 
@@ -15,8 +16,15 @@ export interface UseCommandOptions {
   onUiIntent?: (intent: UiIntent) => void;
 }
 
+const TONE_ACCENT: Record<string, string> = {
+  success: '#10B981',
+  error: '#EF4444',
+  info: '#8B5CF6',
+};
+
 export function useCommand(options?: UseCommandOptions) {
   const dispatch = useAppDispatch();
+  const { addLocalToast } = useNotifications();
   const pendingRef = useRef(false);
 
   const execute = useCallback(
@@ -48,8 +56,15 @@ export function useCommand(options?: UseCommandOptions) {
           }));
         }
 
-        if (options?.onUiIntent) {
-          for (const intent of response.ui) {
+        for (const intent of response.ui) {
+          if (intent.type === 'local_toast') {
+            addLocalToast({
+              title: intent.title,
+              body: intent.body,
+              accentColor: TONE_ACCENT[intent.tone] ?? '#8B5CF6',
+              durationMs: intent.durationMs,
+            });
+          } else if (options?.onUiIntent) {
             options.onUiIntent(intent);
           }
         }
@@ -59,7 +74,7 @@ export function useCommand(options?: UseCommandOptions) {
         pendingRef.current = false;
       }
     },
-    [dispatch, options],
+    [dispatch, addLocalToast, options],
   );
 
   return { execute };

@@ -17,7 +17,7 @@ export class ToggleBuildingHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'info' as const, message: enabled ? 'Building enabled' : 'Building disabled' }],
+      ui: [],
     };
   }
 }

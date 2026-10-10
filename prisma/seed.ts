@@ -1,127 +1,346 @@
 import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { Storage } from '@google-cloud/storage';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const prisma = new PrismaClient();
 
-const STARTER_GEMS = 1000;
-const GEMS_CURRENCY_ID = 'premium_gems';
+const SEED_KEY = 'seed/seed-data.json';
+const REPLIT_SIDECAR = 'http://127.0.0.1:1106';
 
-const TABLE_TO_MODEL: Record<string, string> = {
-  Currency: 'currency',
-  ItemDef: 'itemDefinition',
-  BodySchema: 'bodySchema',
-  EquipmentSchema: 'equipmentSchema',
-  ProgressionProfile: 'progressionProfile',
-  TraitDefinition: 'traitDefinition',
-  EntityDefinition: 'entityDefinition',
-  RegionDefinition: 'regionDefinition',
-  LocationDefinition: 'locationDefinition',
-  BuildingDef: 'buildingDef',
-  RoomDef: 'roomDef',
-  DisplayDef: 'displayDef',
-  MissionCategoryDef: 'missionCategoryDef',
-  MissionDef: 'missionDef',
-  RecipeDef: 'recipeDef',
-  EventDefinition: 'eventDefinition',
-  GiftDef: 'giftDef',
+const SEED_TABLE_ORDER = [
+  'currency',
+  'regionDefinition',
+  'displayDef',
+  'entityDefinition',
+  'locationDefinition',
+  'buildingDef',
+  'roomDef',
+  'missionCategoryDef',
+  'missionDef',
+  'recipeDef',
+  'itemDefinition',
+  'giftDef',
+  'shopItemDef',
+  'eventDefinition',
+  'lootboxDef',
+  'bundleDef',
+  'checkInDef',
+  'questDef',
+  'modalDef',
+  'defaultModalDef',
+  'homeBannerDef',
+  'systemIconDef',
+  'synergyRule',
+  'selectionRuleDef',
+  'powerDef',
+  'soundDef',
+  'tagDef',
+  'visualEffectDef',
+  'effectDef',
+  'nftCollectionDef',
+  'gameDefinition',
+] as const;
+
+type SeedTableName = typeof SEED_TABLE_ORDER[number];
+
+type RecordTransform = (r: any) => any;
+
+const TABLE_TRANSFORMS: Partial<Record<SeedTableName, RecordTransform>> = {
+  currency: (r) => {
+    const c = { ...r };
+    if (c.cap != null) c.cap = BigInt(c.cap);
+    if (c.cntWithdrawalFee != null) c.cntWithdrawalFee = BigInt(c.cntWithdrawalFee);
+    if (c.cntAutoApprovalThreshold != null) c.cntAutoApprovalThreshold = BigInt(c.cntAutoApprovalThreshold);
+    return c;
+  },
+  shopItemDef: (r) => {
+    const c = { ...r };
+    if (c.limitedUntil) c.limitedUntil = new Date(c.limitedUntil);
+    return c;
+  },
+  homeBannerDef: (r) => {
+    const c = { ...r };
+    if (c.startsAt) c.startsAt = new Date(c.startsAt);
+    if (c.endsAt) c.endsAt = new Date(c.endsAt);
+    return c;
+  },
+  synergyRule: (r) => {
+    const c = { ...r };
+    if (c.startsAt) c.startsAt = new Date(c.startsAt);
+    if (c.endsAt) c.endsAt = new Date(c.endsAt);
+    return c;
+  },
 };
 
-const SEED_ORDER = [
-  'Currency',
-  'ItemDef',
-  'BodySchema',
-  'EquipmentSchema',
-  'ProgressionProfile',
-  'TraitDefinition',
-  'EntityDefinition',
-  'RegionDefinition',
-  'LocationDefinition',
-  'BuildingDef',
-  'RoomDef',
-  'DisplayDef',
-  'MissionCategoryDef',
-  'MissionDef',
-  'RecipeDef',
-  'EventDefinition',
-  'GiftDef',
-];
+const TABLE_WHERE: Partial<Record<SeedTableName, (r: any) => any>> = {
+  currency: (r) => ({ key: r.key }),
+  regionDefinition: (r) => ({ key: r.key }),
+  displayDef: (r) => ({ key: r.key }),
+  entityDefinition: (r) => ({ key: r.key }),
+  locationDefinition: (r) => ({ key: r.key }),
+  buildingDef: (r) => ({ key: r.key }),
+  roomDef: (r) => ({ key: r.key }),
+  missionCategoryDef: (r) => ({ key: r.key }),
+  missionDef: (r) => ({ key: r.key }),
+  recipeDef: (r) => ({ key: r.key }),
+  itemDefinition: (r) => ({ key: r.key }),
+  giftDef: (r) => ({ key: r.key }),
+  eventDefinition: (r) => ({ key: r.key }),
+  lootboxDef: (r) => ({ key: r.key }),
+  bundleDef: (r) => ({ key: r.key }),
+  checkInDef: (r) => ({ key: r.key }),
+  questDef: (r) => ({ key: r.key }),
+  modalDef: (r) => ({ key: r.key }),
+  defaultModalDef: (r) => ({ key: r.key }),
+  homeBannerDef: (r) => ({ key: r.key }),
+  systemIconDef: (r) => ({ key: r.key }),
+  synergyRule: (r) => ({ key: r.key }),
+  selectionRuleDef: (r) => ({ key: r.key }),
+  powerDef: (r) => ({ key: r.key }),
+  soundDef: (r) => ({ key: r.key }),
+  tagDef: (r) => ({ key: r.key }),
+  visualEffectDef: (r) => ({ key: r.key }),
+  effectDef: (r) => ({ key: r.key }),
+  nftCollectionDef: (r) => ({ key: r.key }),
+  gameDefinition: (r) => ({ type_key_version: { type: r.type, key: r.key, version: r.version } }),
+};
+
+function getBucketName(): string | null {
+  const dir = process.env.PRIVATE_OBJECT_DIR || (process.env.PUBLIC_OBJECT_SEARCH_PATHS || '').split(',')[0];
+  const p = (dir || '').trim();
+  if (!p) return null;
+  const parts = (p.startsWith('/') ? p.slice(1) : p).split('/');
+  return parts[0] || null;
+}
+
+async function tryDownloadFromStorage(): Promise<any | null> {
+  const bucketName = getBucketName();
+  // env not configured → no storage; git fallback is safe
+  if (!bucketName) return null;
+  const storageClient = new Storage({
+    credentials: {
+      audience: 'replit',
+      subject_token_type: 'access_token',
+      token_url: `${REPLIT_SIDECAR}/token`,
+      type: 'external_account',
+      credential_source: {
+        url: `${REPLIT_SIDECAR}/credential`,
+        format: { type: 'json', subject_token_field_name: 'access_token' },
+      },
+      universe_domain: 'googleapis.com',
+    } as any,
+    projectId: '',
+  });
+  const bucket = storageClient.bucket(bucketName);
+  const file = bucket.file(SEED_KEY);
+  const [exists] = await file.exists();
+  // key absent → fresh environment; git fallback is safe
+  if (!exists) {
+    console.log(`Object Storage key "${SEED_KEY}" not found — will use git fallback`);
+    return null;
+  }
+  // key present but download fails → storage is broken; do NOT fall back to stale git data
+  const [contents] = await file.download();
+  console.log(`Loaded seed data from Object Storage (${bucketName}/${SEED_KEY})`);
+  return JSON.parse(contents.toString('utf-8'));
+}
+
+async function tryUploadToStorage(data: any, bucketName: string): Promise<void> {
+  try {
+    const storageClient = new Storage({
+      credentials: {
+        audience: 'replit',
+        subject_token_type: 'access_token',
+        token_url: `${REPLIT_SIDECAR}/token`,
+        type: 'external_account',
+        credential_source: {
+          url: `${REPLIT_SIDECAR}/credential`,
+          format: { type: 'json', subject_token_field_name: 'access_token' },
+        },
+        universe_domain: 'googleapis.com',
+      } as any,
+      projectId: '',
+    });
+    const bucket = storageClient.bucket(bucketName);
+    const file = bucket.file(SEED_KEY);
+    const json = JSON.stringify(data, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 2);
+    await file.save(Buffer.from(json, 'utf-8'), { contentType: 'application/json', resumable: false });
+    console.log(`Uploaded git fallback to Object Storage (${bucketName}/${SEED_KEY})`);
+  } catch (err: any) {
+    console.warn(`Could not upload to Object Storage: ${err?.message ?? err}`);
+  }
+}
+
+async function getSeedData(): Promise<any> {
+  const storageData = await tryDownloadFromStorage();
+  if (storageData) return storageData;
+
+  const localPath = path.resolve(__dirname, 'seed-data.json');
+  if (!fs.existsSync(localPath)) {
+    throw new Error(`No seed data available: Object Storage unavailable and ${localPath} not found`);
+  }
+  const data = JSON.parse(fs.readFileSync(localPath, 'utf-8'));
+  console.log(`Using git fallback: ${localPath} (v${data._meta?.version ?? '?'})`);
+
+  // Upload the fallback so subsequent runs use Object Storage
+  const bucketName = getBucketName();
+  if (bucketName) {
+    await tryUploadToStorage(data, bucketName);
+  }
+  return data;
+}
+
+/**
+ * row_to_json in PostgreSQL serialises TIMESTAMP (no tz) columns without a
+ * timezone suffix, e.g. "2026-05-26T22:03:25.753". Prisma rejects those
+ * because it expects a full ISO-8601 string. Convert any date-like strings
+ * to proper Date objects and Prisma accepts them.
+ */
+function normalizeDates(record: any): any {
+  const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+  const out: any = {};
+  for (const [k, v] of Object.entries(record)) {
+    out[k] = typeof v === 'string' && ISO_RE.test(v) ? new Date(v) : v;
+  }
+  return out;
+}
 
 async function seedDefinitions() {
-  const seedPath = path.resolve(__dirname, 'seed-data.json');
-  const raw = fs.readFileSync(seedPath, 'utf-8');
-  const data = JSON.parse(raw);
+  const data = await getSeedData();
+  console.log(`Seeding definitions (v${data._meta?.version ?? '?'})…`);
 
-  console.log(`Loading seed data v${data._meta?.version ?? '?'} (${data._meta?.description ?? ''})`);
+  // Global map: snapshot UUID → actual production DB UUID.
+  // Populated incrementally as each parent table is seeded so that FK
+  // reference fields in child tables are remapped to the IDs that are
+  // actually present in the production DB (which may differ from the dev
+  // DB IDs stored in the snapshot).
+  const idRemap = new Map<string, string>();
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  for (const tableKey of SEED_ORDER) {
-    const modelName = TABLE_TO_MODEL[tableKey];
-    if (!modelName) {
-      console.warn(`  ⚠ No model mapping for table key "${tableKey}", skipping`);
-      continue;
+  // Replace any UUID-valued field (except the record's own 'id') that
+  // appears in the remap table with the production DB's actual UUID.
+  function applyRemap(record: any): any {
+    if (idRemap.size === 0) return record;
+    const out: any = {};
+    for (const [k, v] of Object.entries(record)) {
+      if (k !== 'id' && typeof v === 'string' && UUID_RE.test(v) && idRemap.has(v)) {
+        out[k] = idRemap.get(v)!;
+      } else {
+        out[k] = v;
+      }
     }
+    return out;
+  }
 
-    const records: any[] = data[tableKey];
+  // After upserting a table, query back each record's actual DB id by key
+  // and register any snapshot-id → actual-id divergences in idRemap.
+  async function buildRemap(modelName: SeedTableName, processedRecords: any[], model: any): Promise<void> {
+    if (!TABLE_WHERE[modelName] || modelName === 'gameDefinition') return;
+    for (const record of processedRecords) {
+      const snapshotId: string = record.id;
+      if (!snapshotId || !UUID_RE.test(snapshotId)) continue;
+      try {
+        const actual = await model.findUnique({ where: { key: record.key }, select: { id: true } });
+        if (actual && actual.id !== snapshotId) {
+          idRemap.set(snapshotId, actual.id);
+        }
+      } catch {
+        // If lookup fails, skip — safer than crashing the whole seed
+      }
+    }
+  }
+
+  // Pre-build the full remap from the production DB before any upserts.
+  // This ensures FK references in every table are resolved correctly
+  // regardless of seed order (e.g. powerDef before effectDef).
+  for (const modelName of SEED_TABLE_ORDER) {
+    if (!TABLE_WHERE[modelName] || modelName === 'gameDefinition') continue;
+    const snapshotRecords: any[] | undefined = data[modelName];
+    if (!snapshotRecords || snapshotRecords.length === 0) continue;
+    const model = (prisma as any)[modelName];
+    if (!model) continue;
+    for (const raw of snapshotRecords) {
+      const snapshotId: string = raw.id;
+      const key: string = raw.key ?? raw.id; // withKey fallback
+      if (!snapshotId || !UUID_RE.test(snapshotId) || !key) continue;
+      try {
+        const actual = await model.findUnique({ where: { key }, select: { id: true } });
+        if (actual && actual.id !== snapshotId) {
+          idRemap.set(snapshotId, actual.id);
+        }
+      } catch {
+        // Record not yet in DB — will be created during upsert; no remap needed
+      }
+    }
+  }
+  if (idRemap.size > 0) {
+    console.log(`  ↺ Pre-built ID remap: ${idRemap.size} divergent entries`);
+  }
+
+  for (const modelName of SEED_TABLE_ORDER) {
+    const records: any[] | undefined = data[modelName];
     if (!records || records.length === 0) {
-      console.log(`  ─ ${tableKey}: 0 records (skipped)`);
+      console.log(`  ─ ${modelName}: 0 records (skipped)`);
       continue;
     }
 
     const model = (prisma as any)[modelName];
     if (!model) {
-      console.warn(`  ⚠ Prisma model "${modelName}" not found, skipping ${tableKey}`);
+      console.warn(`  ⚠ Prisma model "${modelName}" not found, skipping`);
       continue;
     }
 
-    let upserted = 0;
-    for (const record of records) {
-      await model.upsert({
-        where: { id: record.id },
-        update: {},
-        create: record,
-      });
-      upserted++;
-    }
+    const transform = TABLE_TRANSFORMS[modelName];
+    const buildWhere = TABLE_WHERE[modelName] ?? ((r: any) => ({ id: r.id }));
+    const usesKeyLookup = !!TABLE_WHERE[modelName] && modelName !== 'gameDefinition';
 
-    console.log(`  ✓ ${tableKey}: ${upserted} records`);
-  }
-}
-
-function generateEntity(name: string) {
-  const seedPath = path.resolve(__dirname, 'seed-data.json');
-  const raw = fs.readFileSync(seedPath, 'utf-8');
-  const data = JSON.parse(raw);
-
-  const bodySchema = data.BodySchema?.[0];
-  const traitDefs: any[] = data.TraitDefinition ?? [];
-
-  const slots = bodySchema ? Object.keys(bodySchema.slots) : ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'];
-  const traits: Record<string, string> = {};
-  const stats: Record<string, number> = { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0 };
-
-  for (const slot of slots) {
-    const allowed: string[] = bodySchema?.slots?.[slot] ?? [];
-    const archetype = allowed[Math.floor(Math.random() * allowed.length)] ?? 'Dave';
-    traits[slot] = archetype;
-
-    const traitDef = traitDefs.find(t => t.archetype === archetype);
-    if (traitDef) {
-      const slotBonuses = traitDef.slotStats?.[slot];
-      if (slotBonuses) {
-        for (const [stat, val] of Object.entries(slotBonuses)) {
-          stats[stat] = (stats[stat] || 0) + (val as number);
-        }
+    // Backfill helper: some tables gained a 'key' column via UUID migrations after
+    // the seed-data snapshot was taken. When seed-data lacks 'key', fall back to 'id'
+    // (the original slug) so Prisma's NOT NULL constraint is satisfied.
+    function withKey(record: any): any {
+      if (usesKeyLookup && record.key == null && record.id != null) {
+        return { ...record, key: record.id };
       }
+      return record;
     }
-  }
 
-  return {
-    display: { name },
-    progression: { level: 1, xp: 0 },
-    stats,
-    traits,
-  };
+    if (modelName === 'missionCategoryDef') {
+      const parents = records.filter((r) => !r.parentId);
+      const children = records.filter((r) => r.parentId);
+      let count = 0;
+      const processedRecords: any[] = [];
+      for (const batch of [parents, children]) {
+        for (const raw of batch) {
+          const base = transform ? transform(raw) : raw;
+          const record = applyRemap(withKey(normalizeDates(base)));
+          const where = buildWhere(record);
+          const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+          await model.upsert({ where, update: rest, create: record });
+          processedRecords.push(record);
+          count++;
+        }
+        // Build remap after parents so children's parentId references resolve correctly
+        await buildRemap(modelName, processedRecords, model);
+      }
+      console.log(`  ✓ ${modelName}: ${count} records`);
+      continue;
+    }
+
+    const processedRecords: any[] = [];
+    let count = 0;
+    for (const raw of records) {
+      const base = transform ? transform(raw) : raw;
+      const record = applyRemap(withKey(normalizeDates(base)));
+      const where = buildWhere(record);
+      const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+      await model.upsert({ where, update: rest, create: record });
+      processedRecords.push(record);
+      count++;
+    }
+    await buildRemap(modelName, processedRecords, model);
+    console.log(`  ✓ ${modelName}: ${count} records`);
+  }
 }
 
 async function seedTickSystem() {
@@ -130,7 +349,6 @@ async function seedTickSystem() {
     console.log('Tick system already initialized, skipping.');
     return;
   }
-
   await prisma.tickRateInterval.create({
     data: {
       ticksPerSecond: 1.0,
@@ -142,12 +360,8 @@ async function seedTickSystem() {
 }
 
 async function deleteTestAccount() {
-  const existing = await prisma.user.findUnique({
-    where: { email: 'test@derp.dev' },
-  });
-
+  const existing = await prisma.user.findUnique({ where: { email: 'test@derp.dev' } });
   if (!existing) return;
-
   const uid = existing.id;
   await (prisma as any).giftClaimTx.deleteMany({ where: { userId: uid } }).catch(() => {});
   await (prisma as any).giftInstance.deleteMany({ where: { userId: uid } }).catch(() => {});
@@ -166,7 +380,6 @@ async function deleteTestAccount() {
   await prisma.locationInstance.deleteMany({ where: { ownerUserId: uid } });
   await prisma.entity.deleteMany({ where: { ownerUserId: uid } });
   await prisma.user.delete({ where: { id: uid } });
-
   console.log('Deleted existing test account');
 }
 
@@ -176,70 +389,298 @@ async function seedTestAccount() {
     console.log(`Test account already exists (${existing.email}), skipping.`);
     return;
   }
-
-  const passwordHash = await bcrypt.hash('test123456', 12);
-
-  const user = await prisma.user.create({
-    data: {
-      username: 'TestKeeper',
-      email: 'test@derp.dev',
-      passwordHash,
-      keeperLevel: 1,
-    },
+  const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
+  const res = await fetch(`${apiUrl}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'TestKeeper', email: 'test@derp.dev', password: 'Derp1234!' }),
   });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to register test account (${res.status}): ${body}`);
+  }
+  const responseData = await res.json() as any;
+  console.log(`Seeded test account: test@derp.dev (${responseData?.player?.id ?? 'unknown id'})`);
+}
 
-  const gen = generateEntity('Starter Bird');
-  await prisma.entity.create({
-    data: {
-      ownerUserId: user.id,
-      definitionId: 'derp_bird',
-      speciesId: 'derp_bird',
-      role: 'player_unit',
-      display: gen.display,
-      progression: gen.progression,
-      stats: gen.stats,
-      traits: gen.traits,
-    },
-  });
+const TEST_POWERS: Array<{
+  defTable: 'entityDefinition' | 'locationDefinition';
+  defId: string;
+  nftAssetId: string;
+  powers: Array<{ powerType: string; value: number; durationMinutes: number; dailyLimit: number }>;
+}> = [
+  {
+    defTable: 'entityDefinition',
+    defId: 'derp_bird',
+    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503030333130',
+    powers: [
+      { powerType: 'keeper_xp_boost', value: 50, durationMinutes: 90, dailyLimit: 1 },
+      { powerType: 'mission_duration_reduction', value: 25, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'entityDefinition',
+    defId: 'derp_bird',
+    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039313833',
+    powers: [{ powerType: 'tick_speed_boost', value: 50, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'entityDefinition',
+    defId: 'derp_bird',
+    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039393130',
+    powers: [{ powerType: 'entity_xp_boost', value: 75, durationMinutes: 120, dailyLimit: 2 }],
+  },
+  {
+    defTable: 'entityDefinition',
+    defId: 'perp',
+    nftAssetId: 'CARDANO:e6ba9c0ff27be029442c32533c6efd956a60d15ecb976acbb64c4de0:5065727034353834',
+    powers: [{ powerType: 'entity_xp_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030323732',
+    powers: [{ powerType: 'mission_power_boost', value: 30, durationMinutes: 60, dailyLimit: 2 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030363431',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030373236',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030393033',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030393338',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031313533',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031363537',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031383030',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031393538',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032323938',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032343138',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032393636',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543033333937',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034333439',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034343130',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034383734',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035333033',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035333232',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035343234',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543036343234',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543036363930',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543037333633',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543037363232',
+    powers: [{ powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 }],
+  },
+];
 
-  const currentTick = BigInt(1);
+async function seedTestPowers() {
+  const byDef = new Map<string, typeof TEST_POWERS>();
+  for (const entry of TEST_POWERS) {
+    const key = `${entry.defTable}:${entry.defId}`;
+    if (!byDef.has(key)) byDef.set(key, []);
+    byDef.get(key)!.push(entry);
+  }
 
-  await prisma.locationInstance.create({
-    data: {
-      ownerUserId: user.id,
-      definitionId: 'derp_outpost',
-      regionId: 'derpshire_valley',
-      kind: 'outpost_fungible',
-      level: 1,
-      lastCollectionTick: currentTick,
-    },
-  });
+  for (const [key, entries] of byDef) {
+    const [defTable, defId] = key.split(':');
+    const model = (prisma as any)[defTable];
+    if (!model) throw new Error(`seedTestPowers: Prisma model "${defTable}" not found`);
 
-  await prisma.userCurrencyBalance.create({
-    data: {
-      userId: user.id,
-      currencyId: GEMS_CURRENCY_ID,
-      balance: BigInt(STARTER_GEMS),
-    },
-  });
+    const def = await model.findUnique({ where: { id: defId } });
+    if (!def) {
+      throw new Error(`seedTestPowers: Definition "${defId}" not found in ${defTable}. Run seedDefinitions first.`);
+    }
 
-  await prisma.currencyLedger.create({
-    data: {
-      userId: user.id,
-      currencyId: GEMS_CURRENCY_ID,
-      delta: BigInt(STARTER_GEMS),
-      reason: 'Starter bonus',
-      sourceType: 'system',
-    },
-  });
+    const rules = (def.rules && typeof def.rules === 'object') ? { ...(def.rules as Record<string, unknown>) } : {};
+    const uniques: Record<string, { powers: unknown[] }> = (rules.uniques && typeof rules.uniques === 'object')
+      ? { ...(rules.uniques as Record<string, { powers: unknown[] }>) }
+      : {};
 
-  console.log(`Seeded test account: ${user.email} (${user.id})`);
+    for (const entry of entries) {
+      uniques[entry.nftAssetId] = { powers: entry.powers };
+    }
+    rules.uniques = uniques;
+
+    await model.update({ where: { id: defId }, data: { rules } });
+    const nftIds = entries.map((e) => e.nftAssetId.slice(-8)).join(', ');
+    console.log(`  ✓ ${defTable} "${defId}": seeded uniques for …${nftIds}`);
+  }
+
+  console.log('  Verifying seeded powers…');
+  for (const [key, entries] of byDef) {
+    const [defTable, defId] = key.split(':');
+    const model = (prisma as any)[defTable];
+    const def = await model.findUnique({ where: { id: defId } });
+    const uniques = ((def?.rules as any)?.uniques ?? {}) as Record<string, { powers: unknown[] }>;
+    for (const entry of entries) {
+      const stored = uniques[entry.nftAssetId];
+      if (!stored || !Array.isArray(stored.powers) || stored.powers.length === 0) {
+        throw new Error(
+          `seedTestPowers verification failed: nftAssetId "${entry.nftAssetId}" has no powers in ${defTable} "${defId}"`,
+        );
+      }
+      for (const expected of entry.powers) {
+        const found = stored.powers.find((p: any) => p.powerType === expected.powerType);
+        if (!found) {
+          throw new Error(
+            `seedTestPowers verification failed: powerType "${expected.powerType}" missing for nftAssetId "${entry.nftAssetId}"`,
+          );
+        }
+      }
+    }
+  }
+  console.log('  ✓ Power seed verification passed');
+}
+
+/**
+ * Re-exports the current production DB state back to Object Storage so the
+ * runtime SeedSyncService always has correct production UUIDs. This fixes
+ * FK remap errors that occur when the snapshot was originally exported from
+ * a dev environment with different UUIDs.
+ */
+async function syncBackToStorage(): Promise<void> {
+  const bucketName = getBucketName();
+  if (!bucketName) {
+    console.log('Object Storage not configured — skipping post-seed sync-back.');
+    return;
+  }
+
+  console.log('Re-syncing production definitions to Object Storage…');
+  const fresh: Record<string, any> = {
+    _meta: { version: Date.now(), exportedAt: new Date().toISOString() },
+  };
+
+  for (const tableName of SEED_TABLE_ORDER) {
+    const model = (prisma as any)[tableName];
+    if (!model?.findMany) continue;
+    try {
+      fresh[tableName] = await model.findMany();
+    } catch (err: any) {
+      console.warn(`  ! Could not export ${tableName}: ${err?.message}`);
+    }
+  }
+
+  await tryUploadToStorage(fresh, bucketName);
+  console.log(`✓ Object Storage snapshot updated (v${fresh._meta.version})`);
 }
 
 async function main() {
+  const isProduction = process.env.NODE_ENV === 'production';
   await seedDefinitions();
   await seedTickSystem();
-  await seedTestAccount();
+  if (!isProduction) {
+    await seedTestAccount();
+    await seedTestPowers();
+  } else {
+    console.log('Production environment — skipping test account seed.');
+  }
+
+  // Always re-sync the production snapshot to Object Storage after seeding.
+  // Ensures SeedSyncService has correct production UUIDs on next startup.
+  await syncBackToStorage();
 }
 
 main()

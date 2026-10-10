@@ -1,0 +1,11 @@
+# Migration replay baseline
+
+The former 74-local/72-tracked discrepancy came from `.gitignore`: the initial migration, a later item-definition cleanup migration, and Prisma's PostgreSQL `migration_lock.toml` existed locally but were excluded from Git. All three are now included unchanged.
+
+The historical SQL still assumed several tables and columns had been created out of band. New **additive** migrations create prerequisites before the first SQL that uses them, then add missing application tables/columns at the end of the chain. They are guarded for existing databases; historical SQL has not been rewritten. CI runs `prisma migrate deploy` on empty PostgreSQL 16 and checks migration status without running seed scripts, production baseline resolution, or `db push`.
+
+Prisma's schema diff against that clean replay is **not empty**. It still proposes removing legacy achievement tables; removing old fields on mission, recipe, synergy, global-power, and location-room tables; replacing some foreign keys; tightening/relaxing nullability; and removing older column defaults and indexes. Those changes are not safe to apply to populated databases without a data audit. CI pins the reviewed diff fingerprint and fails if a new difference appears; when an intentional schema repair changes the diff, regenerate it on a clean PostgreSQL 16 database and review the full SQL before updating the fingerprint. This check is a drift alarm, not a claim of exact schema equality.
+
+Existing databases with duplicate keys, orphaned relationships, or legacy global-power rows that cannot be safely interpreted by the new schema will fail a new migration with a descriptive error instead of dropping or reinterpreting data. Resolve such cases through a separately reviewed data migration after auditing a disposable copy; do not blindly mark the migration applied. The deployment wrapper also does not auto-baseline the three replay-repair migrations on partially populated databases.
+
+Never apply a generated `migrate diff` script to production without separate review. In particular, do not drop the legacy achievement tables or location-room columns just to make a fresh-schema comparison return zero.

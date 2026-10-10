@@ -1,18 +1,25 @@
 import { useState, useMemo } from 'react';
+import { useNow } from '../../hooks/useNow';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications, AppNotification } from '../../context/NotificationContext';
-import { useModal } from '../../context/ModalContext';
-import { useCollectJob } from '../../hooks/useCollectJob';
-import { api } from '../../services/api';
-import type { ActiveBoostInfo } from '../../hooks/useActiveBoosts';
+import {
+  useNotificationAction,
+  NOTIFICATION_READY_TYPES,
+  resolveNotificationJobId,
+} from '../../hooks/useNotificationAction';
+import { ActiveJobsList } from '../jobs/ActiveJobsList';
+
 import { NOTIFICATION_CATEGORY_DISPLAY } from '@derp/shared';
-import './NotificationCenter.css';
+import { useGlobalPowers, useAllActiveJobs } from '../../hooks/useSyncSelectors';
+import type { GlobalPowerSnapshot } from '../../store/syncSlice';
+import { getPowerTypeLabel, getPowerIcon, formatPowerValue, formatCountdown } from '../../utils/globalPowerUtils';
+
 
 const FILTERS = ['All', 'Missions', 'Crafting', 'Locations', 'Gifts', 'System'] as const;
 
-function timeSection(dateStr: string): 'New' | 'Today' | 'Earlier' {
+function timeSection(dateStr: string, nowMs: number): 'New' | 'Today' | 'Earlier' {
   const d = new Date(dateStr);
-  const now = new Date();
+  const now = new Date(nowMs);
   const diffMs = now.getTime() - d.getTime();
 
   if (diffMs < 60 * 60 * 1000) return 'New';
@@ -23,8 +30,8 @@ function timeSection(dateStr: string): 'New' | 'Today' | 'Earlier' {
   return 'Earlier';
 }
 
-function timeAgo(dateStr: string): string {
-  const diffMs = Date.now() - new Date(dateStr).getTime();
+function timeAgo(dateStr: string, nowMs: number): string {
+  const diffMs = nowMs - new Date(dateStr).getTime();
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
@@ -34,12 +41,40 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export default function NotificationCenter({ onClose, boostInfo }: { onClose: () => void; boostInfo?: ActiveBoostInfo }) {
+function GlobalPowerRow({ power }: { power: GlobalPowerSnapshot }) {
+  const now = useNow(1000);
+  const icon = getPowerIcon(power);
+  const typeLabel = getPowerTypeLabel(power);
+  const valueLabel = formatPowerValue(power.value, power.valueMode);
+  const countdown = formatCountdown(power.endTime, now);
+
+  return (
+    <div className="nc-boost-pinned">
+      <span className="nc-boost-icon">{icon}</span>
+      <div className="nc-item-content">
+        <span className="nc-item-title nc-boost-title">{power.label}</span>
+        <span className="nc-item-body nc-boost-category">
+          {typeLabel}: {valueLabel} · {countdown}
+        </span>
+      </div>
+      <span className="nc-boost-dot" />
+    </div>
+  );
+}
+
+const ACTIVE_JOBS_DRAWER_LIMIT = 3;
+
+export default function NotificationCenter({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
-  const { notifications, markRead, markAllRead, clearRead, unreadCount } = useNotifications();
-  const { pushModal } = useModal();
-  const { collectJob } = useCollectJob();
+  const { notifications, markAllRead, clearRead, unreadCount } = useNotifications();
+  const { handleTap, handleCollect, handleGiftClaim, handleQuestClaim, handleAchievementClaim } =
+    useNotificationAction({ onAfterAction: onClose });
+  const globalPowers = useGlobalPowers();
+  const allActiveJobs = useAllActiveJobs();
   const [filter, setFilter] = useState<string>('All');
+  const [jobsExpanded, setJobsExpanded] = useState(true);
+  const nowMs = useNow(60_000);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (filter === 'All') return notifications;
@@ -50,67 +85,24 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
   const grouped = useMemo(() => {
     const sections: Record<string, AppNotification[]> = { New: [], Today: [], Earlier: [] };
     for (const n of filtered) {
-      const section = timeSection(n.createdAt);
+      const section = timeSection(n.createdAt, nowMs);
       sections[section].push(n);
     }
     return sections;
-  }, [filtered]);
+  }, [filtered, nowMs]);
 
-  const READY_TYPES = ['job_ready', 'mission_ready'];
-  const COMPLETE_TYPES = ['mission_complete', 'craft_complete', 'building_complete'];
-
-  const resolveJobId = (n: AppNotification) =>
-    n.deepLink?.jobId || n.deepLink?.missionRunId || n.deepLink?.craftJobId || n.deepLink?.entityId;
-
-  const openModalSpec = async (params: { jobId?: string; notificationId?: string; giftId?: string }) => {
+  const handleClaimWithGuard = async (
+    e: React.MouseEvent,
+    n: AppNotification,
+    handler: (e: React.MouseEvent, n: AppNotification) => Promise<void>,
+  ) => {
+    if (claimingId) return;
+    setClaimingId(n.id);
     try {
-      const spec = await api.getModalSpec(params);
-      if (spec?.version === 1) {
-        pushModal(spec);
-      }
-    } catch (err) {
-      console.error('[NotificationCenter] Failed to fetch modal spec:', err);
+      await handler(e, n);
+    } finally {
+      setClaimingId(null);
     }
-  };
-
-  const handleTap = async (n: AppNotification) => {
-    if (!n.readAt) {
-      markRead([n.id]).catch(() => {});
-    }
-
-    if (n.type === 'gift' && n.meta?.giftId) {
-      onClose();
-      await openModalSpec({ giftId: n.meta.giftId });
-      return;
-    }
-
-    const jobId = resolveJobId(n);
-    if (jobId && (READY_TYPES.includes(n.type) || COMPLETE_TYPES.includes(n.type))) {
-      onClose();
-      await openModalSpec({ jobId });
-      return;
-    }
-
-    if (n.deepLink?.screen) {
-      navigate(n.deepLink.screen);
-      onClose();
-    }
-  };
-
-  const handleCollect = async (e: React.MouseEvent, n: AppNotification) => {
-    e.stopPropagation();
-    const jobId = resolveJobId(n);
-    if (!jobId) return;
-    onClose();
-    await collectJob(jobId);
-  };
-
-  const handleGiftClaim = async (e: React.MouseEvent, n: AppNotification) => {
-    e.stopPropagation();
-    const giftId = n.meta?.giftId;
-    if (!giftId) return;
-    onClose();
-    await openModalSpec({ giftId });
   };
 
   return (
@@ -118,6 +110,16 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
       <div className="nc-panel" onClick={(e) => e.stopPropagation()}>
         <div className="nc-header">
           <h2 className="nc-title">Notifications</h2>
+          <div className="nc-header-actions">
+            {unreadCount > 0 && (
+              <button className="nc-header-action" onClick={() => markAllRead()}>
+                Mark all read
+              </button>
+            )}
+            <button className="nc-header-action" onClick={() => clearRead()}>
+              Clear read
+            </button>
+          </div>
           <button className="nc-close" onClick={onClose}>×</button>
         </div>
 
@@ -133,29 +135,42 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
           ))}
         </div>
 
-        <div className="nc-actions">
-          {unreadCount > 0 && (
-            <button className="nc-action-btn" onClick={() => markAllRead()}>
-              Mark all read
-            </button>
-          )}
-          <button className="nc-action-btn" onClick={() => clearRead()}>
-            Clear read
-          </button>
-        </div>
-
         <div className="nc-list">
-          {boostInfo?.boostActive && (filter === 'All' || filter === 'System') && (
-            <div className="nc-boost-pinned">
-              <span className="nc-boost-icon">⚡</span>
-              <div className="nc-item-content">
-                <span className="nc-item-title nc-boost-title">{boostInfo.boostLabel}</span>
-                <span className="nc-item-body nc-boost-category">System</span>
+          {(filter === 'All' || filter === 'System') && globalPowers.map((p) => (
+            <GlobalPowerRow key={p.id} power={p} />
+          ))}
+
+          {filter === 'All' && allActiveJobs.length > 0 && (
+            <div className="nc-section">
+              <div className="nc-section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <button
+                  style={{ background: 'none', border: 'none', color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
+                  onClick={() => setJobsExpanded((v) => !v)}
+                >
+                  Active Jobs
+                  <span style={{ fontSize: '10px', opacity: 0.6 }}>{jobsExpanded ? '▲' : '▼'}</span>
+                </button>
+                {allActiveJobs.length > ACTIVE_JOBS_DRAWER_LIMIT && (
+                  <button
+                    style={{ background: 'none', border: 'none', color: 'rgba(196,181,253,0.7)', fontSize: '11px', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                    onClick={() => { navigate('/jobs'); onClose(); }}
+                  >
+                    See all →
+                  </button>
+                )}
               </div>
-              <span className="nc-boost-dot" />
+              {jobsExpanded && (
+                <ActiveJobsList
+                  limit={ACTIVE_JOBS_DRAWER_LIMIT}
+                  compact
+                  showEmpty={false}
+                  onBeforeNavigate={onClose}
+                />
+              )}
             </div>
           )}
-          {filtered.length === 0 && !boostInfo?.boostActive && (
+
+          {filtered.length === 0 && globalPowers.length === 0 && allActiveJobs.length === 0 && (
             <div className="nc-empty">No notifications</div>
           )}
           {(['New', 'Today', 'Earlier'] as const).map((section) => {
@@ -165,9 +180,13 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
               <div key={section} className="nc-section">
                 <div className="nc-section-title">{section}</div>
                 {items.map((n) => {
-                  const jobId = resolveJobId(n);
-                  const isReady = READY_TYPES.includes(n.type) && !!jobId;
+                  const jobId = resolveNotificationJobId(n);
+                  const isReady = NOTIFICATION_READY_TYPES.includes(n.type) && !!jobId;
                   const isGift = n.type === 'gift' && !!n.meta?.giftId;
+                  const isQuestComplete = n.type === 'quest_complete' && !!n.meta?.questInstanceId;
+                  const isAchievementComplete = n.type === 'achievement_complete' && !!n.meta?.questInstanceId;
+                  const isClaiming = claimingId === n.id;
+                  const hasClaimBtn = !n.readAt && (isGift || isQuestComplete || isAchievementComplete);
                   return (
                     <button
                       key={n.id}
@@ -180,10 +199,20 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
                       <div className="nc-item-content">
                         <span className="nc-item-title">{n.title}</span>
                         <span className="nc-item-body">{n.body}</span>
-                        <span className="nc-item-time">{timeAgo(n.createdAt)}</span>
+                        <span className="nc-item-time">{timeAgo(n.createdAt, nowMs)}</span>
                       </div>
-                      {isGift && !n.readAt ? (
-                        <span className="nc-collect-btn" onClick={(e) => handleGiftClaim(e, n)}>Claim</span>
+                      {hasClaimBtn ? (
+                        <span
+                          className="nc-collect-btn"
+                          onClick={(e) => {
+                            if (isGift) handleClaimWithGuard(e, n, handleGiftClaim);
+                            else if (isQuestComplete) handleClaimWithGuard(e, n, handleQuestClaim);
+                            else handleClaimWithGuard(e, n, handleAchievementClaim);
+                          }}
+                          style={{ opacity: isClaiming ? 0.5 : 1 }}
+                        >
+                          {isClaiming ? '…' : 'Claim'}
+                        </span>
                       ) : isReady ? (
                         <span className="nc-collect-btn" onClick={(e) => handleCollect(e, n)}>Collect</span>
                       ) : !n.readAt ? (

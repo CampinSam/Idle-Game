@@ -2,10 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildLocationPatches, buildCurrencyPatches, buildActiveJobPatches } from '../patch-builder';
 import { LocationService } from '../../location/location.service';
+import { NotificationService } from '../../notification/notification.service';
 
 @Injectable()
 export class BuildBuildingHandler implements CommandHandler {
-  constructor(private locationService: LocationService) {}
+  constructor(
+    private locationService: LocationService,
+    private notificationService: NotificationService,
+  ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { locationId, buildingDefId } = payload;
@@ -17,9 +21,37 @@ export class BuildBuildingHandler implements CommandHandler {
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildActiveJobPatches(pb, ctx.tx, ctx.userId);
 
+    const buildingJob = await (ctx.tx as any).job.findFirst({
+      where: { userId: ctx.userId, type: 'BuildingJob', status: 'active' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+
+    const notification = buildingJob
+      ? await this.notificationService.upsertJobNotification({
+          userId: ctx.userId,
+          jobId: buildingJob.id,
+          type: 'construction_started',
+          category: 'locations',
+          priority: 'normal',
+          title: 'Construction Started',
+          body: 'Building construction has begun.',
+          deepLink: { jobId: buildingJob.id },
+          readAt: new Date(),
+        }, ctx.tx)
+      : await this.notificationService.createForCommandSilent({
+          userId: ctx.userId,
+          type: 'construction_started',
+          category: 'locations',
+          title: 'Construction Started',
+          body: 'Building construction has begun.',
+          deepLink: { locationId, screen: `/locations/${locationId}` },
+        }, ctx.tx);
+    pb.upsertNotification(notification);
+
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'info' as const, message: 'Construction started!' }],
+      ui: [],
     };
   }
 }

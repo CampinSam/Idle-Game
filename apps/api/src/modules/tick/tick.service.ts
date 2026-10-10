@@ -68,16 +68,37 @@ export class TickService {
     return currentRate;
   }
 
+  async getActiveBoosts(): Promise<Array<{ id: string; name: string; multiplier: number; endTime: string }>> {
+    const now = new Date();
+    const rows = await (this.prisma as any).boostEvent.findMany({
+      where: {
+        status: 'active',
+        startTime: { lte: now },
+        endTime: { gt: now },
+      },
+      orderBy: { endTime: 'asc' },
+      select: { id: true, name: true, multiplier: true, endTime: true },
+    });
+    return rows.map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      multiplier: r.multiplier,
+      endTime: r.endTime instanceof Date ? r.endTime.toISOString() : r.endTime,
+    }));
+  }
+
   async getTickInfo() {
     const now = new Date();
-    const [currentTick, currentRate] = await Promise.all([
+    const [currentTick, currentRate, activeBoosts] = await Promise.all([
       this.getCurrentTick(now),
       this.getCurrentRate(),
+      this.getActiveBoosts(),
     ]);
     return {
       currentTick,
       currentRate,
       serverTime: now.toISOString(),
+      activeBoosts,
     };
   }
 

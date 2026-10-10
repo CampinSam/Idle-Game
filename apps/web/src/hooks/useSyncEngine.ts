@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useAppSelector } from '../store';
 import { store } from '../store';
 import { SyncEngine } from '../services/SyncEngine';
+import { setSyncEngine } from '../services/syncEngineSingleton';
 
 export function useSyncEngine(): void {
   const token = useAppSelector((s) => s.auth.token);
@@ -13,17 +14,20 @@ export function useSyncEngine(): void {
       if (engineRef.current) {
         engineRef.current.stop();
         engineRef.current = null;
+        setSyncEngine(null);
       }
       return;
     }
 
     const engine = new SyncEngine(store);
     engineRef.current = engine;
+    setSyncEngine(engine);
     engine.start();
 
     return () => {
       engine.stop();
       engineRef.current = null;
+      setSyncEngine(null);
     };
   }, [token, initializing]);
 }

@@ -9,4 +9,8 @@ coverage/
 .turbo/
 .next/
 prisma/*.db
-prisma/migrations/
+
+# TypeScript incremental build artifacts
+*.tsbuildinfo
+.tsbuild/
+/.agent-local/

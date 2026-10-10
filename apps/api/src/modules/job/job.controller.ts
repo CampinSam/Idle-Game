@@ -1,16 +1,20 @@
-import { Controller, Get, Post, Param, Body, UseGuards, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, NotFoundException, BadRequestException, Logger, Headers } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { NotificationService } from '../notification/notification.service';
 import { CurrencyService } from '../currency/currency.service';
-
-const JOB_TYPE_CONFIG: Record<string, { defTable: string; category: string; label: string; screen: string }> = {
-  MissionJob: { defTable: 'missionDef', category: 'missions', label: 'Mission', screen: '/missions' },
-  CraftingJob: { defTable: 'recipeDef', category: 'crafting', label: 'Crafting', screen: '/crafting' },
-  BuildingJob: { defTable: 'buildingDef', category: 'buildings', label: 'Building', screen: '/locations' },
-};
+import { PubSubService } from '../infrastructure/pubsub.service';
+import { IdempotencyService } from '../infrastructure/idempotency.service';
+import { JobService } from './job.service';
+import { JobPreviewService, JobPreviewDto } from './job-preview.service';
+import { JOB_TYPE_CONFIG } from './job.constants';
+import { fetchCurrencyMap } from '../commands/patch-builder';
+import { MissionService } from '../mission/mission.service';
+import { CraftingService } from '../crafting/crafting.service';
+import { LocationService } from '../location/location.service';
+import { DustingService } from '../dusting/dusting.service';
 
 @Controller('jobs')
 @UseGuards(JwtAuthGuard)
@@ -22,12 +26,50 @@ export class JobController {
     private tickService: TickService,
     private notificationService: NotificationService,
     private currencyService: CurrencyService,
+    private pubsub: PubSubService,
+    private jobService: JobService,
+    private idempotency: IdempotencyService,
+    private jobPreviewService: JobPreviewService,
+    private missionService: MissionService,
+    private craftingService: CraftingService,
+    private locationService: LocationService,
+    private dustingService: DustingService,
   ) {}
+
+  @Post('preview')
+  async getJobPreview(
+    @CurrentUser() user: { id: string },
+    @Body() dto: JobPreviewDto,
+  ) {
+    return this.jobPreviewService.getPreview(user.id, dto);
+  }
+
+  @Post(':id/cancel')
+  async cancelJob(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.idempotency.executeIdempotent(
+      user.id,
+      'POST:/jobs/:id/cancel',
+      idempotencyKey,
+      { jobId: id },
+      () => this.jobService.cancelJob(user.id, id),
+    );
+  }
 
   private async getDefForJob(job: any): Promise<any> {
     const config = JOB_TYPE_CONFIG[job.type];
     if (!config) return null;
-    return (this.prisma as any)[config.defTable].findFirst({ where: { id: job.defId } });
+    return (this.prisma as any)[config.defTable].findFirst({ where: { OR: [{ id: job.defId }, { key: job.defId }] } });
+  }
+
+  private getDefTimer(job: any, def: any): any {
+    if (job.type === 'DustingJob') {
+      return (def?.dustingData as any)?.timer ?? null;
+    }
+    return def?.timer ?? null;
   }
 
   private extractSkipInfo(defTimer: any) {
@@ -52,7 +94,7 @@ export class JobController {
 
     const def = await this.getDefForJob(job);
     const defName = def?.name || 'Unknown';
-    const skipInfo = this.extractSkipInfo(def?.timer);
+    const skipInfo = this.extractSkipInfo(this.getDefTimer(job, def));
 
     const tickInfo = await this.tickService.getTickInfo();
 
@@ -78,7 +120,21 @@ export class JobController {
   }
 
   @Post(':id/skip')
-  async skipJob(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+  async skipJob(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.idempotency.executeIdempotent(
+      user.id,
+      'POST:/jobs/:id/skip',
+      idempotencyKey,
+      { jobId: id },
+      () => this._doSkipJob(user, id),
+    );
+  }
+
+  private async _doSkipJob(user: { id: string }, id: string) {
     const job = await (this.prisma as any).job.findFirst({
       where: { id, userId: user.id, status: { in: ['active', 'ready_notified'] } },
     });
@@ -87,7 +143,7 @@ export class JobController {
     const def = await this.getDefForJob(job);
     if (!def) throw new NotFoundException('Definition not found');
 
-    const defTimer = def.timer as any;
+    const defTimer = this.getDefTimer(job, def) as any;
     if (!defTimer?.skipable) throw new BadRequestException('This job cannot be skipped');
 
     const skipCostEntries: Array<{ type: string; id: string; amount: number }> = Array.isArray(defTimer.skip_cost) ? defTimer.skip_cost : [];
@@ -119,43 +175,121 @@ export class JobController {
       amount: Math.max(1, Math.ceil((entry.amount ?? 0) * costMultiplier)),
     }));
 
-    for (const cost of finalCosts) {
-      if (cost.type === 'currency') {
-        const balance = await this.currencyService.getBalance(user.id, cost.id);
-        if (balance < cost.amount) {
-          const currency = await (this.prisma as any).currency.findUnique({ where: { id: cost.id } });
-          const name = currency?.name || cost.id;
-          throw new BadRequestException(`Not enough ${name} (need ${cost.amount}, have ${balance})`);
+    await this.prisma.$transaction(async (tx) => {
+      for (const cost of finalCosts) {
+        if (cost.type === 'currency') {
+          await this.currencyService.spendTx(tx as any, {
+            userId: user.id,
+            currencyId: cost.id,
+            amount: cost.amount,
+            reason: `Skip ${JOB_TYPE_CONFIG[job.type]?.label || 'Job'}: ${def.name}`,
+            sourceType: 'job_skip',
+            sourceId: job.id,
+          });
         }
       }
-    }
 
-    for (const cost of finalCosts) {
-      if (cost.type === 'currency') {
-        await this.currencyService.spend({
-          userId: user.id,
-          currencyId: cost.id,
-          amount: cost.amount,
-          reason: `Skip ${JOB_TYPE_CONFIG[job.type]?.label || 'Job'}: ${def.name}`,
-          sourceType: 'job_skip',
-          sourceId: job.id,
-        });
-      }
-    }
-
-    await (this.prisma as any).job.update({
-      where: { id: job.id },
-      data: {
-        timer: { startTick, durationTicks: Math.max(0, currentTick - startTick) },
-      },
-    });
+      await (tx as any).job.update({
+        where: { id: job.id },
+        data: {
+          timer: { startTick, durationTicks: Math.max(0, currentTick - startTick) },
+          readyAtTick: currentTick,
+          status: 'skipped',
+        },
+      });
+    }, { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' });
 
     this.logger.log(`Job ${id} skipped by user ${user.id}. Costs: ${JSON.stringify(finalCosts)}`);
+
+    // Auto-complete immediately — the player paid to skip the wait, so they
+    // don't need to press a separate "Complete" button.
+    try {
+      await this._autoCompleteAfterSkip(user.id, job);
+    } catch (err) {
+      // Skip cost was already spent; log the failure but don't surface it
+      // to the player. The job will remain in skipped state and they
+      // can complete it manually.
+      this.logger.warn(`Skip auto-complete failed for job ${id}: ${err}`);
+    }
+
+    // Return the updated job so the client can apply the patch immediately
+    // without waiting for the SSE delta.
+    const updatedJob = await (this.prisma as any).job.findUnique({ where: { id: job.id } });
 
     return {
       skipped: true,
       costs: finalCosts,
+      job: updatedJob,
     };
+  }
+
+  private async _autoCompleteAfterSkip(userId: string, job: any): Promise<void> {
+    switch (job.type) {
+      case 'MissionJob':
+        await this.missionService.completeMission(userId, job.id);
+        break;
+
+      case 'CraftingJob':
+        await this.craftingService.collectCrafting(userId, job.id);
+        break;
+
+      case 'BuildingJob': {
+        const data = job.data as any;
+        if (!data?.locationId || !data?.buildingId) {
+          throw new Error(`BuildingJob ${job.id} missing locationId or buildingId in data field`);
+        }
+        await this.locationService.completeBuilding(userId, data.locationId, data.buildingId);
+        break;
+      }
+
+      case 'DustingJob':
+        await this.dustingService.collectDusting(userId, { jobId: job.id });
+        break;
+
+      default:
+        this.logger.warn(`_autoCompleteAfterSkip: unhandled job type "${job.type}" for job ${job.id}`);
+    }
+
+    // Push a delta so SSE subscribers see the updated job state, freed entities,
+    // and updated currency balances immediately without waiting for the next tick-sync.
+    try {
+      const [updatedJob, currencyMap, updatedPlayer] = await Promise.all([
+        (this.prisma as any).job.findUnique({ where: { id: job.id } }),
+        fetchCurrencyMap(this.prisma, userId),
+        (this.prisma as any).user.findUnique({ where: { id: userId } }),
+      ]);
+
+      const patches: any[] = [];
+      if (updatedJob) {
+        patches.push({ op: 'upsert', entity: 'job', id: updatedJob.id, data: updatedJob });
+      }
+
+      if (job.type === 'MissionJob') {
+        const teamIds: string[] = Array.isArray(job.team) ? job.team : [];
+        if (teamIds.length > 0) {
+          const entities = await (this.prisma as any).entity.findMany({
+            where: { id: { in: teamIds }, ownerUserId: userId },
+            include: { equipment: true, definition: true },
+          });
+          for (const entity of entities) {
+            patches.push({ op: 'upsert', entity: 'entity', id: entity.id, data: entity });
+          }
+        }
+      }
+
+      // Always push currency + player so the UI reflects the skip cost and rewards.
+      patches.push({ op: 'upsert', entity: 'currencyBalance', id: '_', data: currencyMap });
+      if (updatedPlayer) {
+        patches.push({ op: 'upsert', entity: 'player', id: updatedPlayer.id, data: updatedPlayer });
+      }
+
+      const delta = await (this.prisma as any).playerDelta.create({
+        data: { userId, patches: patches as any, ui: [] as any },
+      });
+      this.pubsub.publish(`player:${userId}`, { userId, deltaId: delta.id.toString() });
+    } catch (err) {
+      this.logger.warn(`Failed to push post-skip delta for user ${userId}: ${err}`);
+    }
   }
 
   @Post('notify')
@@ -163,58 +297,58 @@ export class JobController {
     const { jobIds } = dto;
     if (!jobIds || jobIds.length === 0) return { updated: 0 };
 
-    const jobs = await (this.prisma as any).job.findMany({
-      where: { id: { in: jobIds }, userId: user.id, status: 'active' },
-    });
+    const { updated, createdNotifs } = await this.jobService.notifyReadyJobs(user.id, jobIds);
 
-    if (jobs.length > 0) {
-      const byType = new Map<string, any[]>();
-      for (const job of jobs) {
-        const list = byType.get(job.type) || [];
-        list.push(job);
-        byType.set(job.type, list);
-      }
+    if (createdNotifs.length > 0) {
+      try {
+        const notifPatches = createdNotifs.map((n: any) => ({
+          op: 'upsert' as const,
+          entity: 'notification',
+          id: n.id,
+          data: n,
+        }));
 
-      for (const [type, typeJobs] of byType) {
-        const config = JOB_TYPE_CONFIG[type];
-        if (!config) continue;
+        const updatedJobs = await (this.prisma as any).job.findMany({
+          where: { id: { in: jobIds }, userId: user.id },
+        });
+        const jobPatches = updatedJobs.map((j: any) => {
+          const timer = j.timer as any;
+          return {
+            op: 'upsert' as const,
+            entity: 'job',
+            id: j.id,
+            data: {
+              id: j.id,
+              type: j.type,
+              defId: j.defId,
+              status: j.status,
+              timer: j.timer,
+              team: j.team,
+              data: j.data,
+              results: j.results,
+              startTick: timer?.startTick ?? null,
+              durationTicks: timer?.durationTicks ?? null,
+            },
+          };
+        });
 
-        const defIds = [...new Set(typeJobs.map((j: any) => j.defId).filter(Boolean))];
-        const defs = defIds.length > 0
-          ? await (this.prisma as any)[config.defTable].findMany({ where: { id: { in: defIds } } })
-          : [];
-        const defMap = new Map<string, any>(defs.map((d: any) => [d.id, d]));
+        const delta = await (this.prisma as any).playerDelta.create({
+          data: {
+            userId: user.id,
+            patches: [...notifPatches, ...jobPatches] as any,
+            ui: [] as any,
+          },
+        });
 
-        for (const job of typeJobs) {
-          try {
-            const def = defMap.get(job.defId);
-            const defName = def?.name || config.label;
-            await this.notificationService.createNotification({
-              userId: user.id,
-              type: 'job_ready',
-              category: config.category,
-              priority: 'high',
-              title: `${config.label} Ready!`,
-              body: `${defName} is ready to collect`,
-              deepLink: { screen: config.screen, jobId: job.id, defId: job.defId },
-              sourceType: 'job_ready',
-              sourceId: job.id,
-            });
-          } catch (err) {
-            this.logger.warn(`Failed to create job_ready notification for ${job.id}: ${err}`);
-          }
-        }
+        this.pubsub.publish(`player:${user.id}`, {
+          userId: user.id,
+          deltaId: delta.id.toString(),
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to push notification delta for user ${user.id}: ${err}`);
       }
     }
 
-    const result = await (this.prisma as any).job.updateMany({
-      where: {
-        id: { in: jobIds },
-        userId: user.id,
-        status: 'active',
-      },
-      data: { status: 'ready_notified' },
-    });
-    return { updated: result.count };
+    return { updated };
   }
 }

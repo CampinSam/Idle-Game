@@ -1,0 +1,3 @@
+-- AlterEnum: Add PROCESSING and FAILED to WithdrawalStatus
+ALTER TYPE "WithdrawalStatus" ADD VALUE IF NOT EXISTS 'PROCESSING';
+ALTER TYPE "WithdrawalStatus" ADD VALUE IF NOT EXISTS 'FAILED';

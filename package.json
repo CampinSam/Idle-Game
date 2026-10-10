@@ -14,7 +14,13 @@
     "lint:fix": "pnpm -r lint:fix",
     "prisma:generate": "pnpm --filter @derp/api prisma:generate",
     "prisma:migrate": "pnpm --filter @derp/api prisma:migrate",
-    "prisma:studio": "pnpm --filter @derp/api prisma:studio"
+    "prisma:studio": "pnpm --filter @derp/api prisma:studio",
+    "seed:test-account": "cd apps/api && npx tsx src/seeds/seed-test-account.ts",
+    "export-seed": "tsx scripts/export-seed.ts",
+    "lint:scroll": "bash scripts/check-scroll-containers.sh"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "engines": {
     "node": ">=20.0.0",
@@ -33,13 +39,17 @@
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "bcrypt": "^5.1.1",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "prisma": "5.22.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.0.0"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",
     "@prisma/client": "5.22.0",
-    "google-auth-library": "^10.5.0"
+    "google-auth-library": "^10.5.0",
+    "pg": "^8.13.0"
   }
 }

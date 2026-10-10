@@ -1,20 +1,58 @@
-export type MissionType = 'quick' | 'standard';
-export type MissionStatus = 'active' | 'completed' | 'failed';
+import type { Requirements } from './rich-selection';
 
-export type ComparisonOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists';
+export type MissionStatus = 'active' | 'completed' | 'failed' | 'phase_ready' | 'abandoned';
 
-export type RequirementType = 'keeper_level' | 'flag' | 'building' | 'currency' | 'item' | 'team_size' | 'trait';
+export type RewardsMode = 'per_phase' | 'final_bundle' | 'hybrid';
 
-export interface Requirement {
-  type: RequirementType;
-  key?: string;
-  value?: number | string | boolean;
-  operator?: ComparisonOperator;
+export type ContinueRuleAction = 'next_phase' | 'complete' | 'end_job' | 'wait';
+
+export interface ContinueRules {
+  onSuccess: ContinueRuleAction;
+  onFailure: ContinueRuleAction;
 }
 
-export type FlagOperation = 'set' | 'increment' | 'decrement' | 'invert';
+export interface MissionPhaseDefinition {
+  name?: string;
+  description?: string;
+  duration: number;
+  difficulty?: number;
+  requirements?: Requirements;
+  modifiers?: Record<string, any>;
+  successOutcome?: any;
+  failureOutcome?: any;
+  tiers?: Record<string, any>;
+  continueRules: ContinueRules;
+  count?: number;
+  maxFailuresForCount?: number;
+  allowRetry?: boolean;
+  injuryRate?: number;
+  injuryRecoveryTicks?: number;
+  injuryPenalty?: number;
+  injuryPenaltyDuration?: number;
+}
 
-export type TextBehavior = 'overwrite' | 'append';
+export interface InjuryEntry {
+  entityId: string;
+  penalty: number;
+  remainingPenaltyTicks: number;
+}
+
+export interface MissionAccumulatedState {
+  injuries: InjuryEntry[];
+  currentPhaseSuccesses: number;
+  currentPhaseFailures: number;
+  totalMissionFailures: number;
+  bankedRewards?: any[];
+}
+
+export interface PhaseResult {
+  phaseIndex: number;
+  phaseName: string;
+  success: boolean;
+  quality?: string;
+  rewards?: any[];
+  injuredEntityIds?: string[];
+}
 
 export interface RewardEntry {
   type: 'entity_xp' | 'keeper_xp' | 'currency' | 'item';
@@ -26,7 +64,7 @@ export interface RewardEntry {
 
 export interface EffectEntry {
   type: 'flag';
-  operation: FlagOperation;
+  operation: 'set' | 'increment' | 'decrement' | 'invert';
   key: string;
   value?: number | string | boolean;
   odds?: number;
@@ -35,18 +73,48 @@ export interface EffectEntry {
 export interface TextEntry {
   type: 'text';
   message: string;
-  behavior?: TextBehavior;
+  behavior?: 'overwrite' | 'append';
   odds?: number;
 }
 
-export type OutcomeEntry = RewardEntry | EffectEntry | TextEntry;
+export interface UnlockGrantEntry {
+  type: 'grant_unlock';
+  key: string;
+  odds?: number;
+}
+
+export type OutcomeEntry = RewardEntry | EffectEntry | TextEntry | UnlockGrantEntry;
 
 export interface OutcomeBundle {
   bundle: OutcomeOrBundle[];
   odds?: number;
+  pickMin?: number;
+  pickMax?: number;
+  requirements?: Requirements;
 }
 
-export type OutcomeOrBundle = OutcomeEntry | OutcomeBundle;
+export interface BundleRefEntry {
+  type: 'bundle_ref';
+  bundleDefId: string;
+  odds?: number;
+  pickMin?: number;
+  pickMax?: number;
+  requirements?: Requirements;
+}
+
+export interface BundleDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  version: number;
+  bundle: OutcomeOrBundle[];
+  odds?: number;
+  pickMin?: number;
+  pickMax?: number;
+  enabled: boolean;
+}
+
+export type OutcomeOrBundle = OutcomeEntry | OutcomeBundle | BundleRefEntry;
 
 export interface OutcomeBlock {
   rewards: OutcomeOrBundle[];
@@ -56,20 +124,24 @@ export interface MissionDefinition {
   id: string;
   name: string;
   description: string;
-  type: MissionType;
   difficulty: number;
+  mode?: 'single' | 'multi_phase';
+  phases?: MissionPhaseDefinition[];
+  rewardsMode?: RewardsMode;
+  maxFailures?: number;
+  injuryRate?: number;
+  injuryRecoveryTicks?: number;
   timer: import('./timer').Timer;
   success: OutcomeBlock;
   failure: OutcomeBlock;
-  requirements: Requirement[];
-  visibilityRequirements?: Requirement[];
+  requirements: Requirements;
+  visibilityRequirements?: Requirements;
 }
 
 export interface Mission {
   id: string;
   userId: string;
   defId: string;
-  missionType: MissionType;
   difficulty: number;
   team: string[];
   status: MissionStatus;
@@ -91,18 +163,10 @@ export interface StartMissionDto {
   entityIds: string[];
 }
 
-/** @deprecated Use OutcomeEntry instead */
-export type EditorEffect = EffectEntry;
-/** @deprecated Use OutcomeBundle instead */
-export type RewardBundle = OutcomeBundle;
 /** @deprecated Use OutcomeOrBundle instead */
 export type RewardOrBundle = OutcomeOrBundle;
-/** @deprecated Use OutcomeBundle instead */
-export type EffectBundle = OutcomeBundle;
 /** @deprecated Use OutcomeOrBundle instead */
 export type EffectOrBundle = OutcomeOrBundle;
-/** @deprecated Use TextEntry instead */
-export type OutcomeText = TextEntry;
 
 export function isBundle(entry: OutcomeOrBundle): entry is OutcomeBundle;
 export function isBundle<T>(entry: T | { bundle: T[]; odds?: number }): entry is { bundle: T[]; odds?: number };

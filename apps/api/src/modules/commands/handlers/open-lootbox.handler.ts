@@ -4,8 +4,13 @@ import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildPlayerPatch 
 import { CurrencyService } from '../../currency/currency.service';
 import { InventoryService } from '../../inventory/inventory.service';
 import { TelemetryService } from '../../telemetry/telemetry.service';
+import { TelemetryContextBuilderService } from '../../telemetry/telemetry-context-builder.service';
 import { GameRulesService } from '../../game-rules/game-rules.service';
+import { NotificationService } from '../../notification/notification.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { resolveSpec } from '../../ui/modal-def-resolver.util';
 import * as crypto from 'crypto';
+import { DefinitionCacheService } from '../../definition-cache/definition-cache.service';
 
 @Injectable()
 export class OpenLootBoxHandler implements CommandHandler {
@@ -13,7 +18,11 @@ export class OpenLootBoxHandler implements CommandHandler {
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
     private telemetryService: TelemetryService,
+    private telemetryContextBuilder: TelemetryContextBuilderService,
     private gameRules: GameRulesService,
+    private notificationService: NotificationService,
+    private prisma: PrismaService,
+    private definitionCache: DefinitionCacheService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -31,17 +40,19 @@ export class OpenLootBoxHandler implements CommandHandler {
       throw new BadRequestException('Item is not a lootbox');
     }
 
-    const itemData = (item.definition?.data as any) ?? (item.data as any) ?? {};
-    const lootboxDefId = itemData.lootboxDefId;
+    const lootboxDefId =
+      (item.definition as any)?.lootboxDefId ??
+      ((item.definition?.data as any) ?? (item.data as any) ?? {}).lootboxDefId;
     if (!lootboxDefId) throw new BadRequestException('Item has no lootboxDefId');
 
-    const lootboxDef = await (ctx.tx as any).lootboxDef.findUnique({ where: { id: lootboxDefId } });
+    const lootboxDef = this.definitionCache.get('lootboxDef', lootboxDefId);
     if (!lootboxDef) throw new NotFoundException(`LootboxDef "${lootboxDefId}" not found`);
     if (!lootboxDef.enabled) throw new BadRequestException('This lootbox is currently disabled');
 
+    const openNonce = crypto.randomBytes(4).toString('hex');
     const seed = crypto
       .createHash('sha256')
-      .update(`${itemInstanceId}${ctx.userId}`)
+      .update(`${itemInstanceId}${ctx.userId}${openNonce}`)
       .digest('hex');
 
     const seedNum = parseInt(seed.slice(0, 8), 16);
@@ -49,7 +60,7 @@ export class OpenLootBoxHandler implements CommandHandler {
     const rng = {
       chance(p: number): boolean {
         _state = (_state * 1664525 + 1013904223) & 0xffffffff;
-        return (_state >>> 0) % 100 < p;
+        return ((_state >>> 0) / 0x100000000) < p;
       },
       nextInt(min: number, max: number): number {
         _state = (_state * 1664525 + 1013904223) & 0xffffffff;
@@ -64,11 +75,15 @@ export class OpenLootBoxHandler implements CommandHandler {
     const reqContext = this.gameRules.buildRequirementContext(user);
 
     const allGrants: any[] = [];
+    const allUnlocks: { key: string }[] = [];
     let anyFlags = false;
 
     for (let i = 0; i < rollCount; i++) {
-      const { resolved, flags: resolvedFlags } = this.gameRules.resolveOutcomes(outcomes, reqContext, rng);
+      const { resolved, flags: resolvedFlags, unlocks } = await this.gameRules.resolveOutcomes(outcomes, reqContext, rng);
       if (resolvedFlags.length > 0) anyFlags = true;
+      for (const u of unlocks) {
+        if (!allUnlocks.some(x => x.key === u.key)) allUnlocks.push(u);
+      }
       for (const { entry, amount } of resolved) {
         if (entry.type === 'currency') {
           await this.currencyService.creditTx(ctx.tx, {
@@ -98,9 +113,25 @@ export class OpenLootBoxHandler implements CommandHandler {
       await (ctx.tx as any).user.update({ where: { id: ctx.userId }, data: { flags: reqContext.userFlags as any } });
     }
 
-    await (ctx.tx as any).itemInstance.delete({ where: { id: itemInstanceId } });
+    for (const { key } of allUnlocks) {
+      await (ctx.tx as any).userUnlock.upsert({
+        where: { userId_key: { userId: ctx.userId, key } },
+        create: { userId: ctx.userId, key, source: 'lootbox' },
+        update: {},
+      });
+    }
+
+    if ((item.quantity ?? 1) > 1) {
+      await (ctx.tx as any).itemInstance.update({
+        where: { id: itemInstanceId },
+        data: { quantity: { decrement: 1 } },
+      });
+    } else {
+      await (ctx.tx as any).itemInstance.delete({ where: { id: itemInstanceId } });
+    }
 
     try {
+      const telemetryContext = await this.telemetryContextBuilder.buildContext(ctx.userId);
       await this.telemetryService.record(
         ctx.userId,
         'lootbox_opened',
@@ -108,30 +139,98 @@ export class OpenLootBoxHandler implements CommandHandler {
         1,
         {},
         ctx.tx,
+        telemetryContext,
       );
     } catch (_) {}
 
+    const readNotifications = await this.notificationService.markReadBySource(ctx.userId, 'ItemInstance', itemInstanceId, ctx.tx);
+
     const pb = new PatchBuilder();
-    pb.deleteItem(itemInstanceId);
+    if ((item.quantity ?? 1) <= 1) {
+      pb.deleteItem(itemInstanceId);
+    }
+    for (const notif of readNotifications) {
+      pb.upsertNotification(notif);
+    }
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildPlayerPatch(pb, ctx.tx, ctx.userId);
 
     const rewardSummary = allGrants
-      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.currencyId ?? g.itemDefId ?? g.type}`)
+      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.key ?? g.currencyId ?? g.itemDefId ?? g.type}`)
       .join(', ');
+
+    const lootboxBodyText = rewardSummary || 'No rewards this time.';
+
+    const generatedSpec: any = {
+      version: 1,
+      id: `lootbox-opened-${itemInstanceId}`,
+      kind: 'lootbox_opened',
+      dismiss: { backdrop: true, x: true, escape: true },
+      header: { title: `${lootboxDef.name} Opened!` },
+      pages: [
+        {
+          body: [
+            {
+              type: 'richText',
+              doc: [{ t: 'p', c: [{ t: 'text', v: lootboxBodyText }] }],
+            },
+          ],
+        },
+      ],
+      buttons: [
+        { id: 'close', label: 'Collect', variant: 'primary', action: { type: 'CLOSE_MODAL' } },
+      ],
+    };
+
+    // Apply default_lootbox_reveal template — lets operators customize header/buttons/pages
+    // via the admin panel. When the template has pages (e.g. rewardsList with revealOptions),
+    // it is resolved against a context built from the actual grants so `from:` expressions work.
+    try {
+      const templateRow = this.definitionCache.get('defaultModalDef', 'default_lootbox_reveal');
+      if (templateRow?.enabled && templateRow.spec && typeof templateRow.spec === 'object') {
+        const tpl = templateRow.spec as any;
+        if (tpl.header && typeof tpl.header === 'object') {
+          generatedSpec.header = { ...generatedSpec.header, ...tpl.header };
+        }
+        if (Array.isArray(tpl.pages) && tpl.pages.length > 0) {
+          // Build a rewards context so `from: 'rewards'` and tagsFrom resolve correctly.
+          const itemKeys = allGrants.filter((g: any) => g.type === 'item' && g.itemDefId).map((g: any) => g.itemDefId as string);
+          const itemRarityMap = new Map<string, string>();
+          if (itemKeys.length > 0) {
+            const itemDefs = this.definitionCache.getAll('itemDef')
+              .filter((d: any) => itemKeys.includes(d.id));
+            for (const d of itemDefs as { id: string; rarity: string | null }[]) {
+              if (d.rarity) itemRarityMap.set(d.id, d.rarity);
+            }
+          }
+          const rewards = allGrants.map((g: any) => {
+            if (g.type === 'currency') {
+              return { name: g.currencyId ?? 'Currency', qty: g.amount ?? 1, assetKey: g.currencyId };
+            }
+            if (g.type === 'item') {
+              return {
+                name: g.itemDefId ?? 'Item',
+                qty: g.qty ?? 1,
+                assetKey: g.itemDefId,
+                rarity: itemRarityMap.get(g.itemDefId) ?? undefined,
+              };
+            }
+            return { name: g.type ?? 'Reward', qty: g.amount ?? g.qty ?? 1 };
+          });
+          const ctx = { rewards, lootboxName: lootboxDef.name };
+          const resolved = resolveSpec(tpl, ctx);
+          generatedSpec.pages = resolved.pages ?? tpl.pages;
+        }
+        if (Array.isArray(tpl.buttons) && tpl.buttons.length > 0) {
+          generatedSpec.buttons = tpl.buttons;
+        }
+      }
+    } catch { /* ignore — fall back to inline spec */ }
 
     return {
       patches: pb.build(),
-      ui: [
-        {
-          type: 'modal' as const,
-          key: `lootbox-opened-${itemInstanceId}`,
-          title: `${lootboxDef.name} Opened!`,
-          body: rewardSummary || 'No rewards this time.',
-          buttons: [{ label: 'Collect', action: 'close' }],
-        },
-      ],
+      ui: [{ type: 'modal' as const, spec: generatedSpec }],
     };
   }
 }

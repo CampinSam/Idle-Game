@@ -46,7 +46,8 @@ export function getImagePath(category: ImageCategory, id?: string): string {
   return `/images/${category}/${id}.png`;
 }
 
-export function getEntityImagePath(entityId?: string, archetype?: string): string {
+export function getEntityImagePath(entityId?: string, archetype?: string, imageUrl?: string): string {
+  if (imageUrl) return imageUrl;
   if (entityId) {
     return `/images/entities/${entityId}.png`;
   }
@@ -87,3 +88,4 @@ export function getAvatarImagePath(avatarId?: string): string {
 export function slugifyRegion(region: string): string {
   return region.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
+

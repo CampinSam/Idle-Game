@@ -19,7 +19,8 @@ export const WORKER_SLOTS_BY_LEVEL = (level: number): number => {
 };
 
 export const ANTI_WHALE_CAPS = {
-  maxActiveOutposts: (keeperLevel: number) => Math.min(Math.floor(keeperLevel / 20) + 1, 6),
+  maxActiveOutposts: (keeperLevel: number, bonusSlots = 0) =>
+    Math.min(1 + Math.floor(keeperLevel / 20) + Math.min(bonusSlots, 3), 7),
   maxActiveMissions: (keeperLevel: number) => Math.min(Math.floor(keeperLevel / 20) + 2, 6),
   mpEffectivenessCap: 500,
   synergyStackingCap: 0.30,
@@ -28,12 +29,30 @@ export const ANTI_WHALE_CAPS = {
   threatScaling: (outpostCount: number) => outpostCount * 0.1,
 };
 
+export const outpostSlotBudget = (keeperLevel: number, bonusSlots = 0): number =>
+  ANTI_WHALE_CAPS.maxActiveOutposts(keeperLevel, bonusSlots);
+
 export const ENTITY_ARCHETYPES = [
   'Dave', 'Astro', 'Magician', 'Ninja', 'Redneck', 'Stoner', 'DJ',
   'Viking', 'Monk', 'Corpo', 'Cyborg', 'Buff', 'MadScientist', 'Deity',
 ] as const;
 
-export type ArchetypeRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+export const RARITY_TIERS = [
+  'common', 'uncommon', 'scare', 'rare', 'epic', 'mythic', 'legendary', 'unique',
+] as const;
+
+export type Rarity = typeof RARITY_TIERS[number];
+
+export const RARITY_ORDER: Record<Rarity, number> = {
+  common: 0, uncommon: 1, scare: 2, rare: 3, epic: 4, mythic: 5, legendary: 6, unique: 7,
+};
+
+export const RARITY_DISPLAY_LABEL: Record<Rarity, string> = {
+  common: 'Common', uncommon: 'Uncommon', scare: 'Scare', rare: 'Rare',
+  epic: 'Epic', mythic: 'Mythic', legendary: 'Legendary', unique: 'Unique',
+};
+
+export type ArchetypeRarity = Rarity;
 
 export const ARCHETYPE_RARITY: Record<EntityArchetype, ArchetypeRarity> = {
   Dave: 'common',
@@ -52,12 +71,15 @@ export const ARCHETYPE_RARITY: Record<EntityArchetype, ArchetypeRarity> = {
   Deity: 'legendary',
 };
 
-export const RARITY_WEIGHTS: Record<ArchetypeRarity, number> = {
-  common: 40,
-  uncommon: 25,
-  rare: 15,
-  epic: 8,
-  legendary: 2,
+export const RARITY_WEIGHTS: Record<Rarity, number> = {
+  common:    40,
+  uncommon:  25,
+  scare:     18,
+  rare:      15,
+  epic:       8,
+  mythic:     4,
+  legendary:  2,
+  unique:     0,
 };
 
 export const ENTITY_TRAIT_SLOTS = ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'] as const;

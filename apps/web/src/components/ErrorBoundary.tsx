@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import { reportClientError } from '../services/clientErrorReporter';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -23,6 +24,12 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[ErrorBoundary]', error.message, info.componentStack);
+    reportClientError({
+      message: error.message,
+      stack: error.stack,
+      componentStack: info.componentStack ?? undefined,
+      fallbackTitle: this.props.fallbackTitle,
+    });
   }
 
   handleReset = () => {

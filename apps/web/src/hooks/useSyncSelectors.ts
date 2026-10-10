@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useAppSelector } from '../store';
+import { serverNow } from '../services/clockSync';
 
 export function useSyncPlayer() {
   return useAppSelector((s) => s.sync.player);
@@ -56,9 +57,40 @@ export function useSyncStatus() {
 export function useSyncActiveMissions() {
   const jobs = useSyncJobs();
   return useMemo(
-    () => jobs.filter((j: any) => j.type === 'MissionJob' && (j.status === 'active' || j.status === 'ready_notified')),
+    () => jobs.filter((j: any) => j.type === 'MissionJob' && (j.status === 'active' || j.status === 'ready_notified' || j.status === 'phase_ready')),
     [jobs],
   );
+}
+
+export function useAllActiveJobs() {
+  const jobs = useSyncJobs();
+  const locations = useSyncLocations();
+  return useMemo(() => {
+    const activeStatuses = new Set(['active', 'ready_notified', 'phase_ready']);
+    const missionAndCraftingJobs = jobs
+      .filter(
+        (j: any) =>
+          activeStatuses.has(j.status) &&
+          (j.type === 'MissionJob' || j.type === 'CraftingJob' || j.type === 'DustingJob'),
+      )
+      .map((j: any) => ({
+        ...j,
+        name: (j.defId || '').replace(/_/g, ' '),
+      }));
+    const buildingJobs = (locations as any[]).flatMap((op: any) =>
+      (op.buildings || [])
+        .filter((b: any) => b.status === 'building' && b.jobId && b.startTick != null)
+        .map((b: any) => ({
+          id: b.jobId,
+          type: 'BuildingJob',
+          status: 'active',
+          startTick: b.startTick,
+          durationTicks: b.durationTicks,
+          name: (b.buildingDefId || '').replace(/_/g, ' '),
+        }))
+    );
+    return [...missionAndCraftingJobs, ...buildingJobs];
+  }, [jobs, locations]);
 }
 
 export function useSyncMissionHistory() {
@@ -89,7 +121,65 @@ export function useSyncQuests() {
   return useMemo(() => Object.values(table), [table]);
 }
 
+export function useSyncAchievements() {
+  const table = useAppSelector((s) => s.sync.achievements);
+  return useMemo(() => Object.values(table), [table]);
+}
+
 export function useSyncCheckIns() {
   const table = useAppSelector((s) => s.sync.checkins);
   return useMemo(() => Object.values(table), [table]);
+}
+
+export function useSyncGifts() {
+  const table = useAppSelector((s) => s.sync.gifts);
+  return useMemo(() => Object.values(table), [table]);
+}
+
+export function useTagDefs() {
+  return useAppSelector((s) => s.sync.tagDefs);
+}
+
+export function useTagDef(key: string | undefined | null) {
+  return useAppSelector((s) => (key ? s.sync.tagDefs[key] : undefined));
+}
+
+export function useVisualEffectDefs() {
+  return useAppSelector((s) => s.sync.visualEffectDefs);
+}
+
+export function useVisualEffectDef(key: string | undefined | null) {
+  return useAppSelector((s) => (key ? s.sync.visualEffectDefs[key] : undefined));
+}
+
+export function useSystemIconDefs() {
+  return useAppSelector((s) => s.sync.systemIconDefs);
+}
+
+export function useSyncActiveEffects() {
+  const table = useAppSelector((s) => s.sync.activeEffects);
+  return useMemo(() => Object.values(table), [table]);
+}
+
+export function useGlobalPowers() {
+  return useAppSelector((s) => s.sync.globalPowers);
+}
+
+/**
+ * Returns the active homescreen banners, freshly filtered against the
+ * current wall-clock time so banners whose `endsAt` has slipped into the
+ * past disappear without waiting for a re-bootstrap. Re-evaluates whenever
+ * the server-supplied list or the `nowMs` argument changes; pass a value
+ * derived from a tick / interval if you want the filter to refresh live.
+ */
+export function useHomeBanners(nowMs?: number) {
+  const banners = useAppSelector((s) => s.sync.homeBanners);
+  return useMemo(() => {
+    const now = nowMs ?? serverNow();
+    return banners.filter((b: any) => {
+      if (b.startsAt && new Date(b.startsAt).getTime() > now) return false;
+      if (b.endsAt && new Date(b.endsAt).getTime() <= now) return false;
+      return true;
+    });
+  }, [banners, nowMs]);
 }

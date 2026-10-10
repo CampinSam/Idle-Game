@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { EntityTraits } from '@derp/shared';
+import type { EntityTraits, RichSelection, TraitPrimitive } from '@derp/shared';
+import { globToRegex, isGlobPattern } from '@derp/shared';
+import { SelectionResolverService } from '../selection/selection-resolver.service';
+import type { SelectionContext } from '../selection/selection.types';
+import { DefinitionCacheService } from '../definition-cache/definition-cache.service';
 
 export interface GameUser {
   keeperLevel?: number;
@@ -15,17 +19,41 @@ export interface LocationContext {
   parentBuildingRooms?: { roomDefId: string }[];
 }
 
+export interface TeamEntitySnap {
+  id: string;
+  entityType?: string;
+  traits?: Record<string, TraitPrimitive>;
+  stats?: Record<string, number>;
+  speciesId?: string;
+  collectionId?: string;
+  rarity?: string;
+}
+
 export interface RequirementContext {
   user: GameUser;
   userFlags: Record<string, unknown>;
+  tempFlags?: Record<string, any>;
+  userUnlocks?: string[];
   allPlayerLocations?: LocationContext[];
   currentLocation?: LocationContext;
   parentBuilding?: { buildingDefId: string; rooms?: { roomDefId: string }[] };
+  teamSize?: number;
+  team?: TeamEntitySnap[];
 }
 
 @Injectable()
 export class GameRulesService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(GameRulesService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private readonly selectionResolver: SelectionResolverService,
+    private definitionCache: DefinitionCacheService,
+  ) {}
+
+  getRuleDefLabel(id: string): string | undefined {
+    return this.selectionResolver.getRuleDefLabel(id);
+  }
 
   compareValues(actual: number, target: number, operator: string): boolean {
     switch (operator) {
@@ -48,119 +76,95 @@ export class GameRulesService {
     }
   }
 
-  checkRequirement(req: Record<string, unknown>, context: RequirementContext): boolean {
-    const op = (req.operator as string) ?? (req.type === 'flag' ? 'eq' : 'gte');
-
-    switch (req.type) {
-      case 'keeper_level':
-        return this.compareValues(Number(context.user.keeperLevel ?? 0), Number(req.value ?? 0), op);
-      case 'team_size':
-        return true;
-      case 'trait':
-        return true;
-      case 'flag': {
-        const flagVal = context.userFlags[req.key as string];
-        if (op === 'exists') return flagVal !== undefined && flagVal !== null;
-        if (op === 'dne') return flagVal === undefined || flagVal === null;
-        if (flagVal === undefined || flagVal === null) return false;
-        const numFlag = Number(flagVal);
-        const numTarget = Number(req.value);
-        const bothNumeric = !isNaN(numFlag) && !isNaN(numTarget);
-        if (bothNumeric) return this.compareValues(numFlag, numTarget, op);
-        if (op === 'eq') return String(flagVal) === String(req.value);
-        if (op === 'neq') return String(flagVal) !== String(req.value);
-        return false;
-      }
-      case 'has_building': {
-        const ids = req.ids as string[];
-        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
-        const allLocs = context.allPlayerLocations ?? [];
-        return ids.some(id =>
-          allLocs.some(loc => loc.buildings?.some(b => b.buildingDefId === id)),
-        );
-      }
-      case 'has_room': {
-        const ids = req.ids as string[];
-        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
-        const allLocs = context.allPlayerLocations ?? [];
-        return ids.some(id =>
-          allLocs.some(loc =>
-            loc.buildings?.some(b => b.rooms?.some(r => r.roomDefId === id)) ||
-            loc.rooms?.some(r => r.roomDefId === id),
-          ),
-        );
-      }
-      case 'parent_has_building': {
-        const ids = req.ids as string[];
-        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
-        const loc = context.currentLocation;
-        if (!loc) return false;
-        return ids.some(id => loc.buildings?.some(b => b.buildingDefId === id));
-      }
-      case 'parent_has_room': {
-        const ids = req.ids as string[];
-        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
-        const bld = context.parentBuilding;
-        if (!bld) return false;
-        return ids.some(id => bld.rooms?.some(r => r.roomDefId === id));
-      }
-      case 'in_region': {
-        const ids = req.ids as string[];
-        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
-        const loc = context.currentLocation;
-        if (!loc || !loc.regionId) return false;
-        return ids.includes(loc.regionId);
-      }
-      case 'building':
-      case 'currency':
-      case 'item':
-        return true;
-      default:
-        return true;
+  checkRequirements(requirements: unknown, context: RequirementContext, hint?: string): boolean {
+    if (
+      !requirements ||
+      (Array.isArray(requirements) && requirements.length === 0) ||
+      (typeof requirements === 'object' && !Array.isArray(requirements) && Object.keys(requirements as object).length === 0)
+    ) return true;
+    if (
+      typeof requirements === 'object' &&
+      !Array.isArray(requirements) &&
+      'op' in (requirements as object)
+    ) {
+      return this.selectionResolver.evaluate(requirements as RichSelection, this.reqCtxToSelCtx(context));
     }
+    const where = hint ? ` [${hint}]` : '';
+    const preview = JSON.stringify(requirements).slice(0, 200);
+    if (Array.isArray(requirements)) {
+      this.logger.warn(`bad-data${where}: legacy Requirement[] array in requirements field — treating as unconstrained. Data: ${preview}`);
+      return true;
+    }
+    this.logger.warn(`bad-data${where}: unrecognised non-null requirements shape — treating as unconstrained. Data: ${preview}`);
+    return true;
   }
 
-  checkRequirements(reqs: unknown, context: RequirementContext): boolean {
-    if (!reqs || !Array.isArray(reqs) || reqs.length === 0) return true;
-    return reqs.every((req: Record<string, unknown>) => this.checkRequirement(req, context));
-  }
-
-  checkVisibility(visReqs: unknown, user: GameUser, userFlags?: Record<string, unknown>, extra?: Partial<RequirementContext>): boolean {
-    if (!visReqs || !Array.isArray(visReqs) || visReqs.length === 0) return true;
-    const flags: Record<string, unknown> = userFlags ?? ((user.flags && typeof user.flags === 'object') ? user.flags : {});
-    return visReqs.every((req: Record<string, unknown>) => this.checkRequirement(req, { user, userFlags: flags, ...extra }));
+  checkVisibility(
+    visReqs: unknown,
+    user: GameUser,
+    userFlags?: Record<string, unknown>,
+    extra?: Partial<RequirementContext>,
+    hint?: string,
+  ): boolean {
+    if (!visReqs) return true;
+    const flags: Record<string, unknown> =
+      userFlags ?? ((user.flags && typeof user.flags === 'object') ? user.flags as Record<string, unknown> : {});
+    return this.checkRequirements(visReqs, { user, userFlags: flags, ...extra }, hint);
   }
 
   buildRequirementContext(user: GameUser, extra?: Partial<RequirementContext>): RequirementContext {
-    const userFlags: Record<string, unknown> = (user.flags && typeof user.flags === 'object') ? user.flags : {};
-    return { user, userFlags, ...extra };
+    const userFlags: Record<string, unknown> =
+      (user.flags && typeof user.flags === 'object') ? user.flags as Record<string, unknown> : {};
+    return { user, userFlags, tempFlags: {}, ...extra };
   }
 
-  async applyFlagEffect(userId: string, effect: Record<string, unknown>): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) return;
-    const flags: Record<string, unknown> = (user.flags && typeof user.flags === 'object') ? { ...(user.flags as Record<string, unknown>) } : {};
-    const op = effect.operation ?? 'set';
-
-    const key = effect.key as string;
-    switch (op) {
-      case 'set':
-        flags[key] = effect.value;
-        break;
-      case 'increment':
-        flags[key] = (typeof flags[key] === 'number' ? flags[key] : 0) + Number(effect.value ?? 1);
-        break;
-      case 'decrement':
-        flags[key] = (typeof flags[key] === 'number' ? flags[key] : 0) - Number(effect.value ?? 1);
-        break;
-      case 'invert':
-        flags[key] = !flags[key];
-        break;
-      case 'remove':
-        delete flags[key];
-        break;
-    }
-    await this.prisma.user.update({ where: { id: userId }, data: { flags: flags as any } });
+  reqCtxToSelCtx(context: RequirementContext): SelectionContext {
+    return {
+      player: {
+        keeperLevel: Number(context.user.keeperLevel ?? 0),
+        flags: context.userFlags,
+        unlocks: context.userUnlocks ?? [],
+      },
+      entities: (context.team ?? []).map(e => ({
+        id: e.id,
+        entityType: e.entityType,
+        speciesId: e.speciesId,
+        collectionId: e.collectionId,
+        traits: e.traits ?? {},
+        stats: (e.stats ?? {}) as Record<string, number>,
+        rarity: e.rarity,
+      })),
+      inventory: { currencies: {}, items: {} },
+      locations: (context.allPlayerLocations ?? []).map(loc => ({
+        regionId: loc.regionId,
+        buildings: loc.buildings ?? [],
+        rooms: loc.rooms ?? [],
+      })),
+      currentLocation: context.currentLocation
+        ? {
+            regionId: context.currentLocation.regionId,
+            buildings: context.currentLocation.buildings ?? [],
+            rooms: context.currentLocation.rooms ?? [],
+          }
+        : undefined,
+      parentBuilding: context.parentBuilding
+        ? {
+            buildingDefId: context.parentBuilding.buildingDefId,
+            rooms: context.parentBuilding.rooms ?? [],
+          }
+        : undefined,
+      missionContext: context.teamSize !== undefined
+        ? {
+            activityType: '',
+            missionType: undefined,
+            missionTags: [],
+            regionId: undefined,
+            seasonId: undefined,
+            teamSize: context.teamSize,
+          }
+        : undefined,
+      tempFlags: context.tempFlags ?? {},
+    };
   }
 
   rollOdds(odds: number | undefined, rng?: { chance: (p: number) => boolean }): boolean {
@@ -171,55 +175,169 @@ export class GameRulesService {
     return Math.random() * 100 < o;
   }
 
-  async processEffectsWithBundles(
-    userId: string,
-    effects: any[],
-    rng?: { chance: (p: number) => boolean },
-  ): Promise<void> {
-    if (!effects || !Array.isArray(effects)) return;
+  // Loads every BundleDef transitively referenced from `items`.
+  async loadBundleDefs(items: any[]): Promise<Map<string, any>> {
+    const out = new Map<string, any>();
+    if (!Array.isArray(items)) return out;
 
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) return;
-    const reqContext = this.buildRequirementContext(user as any);
-
-    const applyEntry = async (effect: any) => {
-      if (effect.requirements && !this.checkRequirements(effect.requirements, reqContext)) return;
-      if (!this.rollOdds(effect.odds, rng)) return;
-      if (effect.type === 'flag') {
-        await this.applyFlagEffect(userId, effect);
-      }
-    };
-
-    const processItems = async (items: any[]) => {
-      for (const item of items) {
-        if (item.requirements && !this.checkRequirements(item.requirements, reqContext)) continue;
-        if (item.bundle && Array.isArray(item.bundle)) {
-          if (!this.rollOdds(item.odds, rng)) continue;
-          await processItems(item.bundle);
-        } else {
-          await applyEntry(item);
+    const collectIds = (entries: any[], into: Set<string>) => {
+      for (const e of entries) {
+        if (!e || typeof e !== 'object') continue;
+        if (e.type === 'bundle_ref' && typeof e.bundleDefId === 'string') {
+          into.add(e.bundleDefId);
+        } else if (Array.isArray(e.bundle)) {
+          collectIds(e.bundle, into);
         }
       }
     };
 
-    await processItems(effects);
+    const pending = new Set<string>();
+    collectIds(items, pending);
+
+    while (pending.size > 0) {
+      const ids = Array.from(pending);
+      pending.clear();
+      const rows = await (this.prisma as any).bundleDef.findMany({ where: { OR: [{ id: { in: ids } }, { key: { in: ids } }] } });
+      // Index each row by both UUID id and slug key so callers using either form resolve correctly.
+      const byId = new Map<string, any>();
+      for (const r of rows) {
+        byId.set(r.id, r);
+        if (r.key) byId.set(r.key, r);
+      }
+      for (const id of ids) {
+        if (out.has(id)) continue;
+        const row = byId.get(id) ?? null;
+        out.set(id, row);
+        if (row && Array.isArray(row.bundle)) {
+          const next = new Set<string>();
+          collectIds(row.bundle, next);
+          for (const nid of next) {
+            if (!out.has(nid)) pending.add(nid);
+          }
+        }
+      }
+    }
+
+    return out;
   }
 
-  resolveOutcomes(
+  // Rewrites bundle_ref entries to inline bundles using `defs`; overrides win.
+  // Missing/disabled defs and cycles collapse to empty bundles.
+  // `warned` dedupes missing/disabled warnings within a single call tree.
+  expandBundleRefs(
+    items: any[],
+    defs: Map<string, any>,
+    stack: Set<string> = new Set(),
+    warned: Set<string> = new Set(),
+  ): any[] {
+    if (!Array.isArray(items)) return items;
+    return items.map((item) => this.expandEntry(item, defs, stack, warned));
+  }
+
+  private expandEntry(item: any, defs: Map<string, any>, stack: Set<string>, warned: Set<string>): any {
+    if (!item || typeof item !== 'object') return item;
+
+    if (item.type === 'bundle_ref') {
+      const id = item.bundleDefId;
+      const def = id ? defs.get(id) : null;
+      if (!def || !def.enabled) {
+        if (id && !warned.has(id)) {
+          warned.add(id);
+          this.logger.warn(`bundle_ref to missing or disabled BundleDef "${id}" — resolved as empty bundle`);
+        }
+        return { bundle: [], requirements: item.requirements };
+      }
+      if (stack.has(id)) {
+        this.logger.warn(`bundle_ref cycle detected at BundleDef "${id}" — collapsing to empty bundle`);
+        return { bundle: [], requirements: item.requirements };
+      }
+      const nextStack = new Set(stack);
+      nextStack.add(id);
+      const expandedInner = this.expandBundleRefs(def.bundle ?? [], defs, nextStack, warned);
+      const result: any = { bundle: expandedInner };
+      const odds = item.odds ?? def.odds;
+      if (odds !== undefined && odds !== null) result.odds = Number(odds);
+      const pickMin = item.pickMin ?? def.pickMin;
+      if (pickMin !== undefined && pickMin !== null) result.pickMin = Number(pickMin);
+      const pickMax = item.pickMax ?? def.pickMax;
+      if (pickMax !== undefined && pickMax !== null) result.pickMax = Number(pickMax);
+      if (item.requirements !== undefined) result.requirements = item.requirements;
+      return result;
+    }
+
+    if (Array.isArray(item.bundle)) {
+      return { ...item, bundle: this.expandBundleRefs(item.bundle, defs, stack, warned) };
+    }
+
+    return item;
+  }
+
+  /**
+   * Convenience wrapper that pre-loads all referenced BundleDefs, expands the
+   * outcome tree, and then resolves it. Use this instead of the bare
+   * `resolveOutcomes` whenever a caller wants `bundle_ref` support.
+   *
+   * grant_unlock items collected during the main pass are expanded here in a
+   * deferred post-loop pass so that flag mutations from earlier items in the
+   * same bundle are visible when evaluating each unlock's requirements.
+   */
+
+  /**
+   * Expands a single grant_unlock pattern against the UnlockDef registry.
+   * Glob patterns (containing * or **) are matched against all registered keys;
+   * exact patterns perform a single registry lookup.
+   * Defs whose requirements do not pass against `reqContext` are silently skipped.
+   * Unregistered keys are silently skipped.
+   */
+  async expandUnlockPattern(pattern: string, reqContext: RequirementContext): Promise<string[]> {
+    if (isGlobPattern(pattern)) {
+      const regex = globToRegex(pattern);
+      const defs: { key: string; requirements: unknown }[] = await (this.prisma as any).unlockDef.findMany({
+        select: { key: true, requirements: true },
+      });
+      const matched: string[] = [];
+      for (const def of defs) {
+        if (!regex.test(def.key)) continue;
+        if (def.requirements && !this.checkRequirements(def.requirements, reqContext)) continue;
+        matched.push(def.key);
+      }
+      return matched;
+    } else {
+      const def: { key: string; requirements: unknown } | null = await (this.prisma as any).unlockDef.findUnique({
+        where: { key: pattern },
+        select: { key: true, requirements: true },
+      });
+      if (!def) return [];
+      if (def.requirements && !this.checkRequirements(def.requirements, reqContext)) return [];
+      return [def.key];
+    }
+  }
+
+  async resolveOutcomes(
     items: any[],
     reqContext: RequirementContext,
     rng: { chance: (p: number) => boolean; nextInt: (min: number, max: number) => number },
-  ): { resolved: { entry: any; amount?: number }[]; texts: string[]; flags: { entry: any }[] } {
+  ): Promise<{ resolved: { entry: any; amount?: number }[]; texts: string[]; flags: { entry: any }[]; unlocks: { key: string }[] }> {
+    // Bundle-ref expansion: load any referenced BundleDefs and inline them.
+    // Callers that pre-expand (e.g. admin outcome simulation) still benefit
+    // because loadBundleDefs returns an empty map immediately when the
+    // already-expanded items contain no bundle_ref entries.
+    const _defs = await this.loadBundleDefs(items);
+    items = this.expandBundleRefs(items, _defs);
+
     const texts: string[] = [];
     const flags: { entry: any }[] = [];
+    const deferredUnlocks: string[] = [];
 
     const pickWeightedText = (pool: any[]): { message: string } | undefined => {
       if (pool.length === 0) return undefined;
-      const totalOdds = pool.reduce((sum: number, t: any) => sum + (t.odds ?? 100), 0);
-      let roll = rng.nextInt(0, totalOdds - 1);
-      for (const t of pool) {
-        roll -= (t.odds ?? 100);
-        if (roll < 0) return t;
+      const weights = pool.map((t: any) => Math.max(0, Math.round((t.odds ?? 100) * 100)));
+      const totalWeight = weights.reduce((sum: number, w: number) => sum + w, 0);
+      if (totalWeight <= 0) return pool[rng.nextInt(0, pool.length - 1)];
+      let roll = rng.nextInt(0, totalWeight - 1);
+      for (let i = 0; i < pool.length; i++) {
+        roll -= weights[i];
+        if (roll < 0) return pool[i];
       }
       return pool[pool.length - 1];
     };
@@ -242,19 +360,29 @@ export class GameRulesService {
       return rng.nextInt(min, max);
     };
 
+    // Picks N entries from `pool` with replacement using each entry's `odds`
+    // as a relative weight. Duplicates are allowed and the count may exceed
+    // `pool.length` — that is precisely how authors express "roll the whole
+    // bundle N times" by wrapping their recipe in a single inner bundle and
+    // setting pickMax = N on the consumer.
     const pickWeighted = (pool: any[], count: number): any[] => {
-      const remaining = [...pool];
       const picks: any[] = [];
-      for (let i = 0; i < count && remaining.length > 0; i++) {
-        const totalOdds = remaining.reduce((sum: number, e: any) => sum + (e.odds ?? 100), 0);
-        let roll = rng.nextInt(0, totalOdds - 1);
-        let pickedIdx = remaining.length - 1;
-        for (let j = 0; j < remaining.length; j++) {
-          roll -= (remaining[j].odds ?? 100);
-          if (roll < 0) { pickedIdx = j; break; }
+      if (pool.length === 0 || count <= 0) return picks;
+      const weights = pool.map((e: any) => Math.max(0, Math.round((e.odds ?? 100) * 100)));
+      const totalWeight = weights.reduce((sum: number, w: number) => sum + w, 0);
+      for (let i = 0; i < count; i++) {
+        let pickedIdx: number;
+        if (totalWeight <= 0) {
+          pickedIdx = rng.nextInt(0, pool.length - 1);
+        } else {
+          let roll = rng.nextInt(0, totalWeight - 1);
+          pickedIdx = pool.length - 1;
+          for (let j = 0; j < pool.length; j++) {
+            roll -= weights[j];
+            if (roll < 0) { pickedIdx = j; break; }
+          }
         }
-        picks.push(remaining[pickedIdx]);
-        remaining.splice(pickedIdx, 1);
+        picks.push(pool[pickedIdx]);
       }
       return picks;
     };
@@ -266,16 +394,18 @@ export class GameRulesService {
         if (item.requirements && !this.checkRequirements(item.requirements, reqContext)) continue;
         if (item.bundle && Array.isArray(item.bundle)) {
           if (!this.rollOdds(item.odds, rng)) continue;
-          if (item.minChoices !== undefined || item.maxChoices !== undefined) {
+          const pickMin = item.pickMin ?? item.minChoices;
+          const pickMax = item.pickMax ?? item.maxChoices;
+          if (pickMin !== undefined || pickMax !== undefined) {
             const pool = item.bundle.filter((e: any) =>
               !e.requirements || this.checkRequirements(e.requirements, reqContext),
             );
-            const count = Math.min(
-              pool.length,
-              rollAmount(item.minChoices ?? 1, item.maxChoices ?? item.minChoices ?? 1),
+            const count = rollAmount(
+              Number(pickMin ?? 1),
+              Number(pickMax ?? pickMin ?? 1),
             );
             const picks = pickWeighted(pool, count);
-            resolveItems(picks);
+            resolveItems(picks.map((p: any) => ({ ...p, odds: undefined })));
             applyText(pickWeightedText(collectTexts(picks)));
           } else {
             resolveItems(item.bundle);
@@ -283,6 +413,7 @@ export class GameRulesService {
           }
         } else {
           if (item.type === 'text') continue;
+          if (item.type === 'nothing') continue;
           if (item.type === 'flag') {
             if (!this.rollOdds(item.odds, rng)) continue;
             switch (item.operation) {
@@ -290,14 +421,29 @@ export class GameRulesService {
               case 'increment': reqContext.userFlags[item.key] = (typeof reqContext.userFlags[item.key] === 'number' ? reqContext.userFlags[item.key] as number : 0) + Number(item.value ?? 1); break;
               case 'decrement': reqContext.userFlags[item.key] = (typeof reqContext.userFlags[item.key] === 'number' ? reqContext.userFlags[item.key] as number : 0) - Number(item.value ?? 1); break;
               case 'invert':    reqContext.userFlags[item.key] = !reqContext.userFlags[item.key]; break;
+              case 'unset':
               case 'remove':    delete reqContext.userFlags[item.key]; break;
             }
             flags.push({ entry: item });
+          } else if (item.type === 'tempflag') {
+            if (!this.rollOdds(item.odds, rng)) continue;
+            const tf = (reqContext.tempFlags ??= {});
+            switch (item.operation) {
+              case 'set':       tf[item.key] = item.value; break;
+              case 'increment': tf[item.key] = (typeof tf[item.key] === 'number' ? tf[item.key] as number : 0) + Number(item.value ?? 1); break;
+              case 'decrement': tf[item.key] = (typeof tf[item.key] === 'number' ? tf[item.key] as number : 0) - Number(item.value ?? 1); break;
+              case 'invert':    tf[item.key] = !tf[item.key]; break;
+              case 'unset':
+              case 'remove':    delete tf[item.key]; break;
+            }
+          } else if (item.type === 'grant_unlock') {
+            if (!this.rollOdds(item.odds, rng)) continue;
+            deferredUnlocks.push(item.key as string);
           } else if (item.type === 'emitEvent') {
             if (!this.rollOdds(item.odds, rng)) continue;
             resolved.push({ entry: item });
           } else {
-            const amount = rollAmount(item.min || 0, item.max || 0);
+            const amount = rollAmount(item.min ?? 1, item.max ?? item.min ?? 1);
             if (amount <= 0) continue;
             if (!this.rollOdds(item.odds, rng)) continue;
             resolved.push({ entry: item, amount });
@@ -309,15 +455,30 @@ export class GameRulesService {
     resolveItems(items);
     applyText(pickWeightedText(collectTexts(items)));
 
-    return { resolved, texts, flags };
+    const unlocks: { key: string }[] = [];
+    for (const pattern of deferredUnlocks) {
+      const keys = await this.expandUnlockPattern(pattern, reqContext);
+      for (const key of keys) {
+        if (!unlocks.some(u => u.key === key)) {
+          unlocks.push({ key });
+          if (reqContext.userUnlocks && !reqContext.userUnlocks.includes(key)) {
+            reqContext.userUnlocks.push(key);
+          } else if (!reqContext.userUnlocks) {
+            reqContext.userUnlocks = [key];
+          }
+        }
+      }
+    }
+
+    return { resolved, texts, flags, unlocks };
   }
 
-  async resolveName(type: string, key: string): Promise<string> {
+  resolveName(type: string, key: string): string {
     if (type === 'currency') {
-      const cur = await (this.prisma as any).currency.findUnique({ where: { id: key }, select: { name: true } }) as { name?: string } | null;
+      const cur = this.definitionCache.get('currency', key) as { name?: string } | null;
       if (cur?.name) return cur.name;
     } else if (type === 'item') {
-      const item = await (this.prisma as any).itemDefinition.findUnique({ where: { id: key }, select: { name: true } }) as { name?: string } | null;
+      const item = this.definitionCache.get('itemDef', key) as { name?: string } | null;
       if (item?.name) return item.name;
     }
     return key;

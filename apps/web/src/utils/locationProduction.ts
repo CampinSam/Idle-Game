@@ -1,43 +1,5 @@
 const BPS_BASE = 10000;
 
-function getThreatMult(threat: number): number {
-  if (threat <= 20) return 10000;
-  if (threat <= 40) return 9500;
-  if (threat <= 60) return 8500;
-  if (threat <= 80) return 7000;
-  return 5000;
-}
-
-function getBuildingLevelMult(level: number): number {
-  return 10000 + (level - 1) * 500;
-}
-
-function getMaxWorkers(locationLevel: number): number {
-  if (locationLevel >= 50) return 7;
-  if (locationLevel >= 40) return 6;
-  if (locationLevel >= 30) return 5;
-  if (locationLevel >= 20) return 4;
-  if (locationLevel >= 10) return 3;
-  return 2;
-}
-
-function getWorkerMult(workerCount: number, maxWorkers: number): number {
-  if (maxWorkers === 0) return BPS_BASE;
-  const ratio = workerCount / maxWorkers;
-  return Math.floor(5000 + ratio * 5000);
-}
-
-function getRoomProductionMult(rooms: any[], outputKey: string): number {
-  let mult = BPS_BASE;
-  for (const room of rooms) {
-    const roomData = room.data as any;
-    if (roomData?.productionMultBps && roomData.productionMultBps[outputKey]) {
-      mult = Math.floor((mult * Number(roomData.productionMultBps[outputKey])) / BPS_BASE);
-    }
-  }
-  return mult;
-}
-
 function getCapacityForKey(location: any, key: string): number {
   const storageCapacity = location.storage?.capacity || {};
   const [, resourceId] = key.split(':');
@@ -82,6 +44,7 @@ export interface ResourceSummary {
   outputType: string;
   outputRefId: string;
   totalRatePerHour: number;
+  netRatePerHour: number;
   currentAmount: number;
   capacity: number;
   generators: GeneratorProduction[];
@@ -94,45 +57,39 @@ export function computeGeneratorProduction(
     (b: any) => b.enabled && b.status !== 'building',
   );
 
-  const maxWorkers = getMaxWorkers(location.level);
-  const workerCount = (location.workers || []).length;
-  const workerMultBps = getWorkerMult(workerCount, maxWorkers);
-  const threatMultBps = getThreatMult(location.threatLevel || 0);
-
-  const results: GeneratorProduction[] = [];
-
-  for (const building of generators) {
-    if (!building.outputRefId || building.outputRefId === 'null') continue;
-    const resourcePerHour = Number(building.resourcePerHour || 0);
-    const buildingMultBps = getBuildingLevelMult(building.level);
-    const key = `${building.outputType}:${building.outputRefId}`;
-
-    const allRooms = (location.buildings || []).flatMap((b: any) => b.rooms || []);
-    const roomMultBps = getRoomProductionMult(allRooms, key);
-
-    let output = resourcePerHour;
-    output = (output * buildingMultBps) / BPS_BASE;
-    output = (output * workerMultBps) / BPS_BASE;
-    output = (output * roomMultBps) / BPS_BASE;
-    output = (output * threatMultBps) / BPS_BASE;
-
-    results.push({
+  return generators
+    .filter((b: any) => b.outputRefId && b.outputRefId !== 'null')
+    .map((building: any) => ({
       buildingId: building.id,
-      buildingName: building.name || building.refId || building.id,
+      buildingName: building.name || building.id,
       buildingLevel: building.level,
-      resourceKey: key,
+      resourceKey: `${building.outputType}:${building.outputRefId}`,
       outputType: building.outputType,
       outputRefId: building.outputRefId,
-      ratePerHour: output,
-    });
-  }
+      ratePerHour: Number(building.effectiveResourcePerHour ?? building.resourcePerHour ?? 0),
+    }));
+}
 
-  return results;
+export function computeConsumptionFromBuildings(
+  location: any,
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const b of (location.buildings || [])) {
+    if (!b.enabled || b.status === 'building') continue;
+    const rates = b.consumptionRates as Record<string, number> | undefined;
+    if (!rates) continue;
+    for (const [resId, rate] of Object.entries(rates)) {
+      result[resId] = (result[resId] || 0) + Number(rate);
+    }
+  }
+  return result;
 }
 
 export function aggregateByResource(
   location: any,
   generators: GeneratorProduction[],
+  consumptionRates: Record<string, number> = {},
+  resourceTypes: Record<string, string> = {},
 ): ResourceSummary[] {
   const storageByKey = new Map<string, number>();
   for (const sb of (location.storageBalances || [])) {
@@ -164,6 +121,14 @@ export function aggregateByResource(
   const allKeys = new Set<string>();
   for (const [k] of grouped) allKeys.add(k);
   for (const [k] of storageByKey) allKeys.add(k);
+  for (const resId of Object.keys(consumptionRates)) {
+    let outType = resourceTypes[resId];
+    if (!outType) {
+      const existingKey = [...allKeys].find((k) => k.endsWith(`:${resId}`));
+      outType = existingKey ? existingKey.split(':')[0] : 'ITEM';
+    }
+    allKeys.add(`${outType}:${resId}`);
+  }
 
   const results: ResourceSummary[] = [];
   for (const key of allKeys) {
@@ -171,12 +136,17 @@ export function aggregateByResource(
     const group = grouped.get(key);
     const capacity = getCapacityForKey(location, key);
     const currentAmount = storageByKey.get(key) ?? 0;
+    const totalRate = group?.totalRatePerHour ?? 0;
+    const resId = outputRefId ?? '';
+    const consumed = Number(consumptionRates[resId] || 0);
+    const netRate = totalRate - consumed;
 
     results.push({
       key,
       outputType: group?.outputType ?? outputType ?? '',
-      outputRefId: group?.outputRefId ?? outputRefId ?? '',
-      totalRatePerHour: group?.totalRatePerHour ?? 0,
+      outputRefId: group?.outputRefId ?? resId,
+      totalRatePerHour: totalRate,
+      netRatePerHour: netRate,
       currentAmount,
       capacity,
       generators: group?.generators ?? [],
@@ -187,10 +157,12 @@ export function aggregateByResource(
 }
 
 export function formatRate(ratePerHour: number): string {
-  if (!isFinite(ratePerHour) || ratePerHour < 0) return '0';
-  if (ratePerHour >= 1000) return `${(ratePerHour / 1000).toFixed(1)}k`;
-  if (ratePerHour >= 1) return `${Math.round(ratePerHour)}`;
-  if (ratePerHour > 0) return `${ratePerHour.toFixed(1)}`;
+  if (!isFinite(ratePerHour)) return '0';
+  const abs = Math.abs(ratePerHour);
+  const sign = ratePerHour < 0 ? '-' : '';
+  if (abs >= 1000) return `${sign}${(abs / 1000).toFixed(1)}k`;
+  if (abs >= 1) return `${sign}${Math.round(abs)}`;
+  if (abs > 0) return `${sign}${abs.toFixed(1)}`;
   return '0';
 }
 
@@ -198,4 +170,46 @@ export function formatAmount(amount: number): string {
   if (!isFinite(amount) || amount < 0) return '0';
   if (amount >= 10000) return `${(amount / 1000).toFixed(1)}k`;
   return `${Math.floor(amount)}`;
+}
+
+export function formatTimeRemaining(hours: number): string {
+  if (!isFinite(hours) || hours <= 0) return '0m';
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    const h = Math.floor(hours % 24);
+    return h > 0 ? `${days}d ${h}h` : `${days}d`;
+  }
+  if (hours >= 1) {
+    let h = Math.floor(hours);
+    let m = Math.round((hours - h) * 60);
+    if (m >= 60) {
+      h += 1;
+      m = 0;
+    }
+    if (h >= 24) {
+      const days = Math.floor(h / 24);
+      const rh = h % 24;
+      return rh > 0 ? `${days}d ${rh}h` : `${days}d`;
+    }
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+  return `${Math.max(1, Math.round(hours * 60))}m`;
+}
+
+export function computeInventoryAmount(
+  outputType: string,
+  outputRefId: string,
+  items: Record<string, any>,
+  currencyBalances: Record<string, number>,
+): number {
+  if (outputType === 'CURRENCY') {
+    return Number(currencyBalances[outputRefId] ?? 0);
+  }
+  let total = 0;
+  for (const item of Object.values(items)) {
+    if ((item.definitionId || item.itemDefId) === outputRefId) {
+      total += Number(item.amount ?? item.quantity ?? 1);
+    }
+  }
+  return total;
 }

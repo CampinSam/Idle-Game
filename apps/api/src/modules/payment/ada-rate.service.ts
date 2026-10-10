@@ -1,0 +1,203 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+
+const HARDCODED_FALLBACK_LOVELACE_PER_USD = 2_000_000;
+const DEFAULT_TWA_WINDOW_SECONDS = 3_600;
+
+export interface AdaRateSnapshot {
+  lovelacePerUsd: number;
+  usdPrice: number;
+  lovelaceAmount: number;
+  twaWindowSeconds: number;
+  sampleCount: number;
+  computedAt: string;
+  usingFallback: boolean;
+}
+
+@Injectable()
+export class AdaRateService {
+  private readonly logger = new Logger(AdaRateService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getLovelacePerUsd(): Promise<number> {
+    const { rate } = await this.computeTwa();
+    return rate;
+  }
+
+  async getRateSnapshot(usdPrice: number): Promise<{ 'ADA/USD': AdaRateSnapshot }> {
+    const { rate, sampleCount, twaWindowSeconds, usingFallback, newestSampleAt } = await this.computeTwa();
+    const lovelaceAmount = Math.ceil(usdPrice * rate);
+    return {
+      'ADA/USD': {
+        lovelacePerUsd: rate,
+        usdPrice,
+        lovelaceAmount,
+        twaWindowSeconds,
+        sampleCount,
+        // Use the actual oracle sample timestamp so callers (purchase responses,
+        // checkout UI) accurately reflect when the price data was last fetched,
+        // not when this snapshot was computed for this request.
+        computedAt: newestSampleAt ?? new Date().toISOString(),
+        usingFallback,
+      },
+    };
+  }
+
+  async getCurrentStatus(): Promise<{
+    lovelacePerUsd: number;
+    usdPerAda: number;
+    sampleCount: number;
+    twaWindowSeconds: number;
+    oldestSampleAt: string | null;
+    newestSampleAt: string | null;
+    usingFallback: boolean;
+  }> {
+    const { rate, sampleCount, twaWindowSeconds, usingFallback, newestSampleAt, oldestSampleAt } =
+      await this.computeTwa();
+
+    return {
+      lovelacePerUsd: rate,
+      usdPerAda: rate > 0 ? +(1_000_000 / rate).toFixed(6) : 0,
+      sampleCount,
+      twaWindowSeconds,
+      oldestSampleAt,
+      newestSampleAt,
+      usingFallback,
+    };
+  }
+
+  private async computeTwa(): Promise<{
+    rate: number;
+    sampleCount: number;
+    twaWindowSeconds: number;
+    usingFallback: boolean;
+    newestSampleAt: string | null;
+    oldestSampleAt: string | null;
+  }> {
+    let twaWindowSeconds = DEFAULT_TWA_WINDOW_SECONDS;
+    let configFallback: number | null = null;
+
+    try {
+      const config = await (this.prisma as any).cryptoRateConfig.findUnique({
+        where: { currencyCode: 'ADA' },
+      });
+      if (config) {
+        twaWindowSeconds = config.twaWindowSeconds;
+        // Use the admin-configured fallback (BigInt → number)
+        if (config.fallbackLovelacePerUsd) {
+          configFallback = Number(config.fallbackLovelacePerUsd);
+        }
+      }
+    } catch {
+      /* table may not exist yet during initial migration */
+    }
+
+    const fallbackRate = configFallback ?? this.getEnvFallbackRate();
+    const windowCutoff = new Date(Date.now() - twaWindowSeconds * 1_000);
+
+    // Fetch samples within the window
+    let inWindowSamples: Array<{ lovelacePerUsd: bigint; fetchedAt: Date }> = [];
+    // The latest sample BEFORE the window cutoff, to correctly weight the oldest edge
+    let priorSample: { lovelacePerUsd: bigint; fetchedAt: Date } | null = null;
+
+    try {
+      inWindowSamples = await (this.prisma as any).cryptoRateSample.findMany({
+        where: { currencyCode: 'ADA', fetchedAt: { gte: windowCutoff } },
+        orderBy: { fetchedAt: 'asc' },
+        select: { lovelacePerUsd: true, fetchedAt: true },
+      });
+
+      priorSample = await (this.prisma as any).cryptoRateSample.findFirst({
+        where: { currencyCode: 'ADA', fetchedAt: { lt: windowCutoff } },
+        orderBy: { fetchedAt: 'desc' },
+        select: { lovelacePerUsd: true, fetchedAt: true },
+      });
+    } catch {
+      /* table may not exist yet */
+    }
+
+    if (inWindowSamples.length === 0 && !priorSample) {
+      return {
+        rate: fallbackRate,
+        sampleCount: 0,
+        twaWindowSeconds,
+        usingFallback: true,
+        newestSampleAt: null,
+        oldestSampleAt: null,
+      };
+    }
+
+    // Build the ordered sample list for TWA computation.
+    // If there's a prior sample, it anchors the window start at windowCutoff.
+    const samples = inWindowSamples;
+    const now = Date.now();
+    const windowCutoffMs = windowCutoff.getTime();
+
+    // Track the oldest and newest sample timestamps from the data we already have.
+    const allSamples = priorSample ? [priorSample, ...samples] : samples;
+    const oldestSampleAt =
+      allSamples.length > 0 ? allSamples[0].fetchedAt.toISOString() : null;
+    const newestSampleAt =
+      allSamples.length > 0 ? allSamples[allSamples.length - 1].fetchedAt.toISOString() : null;
+
+    let totalWeight = 0;
+    let weightedSum = 0;
+
+    if (priorSample) {
+      // The prior sample was active from windowCutoff until the first in-window sample
+      const nextTime =
+        samples.length > 0 ? samples[0].fetchedAt.getTime() : now;
+      const weight = nextTime - windowCutoffMs;
+      if (weight > 0) {
+        weightedSum += Number(priorSample.lovelacePerUsd) * weight;
+        totalWeight += weight;
+      }
+    }
+
+    for (let i = 0; i < samples.length; i++) {
+      const sampleTime = samples[i].fetchedAt.getTime();
+      const nextTime =
+        i + 1 < samples.length ? samples[i + 1].fetchedAt.getTime() : now;
+      const weight = nextTime - sampleTime;
+      if (weight > 0) {
+        weightedSum += Number(samples[i].lovelacePerUsd) * weight;
+        totalWeight += weight;
+      }
+    }
+
+    if (totalWeight === 0) {
+      // Only the prior sample spans the window exactly at the boundary
+      const lastRate = priorSample
+        ? Number(priorSample.lovelacePerUsd)
+        : Number(samples[samples.length - 1].lovelacePerUsd);
+      return {
+        rate: lastRate,
+        sampleCount: samples.length,
+        twaWindowSeconds,
+        usingFallback: false,
+        newestSampleAt,
+        oldestSampleAt,
+      };
+    }
+
+    const twa = Math.round(weightedSum / totalWeight);
+    return {
+      rate: twa,
+      sampleCount: samples.length + (priorSample ? 1 : 0),
+      twaWindowSeconds,
+      usingFallback: false,
+      newestSampleAt,
+      oldestSampleAt,
+    };
+  }
+
+  private getEnvFallbackRate(): number {
+    const envVal = process.env.LOVELACE_PER_USD;
+    if (envVal) {
+      const parsed = parseInt(envVal, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    return HARDCODED_FALLBACK_LOVELACE_PER_USD;
+  }
+}

@@ -24,6 +24,8 @@ export interface AllowedRoomEntry {
   minCount?: number;
 }
 
+export type OnStarveBehavior = 'starved' | 'paused';
+
 export interface LevelBlock {
   xpThreshold?: number;
   workers?: { slots: number; rules?: Record<string, any> };
@@ -31,8 +33,10 @@ export interface LevelBlock {
   rooms?: { allowed?: AllowedRoomEntry[] };
   storage?: ResourceEntry[];
   production?: ResourceEntry[];
+  consumption?: ResourceEntry[];
   constructionCost?: ResourceEntry[];
   effects?: Record<string, any>;
+  onStarve?: OnStarveBehavior;
   timer?: { duration: number };
   [key: string]: any;
 }
@@ -169,6 +173,24 @@ export function resolveProductionRates(
   return result;
 }
 
+export function resolveConsumptionRates(
+  entries: ResourceEntry[] | undefined,
+  level: number,
+): Record<string, number> {
+  if (!entries || entries.length === 0) return {};
+  const result: Record<string, number> = {};
+  for (const entry of entries) {
+    const rate = calcGrowth(
+      entry.ratePerHour ?? 0,
+      entry.growthRate,
+      entry.growthScalar,
+      level,
+    );
+    result[entry.id] = rate;
+  }
+  return result;
+}
+
 export function resolveConstructionCosts(
   entries: ResourceEntry[] | undefined,
   level: number,
@@ -184,6 +206,106 @@ export function resolveConstructionCosts(
       level,
     ),
   }));
+}
+
+export interface LocationLevelUnlocks {
+  workerSlotsAdded: number;
+  buildingSlotsAdded: number;
+  newAllowedBuildings: string[];
+  newAllowedRooms: string[];
+  storageAdded: Array<{ type: string; id: string; addedCapacity: number }>;
+  productionAdded: Array<{ type: string; id: string; addedRate: number }>;
+}
+
+export function diffLocationLevelUnlocks(
+  rules: LevelRules,
+  fromLevel: number,
+  toLevel: number,
+): LocationLevelUnlocks {
+  const fromCfg = resolveLevelConfig(rules, fromLevel);
+  const toCfg = resolveLevelConfig(rules, toLevel);
+
+  // Allowed buildings/rooms: use cumulative resolvers so intermediate
+  // levels' unlocks are not lost when jumping multiple levels at once
+  // (resolveLevelConfig replaces arrays on deepMerge).
+  const fromAllowedB = new Set(
+    resolveAllowedBuildings(rules, fromLevel).map((a) => a.buildingDefId),
+  );
+  const newAllowedBuildings = resolveAllowedBuildings(rules, toLevel)
+    .map((a) => a.buildingDefId)
+    .filter((id) => id && !fromAllowedB.has(id));
+
+  const fromAllowedR = new Set(
+    resolveAllowedRooms(rules, fromLevel).map((a) => a.roomDefId),
+  );
+  const newAllowedRooms = resolveAllowedRooms(rules, toLevel)
+    .map((a) => a.roomDefId)
+    .filter((id) => id && !fromAllowedR.has(id));
+
+  // Storage/production: resolve concrete per-level snapshots (which apply
+  // growth) and diff by id. Resources introduced only at toLevel correctly
+  // diff against 0, and entries whose config changes between levels use
+  // the proper basis on each side.
+  const fromStorageById = resolveStorageCapacity(fromCfg.storage, fromLevel);
+  const toStorageById = resolveStorageCapacity(toCfg.storage, toLevel);
+  const storageTypeById = new Map<string, string>();
+  for (const s of (fromCfg.storage as ResourceEntry[]) || []) {
+    if (s?.id) storageTypeById.set(s.id, s.type);
+  }
+  for (const s of (toCfg.storage as ResourceEntry[]) || []) {
+    if (s?.id) storageTypeById.set(s.id, s.type);
+  }
+  const storageAdded: Array<{ type: string; id: string; addedCapacity: number }> = [];
+  for (const id of new Set([
+    ...Object.keys(fromStorageById),
+    ...Object.keys(toStorageById),
+  ])) {
+    const before = fromStorageById[id] ?? 0;
+    const after = toStorageById[id] ?? 0;
+    const delta = after - before;
+    if (delta > 0) {
+      storageAdded.push({
+        type: storageTypeById.get(id) ?? 'currency',
+        id,
+        addedCapacity: delta,
+      });
+    }
+  }
+
+  const fromProdById = resolveProductionRates(fromCfg.production, fromLevel);
+  const toProdById = resolveProductionRates(toCfg.production, toLevel);
+  const prodTypeById = new Map<string, string>();
+  for (const p of (fromCfg.production as ResourceEntry[]) || []) {
+    if (p?.id) prodTypeById.set(p.id, p.type);
+  }
+  for (const p of (toCfg.production as ResourceEntry[]) || []) {
+    if (p?.id) prodTypeById.set(p.id, p.type);
+  }
+  const productionAdded: Array<{ type: string; id: string; addedRate: number }> = [];
+  for (const id of new Set([
+    ...Object.keys(fromProdById),
+    ...Object.keys(toProdById),
+  ])) {
+    const before = fromProdById[id] ?? 0;
+    const after = toProdById[id] ?? 0;
+    const delta = after - before;
+    if (delta > 0) {
+      productionAdded.push({
+        type: prodTypeById.get(id) ?? 'currency',
+        id,
+        addedRate: delta,
+      });
+    }
+  }
+
+  return {
+    workerSlotsAdded: Math.max(0, (toCfg.workers?.slots ?? 0) - (fromCfg.workers?.slots ?? 0)),
+    buildingSlotsAdded: Math.max(0, (toCfg.buildings?.slots ?? 0) - (fromCfg.buildings?.slots ?? 0)),
+    newAllowedBuildings,
+    newAllowedRooms,
+    storageAdded,
+    productionAdded,
+  };
 }
 
 export function calcXpForLevel(rules: LevelRules, targetLevel: number): number {
