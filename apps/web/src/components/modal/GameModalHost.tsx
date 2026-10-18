@@ -11,9 +11,20 @@ import { audioEngine } from '../../services/AudioEngine';
 import GameModal from './GameModal';
 
 export default function GameModalHost() {
-  const { currentModal, dismissModal, replaceModal } = useModal();
-  const navigate = useNavigate();
+  const { currentModalGeneration } = useModal();
   const { execute } = useCommand();
+  return currentModalGeneration === null ? null : <ModalSession key={currentModalGeneration} generation={currentModalGeneration} execute={execute} />;
+}
+
+// A queue entry owns its asynchronous UI work. Command patches still apply after
+// unmount; only follow-up presentation is discarded when the entry has changed.
+function ModalSession({ generation, execute }: { generation: number; execute: ReturnType<typeof useCommand>['execute'] }) {
+  const { currentModal, dismissModal: dismiss, replaceModal: replace } = useModal();
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
+  const dismissModal = useCallback(() => dismiss(generation), [dismiss, generation]);
+  const replaceModal = useCallback((spec: Parameters<typeof replace>[0]) => replace(spec, generation), [replace, generation]);
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const jobs = useAppSelector((s) => s.sync.jobs);
   const syncStatus = useAppSelector((s) => s.sync.status);
@@ -29,6 +40,7 @@ export default function GameModalHost() {
 
   const handleNavigate = useCallback(
     (route: string) => {
+      if (!active.current) return;
       navigate(route.startsWith('/') ? route : `/${route}`);
     },
     [navigate],
@@ -36,13 +48,14 @@ export default function GameModalHost() {
 
   const tryFetchFollowUp = useCallback(
     async (params: { jobId?: string; notificationId?: string; giftId?: string }): Promise<boolean> => {
+      if (!active.current) return false;
       const origin = modalRef.current;
       const sequence = ++refreshSequence.current;
       setRefreshing(true);
       setRefreshError(null);
       try {
         const spec = await api.getModalSpec(params);
-        if (modalRef.current !== origin || sequence !== refreshSequence.current) return false;
+        if (!active.current || modalRef.current !== origin || sequence !== refreshSequence.current) return false;
         if (spec?.version === 1) {
           if (params.jobId && missionBinding.current?.id === params.jobId &&
             ['completed', 'failed', 'abandoned'].includes(jobStateRef.current[params.jobId]?.status)) {
@@ -52,11 +65,11 @@ export default function GameModalHost() {
           return true;
         }
       } catch (error: any) {
-        if (modalRef.current === origin && sequence === refreshSequence.current) {
+        if (active.current && modalRef.current === origin && sequence === refreshSequence.current) {
           setRefreshError(error?.message || 'Could not refresh mission. Retry to get current actions.');
         }
       } finally {
-        if (sequence === refreshSequence.current) setRefreshing(false);
+        if (active.current && sequence === refreshSequence.current) setRefreshing(false);
       }
       return false;
     },
