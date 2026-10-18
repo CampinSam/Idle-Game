@@ -130,8 +130,6 @@ export default function MissionsContent() {
     return `${Math.round(dur / 60)}m`;
   };
 
-  if (syncStatus === 'disconnected') return <MissionsPageSkeleton />;
-
   const idleEntities = entities.filter((b: any) => b.status === 'idle');
 
   const handleBackFromMissionDetail = () => {
@@ -160,9 +158,12 @@ export default function MissionsContent() {
     }
   }, [execute, pushModal]);
 
+  if (syncStatus === 'disconnected') return <MissionsPageSkeleton />;
+
   if (currentCategoryId && selectedMission && selectedDef && currentCat) {
     return (
       <MissionBuilder
+        key={selectedDef.id}
         selectedDef={selectedDef}
         currentCat={currentCat}
         missionCategoryDefs={missionCategoryDefs}
@@ -173,7 +174,7 @@ export default function MissionsContent() {
         inventoryItems={inventoryItems}
         error={error}
         onBack={handleBackFromMissionDetail}
-        onMissionStarted={backToCategories}
+        onMissionStarted={nav.resetSelection}
       />
     );
   }

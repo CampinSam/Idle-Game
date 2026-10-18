@@ -378,8 +378,9 @@ function PassThroughLayout({
   actionCtx: ActionHandlerContext;
   visibilityCtx: ClientVisibilityContext;
 }) {
+  const missionSurface = sections.length === 1 && sections[0].component === 'MissionBrowser';
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-x-hidden overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className={missionSurface ? 'flex-1 min-h-0 flex flex-col overflow-hidden' : 'flex-1 min-h-0 flex flex-col overflow-x-hidden overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]'}>
       {sections.map((section) => (
         <SectionRenderer
           key={section.id}

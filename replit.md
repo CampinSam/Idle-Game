@@ -125,3 +125,26 @@ The frontend (`apps/web`) can be deployed independently to Vercel while the back
 - **pnpm Documentation**: `https://pnpm.io/`
 - **Cardano CIP-30**: `https://cips.cardano.org/cip/cip30/`
 - **Cardano CIP-8**: `https://cips.cardano.org/cip/cip8/`
+
+## Local mission-flow pilot (no backend)
+
+With frontend dependencies and shared packages built, run:
+
+```bash
+pnpm --filter @derp/web exec vite --host 127.0.0.1 --port 15000 --strictPort
+# Open http://127.0.0.1:15000/mission-pilot.html?phases=2 (or phases=1)
+```
+
+This separate development entry uses synthetic fixtures and disables fetch calls;
+it is not imported by the application or production build. It exercises the real
+mission screen, store, command hook, content blocks and dialog host. It is not a
+backend gameplay simulator. The `window.missionPilot` development controls advance
+fixture phase readiness, change a balance/team availability, or simulate reconnect.
+
+If Playwright and Chromium are already available, run `node scripts/check-mission-pilot.mjs`.
+`PLAYWRIGHT_MODULE` can specify an installed Playwright module path;
+`CHROMIUM_PATH` defaults to `/usr/bin/chromium`. Evidence is written to
+`MISSION_EVIDENCE_DIR` (default `/tmp/mission-pilot-evidence`). The check permits
+only localhost requests and verifies 320×720, 390×844 and 844×390 lifecycle scenarios.
+Its reconnect controls exercise Redux state changes; real server SSE/DB validation
+remains a separate check when backend prerequisites are restored.

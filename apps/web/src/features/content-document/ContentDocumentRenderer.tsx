@@ -1,3 +1,4 @@
+import { assertMissionPresentation } from '@derp/shared';
 import { useState, useEffect } from 'react';
 import type {
   ContentDocumentDefinition,
@@ -78,13 +79,22 @@ export function ContentDocumentRenderer({
     ...baseContext,
   };
 
+  const presentation = effectiveContext.missionPresentation;
+  try { assertMissionPresentation(presentation); } catch (error) {
+    return <p role="alert">{(error as Error).message}</p>;
+  }
+  const missionDocument = effectiveContext.missionMode === 'planning';
+  const presentationClass = missionDocument
+    ? `${presentation?.spacing === 'compact' ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-2'} ${presentation?.variant === 'panel' ? 'rounded-xl bg-bg-secondary' : ''}`
+    : '';
+
   return (
     <SurfaceContextProvider
       baseContext={effectiveContext}
       overrideRules={overrideRules}
       data={data}
     >
-      <div className={className}>
+      <div className={`${className ?? ''} ${presentationClass}`}>
         {doc.blocks.map((block, i) => {
           const Comp = BLOCK_REGISTRY[block.type];
           if (!Comp) return null;

@@ -121,6 +121,7 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
   const [isSticky, setIsSticky] = useState(false);
 
   useEffect(() => {
+    if (data.scrollOwner === 'surface') return;
     const el = ref.current;
     if (!el) return;
 
@@ -176,12 +177,12 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
       if (scrollEl && scrollHandler) scrollEl.removeEventListener('scroll', scrollHandler);
       if (contentDiv) contentDiv.style.minHeight = '';
     };
-  }, []);
+  }, [data.scrollOwner]);
 
   return (
     <div
       ref={ref}
-      className="sticky top-0 z-10 flex flex-col gap-3 -mt-px pt-px pb-1"
+      className={data.scrollOwner === 'surface' ? 'flex flex-col gap-3 pb-1' : 'sticky top-0 z-10 flex flex-col gap-3 -mt-px pt-px pb-1'}
       style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
     >
       <div className="grid grid-cols-2 gap-3">

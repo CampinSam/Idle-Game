@@ -2404,3 +2404,13 @@ The examples above are deliberately cross-referenced to mirror real production c
 - **Example 1**'s consolation bundle references `soft_arcanium` — the same currency used throughout both other examples.
 
 This is the normal shape of a game's content graph: items flow from hard content (expeditions) through player progression (level-ups, check-ins) into craft inputs (recipes). Build new content by first identifying where it fits in this graph, then creating definitions from the leaves inward (EffectDefs and BundleDefs first, then Items, then Missions or CheckInDefs that reference them).
+
+
+## Mission planning layout pilot
+
+The existing `mission_planning_document` content document supports optional
+`context.missionPresentation`: `{ "version": 1, "spacing": "compact", "variant": "panel" }`.
+Choose `compact`/`comfortable` spacing and `plain`/`panel` surface in the content-document
+editor. Existing documents need no changes. Keep using registered mission blocks
+for order and content; this pilot does not add custom CSS, scripts, formulas, or
+independent nested scrolling. See `render-blocks.md` for the exact presentation contract.

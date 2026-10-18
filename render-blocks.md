@@ -1072,3 +1072,28 @@ Each entry in `pages` is a `ModalPageSpec`. The page's `header`, `buttons`, and 
 | `PRESTIGE` | — | Triggers a prestige reset. |
 | `SKIP` | `targetType: string`, `targetId: string` | Skips a timer-based target (e.g. a job or cooldown). |
 | `EXECUTE_COMMAND` | `command: string`, `payload: Record<string, unknown>` | Executes a backend command and dismisses the modal on success. On error, shows a local error toast and leaves the modal open. Use for atomic server-side operations triggered from a modal button (e.g. outpost swap). |
+
+
+## Mission planning pilot presentation
+
+`mission_planning_document` retains its existing ordered block vocabulary. Its optional
+`context.missionPresentation` field accepts only:
+
+```json
+{ "version": 1, "spacing": "compact", "variant": "panel" }
+```
+
+`spacing` is `compact` or `comfortable`; `variant` is `plain` or `panel`.
+Omitting the object preserves comfortable/plain defaults. The content-document
+editor provides these controls and the composer validates them before saving.
+The renderer rejects unsupported versions/options at runtime. No CSS strings,
+expressions, additional endpoints or gameplay calculations are accepted.
+
+The mission surface owns vertical scrolling. Mission blocks and the inline team
+picker flow within it; the pilot does not apply the legacy sticky-collapse height
+lock. Active jobs, browse content and history share one scroll region. Short
+landscape mission dialogs scroll as a whole so their actions remain reachable.
+
+Planning binds to current entity IDs and requests a fresh server preview after
+relevant game state changes. Open mission dialogs refresh from the existing server
+spec on job transitions and reconnect; completed reports remain historical snapshots.

@@ -1,3 +1,4 @@
+import { assertMissionPresentation } from '@derp/shared';
 import { Component, useState, useEffect, useCallback, useRef, useMemo, createContext, useContext } from 'react';
 import { adminApi, getAdminToken } from '../adminApi';
 import { api } from '../../../services/api';
@@ -3187,6 +3188,7 @@ function DefinitionEditor({
       }
     }
     if (form.type === 'content_document') {
+      try { assertMissionPresentation(data?.context?.missionPresentation); } catch (error) { return (error as Error).message; }
       const allBlocks: any[] = Array.isArray(data?.blocks) ? data.blocks : [];
       for (let i = 0; i < allBlocks.length; i++) {
         const block = allBlocks[i];
