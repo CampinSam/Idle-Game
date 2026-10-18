@@ -1,5 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
+import { useState } from 'react';
+import { useModal } from '../../../context/ModalContext';
 import { MissionBuilder } from './MissionBuilder';
 import { renderWithProviders, makeTestStore } from '../../../test/render';
 import { api } from '../../../services/api';
@@ -18,7 +20,11 @@ function mount() {
   const store = makeTestStore({ ...base, game: { ...base.game, missionDefs: [missionDef], missionCategoryDefs: [missionCategory] },
     sync: { ...base.sync, status: 'connected', cursor: '1', entities: { [pilotEntity.id]: pilotEntity } } });
   const started = vi.fn();
-  renderWithProviders(<MissionBuilder defId={missionDef.id} initialSelectedEntities={[pilotEntity.id]} onMissionStarted={started} />, { store });
+  function ModalProbe() {
+    const { currentModal } = useModal();
+    return currentModal ? <div role="dialog">{currentModal.header?.title}</div> : null;
+  }
+  renderWithProviders(<><MissionBuilder defId={missionDef.id} initialSelectedEntities={[pilotEntity.id]} onMissionStarted={started} /><ModalProbe /></>, { store });
   return { store, started };
 }
 it('requires a fresh server preview after balance/reconnect changes and invalidates unavailable team members', async () => {
@@ -59,4 +65,45 @@ it('applies the started job and opens its current server dialog', async () => {
   await waitFor(() => expect(started).toHaveBeenCalledOnce());
   expect(store.getState().sync.jobs['job-pilot'].status).toBe('active');
   expect(api.getModalSpec).toHaveBeenCalledWith({ jobId: 'job-pilot' });
+  expect(screen.getByRole('dialog')).toHaveTextContent('Survey in progress');
 });
+
+it.each(['command', 'spec'].flatMap(boundary => ['back', 'switch', 'unmount', 'switch-back'].map(exit => ({ boundary, exit }))))(
+  'discards stale start UI after $exit during $boundary, retaining job patches', async ({ boundary, exit }) => {
+    const pendingCommand = deferred<any>();
+    const pendingSpec = deferred<any>();
+    const response = { patches: [{ op: 'upsert' as const, entity: 'job' as const, id: 'job-pilot', data: missionJob() }], ui: [], cursor: { delta: '2' } };
+    vi.mocked(api.sendCommand).mockReturnValue(boundary === 'command' ? pendingCommand.promise : Promise.resolve(response));
+    vi.mocked(api.getModalSpec).mockReturnValue(pendingSpec.promise);
+    const started = vi.fn(); const back = vi.fn();
+    const other = { ...missionDef, id: 'other-mission', name: 'Other mission' };
+    function Harness() {
+      const [defId, setDefId] = useState(missionDef.id);
+      const [visible, setVisible] = useState(true);
+      const { currentModal } = useModal();
+      return <>
+        <button onClick={() => setDefId(other.id)}>Switch</button>
+        <button onClick={() => setDefId(missionDef.id)}>Return</button>
+        <button onClick={() => setVisible(false)}>Unmount</button>
+        {visible && <MissionBuilder defId={defId} initialSelectedEntities={[pilotEntity.id]} onBack={back} onMissionStarted={started} />}
+        {currentModal && <div role="dialog">{currentModal.header?.title}</div>}
+      </>;
+    }
+    const base = makeTestStore().getState();
+    const store = makeTestStore({ ...base, game: { ...base.game, missionDefs: [missionDef, other], missionCategoryDefs: [missionCategory] },
+      sync: { ...base.sync, status: 'connected', cursor: '1', entities: { [pilotEntity.id]: pilotEntity } } });
+    renderWithProviders(<Harness />, { store });
+    await waitFor(() => expect(screen.getByRole('button', { name: /start mission/i })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: /start mission/i }));
+    if (boundary === 'spec') await waitFor(() => expect(api.getModalSpec).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole('button', { name: exit === 'back' ? /← Back/ : exit === 'unmount' ? 'Unmount' : 'Switch' }));
+    if (exit === 'switch-back') fireEvent.click(screen.getByRole('button', { name: 'Return' }));
+    if (boundary === 'command') await act(async () => pendingCommand.resolve(response));
+    await act(async () => pendingSpec.resolve(missionModal()));
+    expect(store.getState().sync.jobs['job-pilot'].status).toBe('active');
+    expect(started).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    if (boundary === 'command') expect(api.getModalSpec).not.toHaveBeenCalled();
+    if (exit === 'back') expect(back).toHaveBeenCalledOnce();
+  },
+);

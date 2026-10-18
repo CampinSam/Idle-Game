@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import ItemQty from '../../../components/ItemQty';
 import { useAppSelector } from '../../../store';
 import { useSyncEntities } from '../../../hooks/useSyncSelectors';
@@ -28,8 +28,20 @@ export interface MissionBuilderProps {
 }
 
 export function MissionBuilder(props: MissionBuilderProps) {
-  const { onBack, onMissionStarted } = props;
   const { execute } = useCommand();
+  return <MissionBuilderSession key={props.defId ?? props.selectedDef?.id ?? ''} {...props} execute={execute} />;
+}
+
+function MissionBuilderSession(props: MissionBuilderProps & { execute: ReturnType<typeof useCommand>['execute'] }) {
+  const { onMissionStarted, execute, onBack: leavePlanning } = props;
+  // A fresh instance per selected mission also protects A → B → A. Back
+  // invalidates synchronously, even when the parent has not unmounted yet.
+  const active = useRef(true);
+  useLayoutEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
+  const onBack = useMemo(() => leavePlanning ? () => {
+    active.current = false;
+    leavePlanning();
+  } : undefined, [leavePlanning]);
   const { pushModal } = useModal();
 
   const storeEntities = useSyncEntities();
@@ -58,7 +70,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
     if (!rawActiveDef) return;
     try {
       const spec = await api.getMissionLeadIn(rawActiveDef.id);
-      if (spec?.version === 1) pushModal(spec);
+      if (active.current && spec?.version === 1) pushModal(spec);
     } catch (err) {
       console.error('[MissionBuilder] Failed to fetch lead-in modal:', err);
     }
@@ -144,12 +156,14 @@ export function MissionBuilder(props: MissionBuilderProps) {
   }, [teamMax]);
 
   const handleStart = async () => {
-    if (!rawActiveDef || !canStart || startingRef.current) return;
+    if (!active.current || !rawActiveDef || !canStart || startingRef.current) return;
     startingRef.current = true;
     setStarting(true);
     setPlanningError('');
     try {
       const res = await execute('StartMission', { defId: rawActiveDef.id, entityIds: selectedEntities });
+      // execute applies authoritative patches regardless of this view's lifetime.
+      if (!active.current) return;
       audioEngine.play('sfx.mission.start');
       const newJobPatch = (res?.patches ?? []).find(
         (p: any) => p.op === 'upsert' && p.entity === 'job' && p.data?.defId === rawActiveDef.id,
@@ -157,19 +171,21 @@ export function MissionBuilder(props: MissionBuilderProps) {
       if (newJobPatch) {
         try {
           const spec = await api.getModalSpec({ jobId: newJobPatch.id });
+          if (!active.current) return;
           if (spec?.version === 1) pushModal(spec);
         } catch (err) {
           console.error('[MissionBuilder] Failed to open mission modal:', err);
         }
       }
-      onMissionStarted?.();
+      if (active.current) onMissionStarted?.();
     } catch (e: any) {
+      if (!active.current) return;
       audioEngine.play('ui.error');
       setPlanningError(e.message || 'Failed to start mission');
       setPreviewAttempt(n => n + 1);
     } finally {
       startingRef.current = false;
-      setStarting(false);
+      if (active.current) setStarting(false);
     }
   };
 
