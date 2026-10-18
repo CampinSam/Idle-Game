@@ -46,6 +46,11 @@ export function MissionBuilder(props: MissionBuilderProps) {
   const [selectedEntities, setSelectedEntities] = useState<string[]>(props.initialSelectedEntities ?? []);
   const [planningError, setPlanningError] = useState(props.error ?? '');
   const leadInShownRef = useRef(false);
+  const startingRef = useRef(false);
+  const [starting, setStarting] = useState(false);
+  const [previewAttempt, setPreviewAttempt] = useState(0);
+  const syncStatus = useAppSelector(s => s.sync.status);
+  const player = useAppSelector(s => s.sync.player);
 
   const hasLeadIn = !!rawActiveDef?.leadInModalDefId;
 
@@ -69,7 +74,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
   }, [hasLeadIn, rawActiveDef, openLeadIn]);
 
   const entities = props.entities ?? storeEntities;
-  const idleEntities = props.idleEntities ?? entities.filter((e: any) => e.status === 'idle');
+  const idleEntities = useMemo(() => props.idleEntities ?? entities.filter((e: any) => e.status === 'idle'), [props.idleEntities, entities]);
   const currencyBalances = props.currencyBalances ?? storeCurrencyBalances;
   const inventoryItems = props.inventoryItems ?? storeInventoryItems;
   const missionCategoryDefs = props.missionCategoryDefs ?? storeMissionCategoryDefs;
@@ -78,10 +83,24 @@ export function MissionBuilder(props: MissionBuilderProps) {
     missionCategoryDefs.find((c: any) => c.id === rawActiveDef?.missionCategoryDefId) ??
     null;
 
-  const { preview, loading: previewLoading } = useJobPreview({
+  const availableIds = new Set(idleEntities.map((e: any) => e.id));
+  const teamAvailable = selectedEntities.every(id => availableIds.has(id));
+  useEffect(() => {
+    if (syncStatus !== 'connected') return;
+    setSelectedEntities(previous => {
+      const next = previous.filter(id => idleEntities.some((e: any) => e.id === id));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [idleEntities, syncStatus]);
+  const previewRevision = JSON.stringify({
+    definition: rawActiveDef, entities, currencyBalances, inventoryItems, player,
+    syncStatus, previewAttempt,
+  });
+  const { preview, loading: previewLoading, error: previewError } = useJobPreview({
     jobType: 'mission',
     defId: rawActiveDef ? rawActiveDef.id : '',
     entityIds: selectedEntities,
+    revision: previewRevision,
   });
 
   const difficulty = preview?.mission?.difficulty ?? rawActiveDef?.difficulty ?? 100;
@@ -96,28 +115,17 @@ export function MissionBuilder(props: MissionBuilderProps) {
   const teamMin = preview?.mission?.teamMin ?? localBounds.min;
   const teamMax = preview?.mission?.teamMax ?? localBounds.max;
 
-  const missionCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(rawActiveDef?.cost)
-    ? rawActiveDef.cost
-    : [];
-  const getHaveForEntry = (entry: { type: string; id: string }) =>
-    entry.type === 'currency'
-      ? (currencyBalances[entry.id] ?? 0)
-      : Object.values(inventoryItems)
-          .filter((it: any) => it.definitionId === entry.id)
-          .reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
-  const canAffordMission = preview != null
-    ? (preview.canAfford ?? true)
-    : missionCost.every((e) => getHaveForEntry(e) >= e.amount);
-  const allReqsMet = preview != null ? (preview.allRequirementsMet ?? false) : true;
+  const missionCost: Array<{ type: string; id: string; amount: number }> = useMemo(
+    () => Array.isArray(rawActiveDef?.cost) ? rawActiveDef.cost : [], [rawActiveDef],
+  );
+  const canAffordMission = preview?.canAfford === true;
   const canStart = !!(
-    selectedEntities.length > 0 &&
-    selectedEntities.length >= teamMin &&
-    selectedEntities.length <= teamMax &&
-    allReqsMet &&
-    canAffordMission
+    syncStatus === 'connected' && !starting && !previewLoading && !previewError && preview &&
+    teamAvailable && selectedEntities.length > 0 &&
+    selectedEntities.length >= teamMin && selectedEntities.length <= teamMax &&
+    preview.allRequirementsMet && canAffordMission
   );
 
-  const previewRequirements = preview?.requirements ?? [];
 
   const spdTimerMultiplier = preview?.mission?.spdTimerMultiplier ?? 1;
   const spdBonusPct = spdTimerMultiplier < 1 ? Math.round((1 - spdTimerMultiplier) * 100) : 0;
@@ -127,16 +135,18 @@ export function MissionBuilder(props: MissionBuilderProps) {
     setSelectedEntities(auto);
   };
 
-  const toggleEntity = (entityId: string) => {
+  const toggleEntity = useCallback((entityId: string) => {
     setSelectedEntities((prev) => {
       if (prev.includes(entityId)) return prev.filter((id) => id !== entityId);
       if (prev.length >= teamMax) return prev;
       return [...prev, entityId];
     });
-  };
+  }, [teamMax]);
 
   const handleStart = async () => {
-    if (!rawActiveDef) return;
+    if (!rawActiveDef || !canStart || startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
     setPlanningError('');
     try {
       const res = await execute('StartMission', { defId: rawActiveDef.id, entityIds: selectedEntities });
@@ -156,10 +166,15 @@ export function MissionBuilder(props: MissionBuilderProps) {
     } catch (e: any) {
       audioEngine.play('ui.error');
       setPlanningError(e.message || 'Failed to start mission');
+      setPreviewAttempt(n => n + 1);
+    } finally {
+      startingRef.current = false;
+      setStarting(false);
     }
   };
 
   const blockData: Record<string, any> = useMemo(() => ({
+    scrollOwner: 'surface',
     def: rawActiveDef,
     currentCat,
     missionCategoryDefs,
@@ -172,7 +187,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
     powerRatio,
     synergy: liveSynergy,
     statsLoading: previewLoading && !preview,
-    previewRequirements,
+    previewRequirements: preview?.requirements ?? [],
     previewLoading,
     missionCost,
     entities,
@@ -186,8 +201,8 @@ export function MissionBuilder(props: MissionBuilderProps) {
   }), [
     rawActiveDef, currentCat, missionCategoryDefs, onBack, missionPower, difficulty,
     successChance, injuryChance, injuryRate, powerRatio, liveSynergy, previewLoading,
-    preview, previewRequirements, missionCost, entities, selectedEntities, teamMax,
-    hasLeadIn, openLeadIn, spdBonusPct,
+    preview, missionCost, entities, selectedEntities, teamMax,
+    hasLeadIn, openLeadIn, spdBonusPct, toggleEntity,
   ]);
 
   if (!rawActiveDef || !currentCat) {
@@ -209,7 +224,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
       className="flex flex-col flex-1 min-h-0 overflow-hidden motion-safe:animate-[detail-enter_0.28s_ease-out_both]"
     >
       <div
-        className="overflow-clip rounded-2xl border flex flex-col relative flex-1 min-h-0"
+        className="mission-surface overflow-y-auto touch-pan-y rounded-2xl border flex flex-col relative flex-1 min-h-0" data-scroll-owner="mission"
         style={{ borderColor: 'rgba(139,92,246,0.3)', background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
       >
         {/* Sticky header */}
@@ -241,19 +256,25 @@ export function MissionBuilder(props: MissionBuilderProps) {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y [overflow-anchor:none]">
+        <div className="flex-shrink-0 [overflow-anchor:none]">
           <ContentDocumentRenderer
             documentId="mission_planning_document"
             baseContext={{ missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' }}
             data={blockData}
-            className="flex flex-col gap-3 px-4 pt-2 pb-2"
+            className="flex flex-col"
           />
         </div>
 
         <div className="flex flex-col flex-shrink-0">
+          <div role="status" aria-live="polite" className="px-3 text-xs text-text-secondary">
+            {syncStatus !== 'connected' ? 'Reconnecting — waiting for current game state.' : previewLoading ? 'Checking mission requirements…' : ''}
+          </div>
+          {previewError && <div role="alert" className="px-3 text-xs text-red-300">
+            {previewError} <button onClick={() => setPreviewAttempt(n => n + 1)}>Retry preview</button>
+          </div>}
           {planningError && (
             <div className="px-3 pt-2 mx-3">
-              <div className="px-3 py-2 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.4)] text-[#fecaca] text-xs">
+              <div role="alert" className="px-3 py-2 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.4)] text-[#fecaca] text-xs">
                 {planningError}
               </div>
             </div>
@@ -262,7 +283,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={handleAutoAssign}
-                disabled={idleEntities.length === 0}
+                disabled={starting || idleEntities.length === 0}
                 className="px-3 py-2 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
               >
                 AUTO BUILD TEAM
@@ -273,7 +294,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
                 className="flex flex-col items-center justify-center px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 <span className="text-[13px] font-extrabold tracking-wide uppercase leading-tight">
-                  START MISSION ⚡
+                  {starting ? 'STARTING…' : 'START MISSION ⚡'}
                 </span>
                 <span className="flex items-center gap-1.5 mt-0.5">
                   {missionDuration > 0 && (

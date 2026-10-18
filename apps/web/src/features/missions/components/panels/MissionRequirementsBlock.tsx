@@ -74,7 +74,7 @@ export function MissionRequirementsBlock({ isSticky = false }: MissionRequiremen
             <div key={i} className="flex items-center gap-2 text-[12px]">
               <span className="text-base leading-none flex-shrink-0">{r.met ? '✅' : '❌'}</span>
               <span
-                className="flex-1 font-medium truncate"
+                className="flex-1 min-w-0 font-medium break-words"
                 style={{ color: r.met ? '#10b981' : '#ef4444' }}
               >
                 {r.label ?? 'Requirement'}

@@ -103,6 +103,8 @@ interface UseJobPreviewOptions {
   quantity?: number;
   locationId?: string;
   debounceMs?: number;
+  /** Invalidates a preview when authoritative inputs change without changing IDs. */
+  revision?: string;
 }
 
 interface UseJobPreviewReturn {
@@ -119,35 +121,32 @@ export function useJobPreview({
   quantity,
   locationId,
   debounceMs = 250,
+  revision = '',
 }: UseJobPreviewOptions): UseJobPreviewReturn {
-  const [preview, setPreview] = useState<JobPreviewResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ key: string; preview: JobPreviewResult | null; error: string | null } | null>(null);
 
   const entityKey = JSON.stringify(entityIds ?? []);
+  const requestKey = JSON.stringify([jobType, defId, entityKey, entityId, quantity, locationId, revision]);
 
   useEffect(() => {
     if (!defId) return;
 
     const controller = new AbortController();
 
-    setLoading(true);
-    setError(null);
+    setResult(null);
 
     const timer = setTimeout(async () => {
       try {
         const result = await api.jobPreview(
-          { jobType, defId, entityIds: entityIds ?? [], entityId, quantity, locationId },
+          { jobType, defId, entityIds: JSON.parse(entityKey) as string[], entityId, quantity, locationId },
           controller.signal,
         );
         if (!controller.signal.aborted) {
-          setPreview(result);
-          setLoading(false);
+          setResult({ key: requestKey, preview: result, error: null });
         }
       } catch (err: any) {
         if (!controller.signal.aborted) {
-          setError(err?.message ?? 'Preview failed');
-          setLoading(false);
+          setResult({ key: requestKey, preview: null, error: err?.message ?? 'Preview failed' });
         }
       }
     }, debounceMs);
@@ -156,7 +155,9 @@ export function useJobPreview({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [jobType, defId, entityKey, entityId, quantity, locationId, debounceMs]);
+  }, [jobType, defId, entityKey, entityId, quantity, locationId, debounceMs, requestKey]);
 
-  return { preview, loading, error };
+  // Key comparison invalidates during render, before the next effect can run.
+  const current = result?.key === requestKey ? result : null;
+  return { preview: current?.preview ?? null, loading: !!defId && !current, error: current?.error ?? null };
 }

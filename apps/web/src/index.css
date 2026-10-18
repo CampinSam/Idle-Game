@@ -2739,3 +2739,18 @@ input:focus {
     display: none;
   }
 }
+
+/* Mission pilot: the surface owns vertical scrolling; lists flow inside it. */
+.mission-surface > * { flex-shrink: 0; }
+.mission-surface .entity-list { flex: none; overflow: visible; }
+.mission-surface .sticky { position: static; }
+.mission-dialog { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); }
+.mission-dialog .gm-modal { max-height: calc(100dvh - 32px); }
+@media (max-height: 480px) {
+  .mission-dialog .gm-modal { overflow-y: auto; }
+  .mission-dialog .gm-body { overflow: visible; flex: none; }
+  .mission-dialog .gm-banner { height: 80px; }
+}
+
+.mission-dialog .gm-body, .mission-dialog .gm-modal { overscroll-behavior: contain; }
+.mission-dialog .gm-header { padding-right: 48px; }

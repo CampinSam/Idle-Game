@@ -384,7 +384,7 @@ export function MissionShell({
   const emptyCount = Math.max(0, maxSlots - activeMissions.length);
 
   return (
-    <Card className="flex flex-col flex-1 min-h-0">
+    <Card className="mission-surface flex flex-col flex-1 min-h-0 overflow-y-auto touch-pan-y">
       {/* Mission Slots — sticky at top */}
       <section className="flex-shrink-0 p-3 border-b border-white/5">
         <SectionHeader title="Mission Slots" />
@@ -411,7 +411,7 @@ export function MissionShell({
       </section>
 
       {/* Categories / mission list — scrollable middle */}
-      <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y p-3">
+      <div className="flex-shrink-0 p-3">
         {middle}
       </div>
 
@@ -432,7 +432,7 @@ export function MissionShell({
           )}
         </button>
         {!collapsed && (
-          <div className="px-3 pb-3 max-h-[35vh] overflow-y-auto touch-pan-y">
+          <div className="px-3 pb-3">
             {missionHistory.length === 0 ? (
               <EmptyState message="No mission activity yet." />
             ) : (

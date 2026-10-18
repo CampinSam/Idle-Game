@@ -1,3 +1,4 @@
+import { assertMissionPresentation, type MissionPresentation } from '@derp/shared';
 import { useState, useRef, useEffect } from 'react';
 import { getMissingBlockProps } from './blockPropHints';
 import {
@@ -51,6 +52,7 @@ interface Block {
 }
 
 interface Context {
+  missionPresentation?: MissionPresentation;
   missionMode?: string;
   teamMode?: string;
   rewardMode?: string;
@@ -455,6 +457,16 @@ export default function ContentDocumentDataEditor({ value, onChange, blockErrors
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <fieldset className="border border-white/15 rounded-lg p-3">
+        <legend>Mission planning presentation</legend>
+        <label>Spacing <select value={ctx.missionPresentation?.spacing ?? 'comfortable'} onChange={e => setCtx({ ...ctx, missionPresentation: { ...ctx.missionPresentation, version: 1, spacing: e.target.value as MissionPresentation['spacing'] } })}>
+          <option value="comfortable">Comfortable</option><option value="compact">Compact</option>
+        </select></label>
+        <label>Surface <select value={ctx.missionPresentation?.variant ?? 'plain'} onChange={e => setCtx({ ...ctx, missionPresentation: { ...ctx.missionPresentation, version: 1, variant: e.target.value as MissionPresentation['variant'] } })}>
+          <option value="plain">Plain</option><option value="panel">Panel</option>
+        </select></label>
+        <p className="text-xs">One scroll region belongs to the mission surface. These options affect planning documents only.</p>
+      </fieldset>
       <div style={{ ...containerStyle, gap: 6 }}>
         <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>
           Blocks ({blocks.length})
@@ -528,6 +540,7 @@ export default function ContentDocumentDataEditor({ value, onChange, blockErrors
 
 export function contentDocumentDataErrorCount(value: any): number {
   if (!value || typeof value !== 'object') return 1;
+  try { assertMissionPresentation(value.context?.missionPresentation); } catch { return 1; }
   const blocks = value.blocks;
   if (!Array.isArray(blocks)) return 1;
   const VALID_TYPES = [

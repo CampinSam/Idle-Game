@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import type { ModalSpecV1, ModalButton as ModalButtonSpec, ModalAction, ModalSkipCost } from '@derp/shared';
 import { computeEffectivePage } from '@derp/shared';
 import BlockRenderer from './blocks/BlockRenderer';
@@ -10,22 +10,58 @@ import { useAppSelector } from '../../store';
 
 export interface GameModalProps {
   spec: ModalSpecV1;
+  interactionBlocked?: boolean;
+  missionSurface?: boolean;
+  refreshError?: string | null;
+  onRetryRefresh?: () => void;
   isOpen: boolean;
   onRequestClose: () => void;
   navigate: (route: string, params?: Record<string, unknown>) => void;
   onAction: (action: ModalAction) => Promise<void>;
 }
 
-export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAction }: GameModalProps) {
+export default function GameModal({ spec, interactionBlocked = false, missionSurface = false, refreshError, onRetryRefresh, isOpen, onRequestClose, navigate, onAction }: GameModalProps) {
   const [pageIndex, setPageIndex] = useState(0);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [pendingConfirmBtn, setPendingConfirmBtn] = useState<ModalButtonSpec | null>(null);
   const [pickerValues, setPickerValues] = useState<Record<string, number>>({});
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isOpen || !missionSurface) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    dialog?.focus();
+    const keepFocus = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || !dialog) return;
+      const controls = Array.from(dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]'));
+      if (!controls.length) { event.preventDefault(); dialog.focus(); return; }
+      const first = controls[0]; const last = controls[controls.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog)) { event.preventDefault(); first.focus(); }
+    };
+    dialog?.addEventListener('keydown', keepFocus);
+    return () => { dialog?.removeEventListener('keydown', keepFocus); if (previous?.isConnected) previous.focus();
+      else { const surface = document.querySelector<HTMLElement>('.mission-surface'); surface?.setAttribute('tabindex', '-1'); surface?.focus(); } };
+  }, [isOpen, missionSurface]);
+
+  useEffect(() => {
+    if (isOpen && missionSurface) {
+      if (!dialogRef.current?.contains(document.activeElement)) dialogRef.current?.focus();
+      if (dialogRef.current) {
+        dialogRef.current.scrollTop = 0;
+        const body = dialogRef.current.querySelector<HTMLElement>('.gm-body');
+        if (body) body.scrollTop = 0;
+      }
+    }
+  }, [isOpen, missionSurface, spec.id]);
 
   const now = useNow(500);
   const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
 
   useEffect(() => {
+    setActionError(null);
     setPageIndex(0);
     setPendingConfirmBtn(null);
     const initial: Record<string, number> = {};
@@ -102,7 +138,6 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen, dismiss.escape, onRequestClose, pendingConfirmBtn]);
 
-  if (!isOpen) return null;
 
   const onBackdropClick = () => {
     if (pendingConfirmBtn) {
@@ -121,18 +156,20 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
   }, [pickerValues]);
 
   const fireAction = async (btn: ModalButtonSpec) => {
+    if (interactionBlocked || actionLoading || btn.disabled) return;
+    setActionError(null);
     setActionLoading(btn.id);
     try {
       await onAction(resolveAction(btn.action));
     } catch (err) {
-      console.error('[GameModal] action failed:', err);
+      setActionError(err instanceof Error ? err.message : 'Action failed. Please try again.');
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleButtonClick = async (btn: ModalButtonSpec) => {
-    if (btn.disabled) return;
+    if (btn.disabled || interactionBlocked || actionLoading) return;
 
     if (btn.action.type === 'NEXT_PAGE') {
       setPageIndex(i => Math.min(i + 1, totalPages - 1));
@@ -161,10 +198,15 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
 
   const handleCancelConfirm = () => setPendingConfirmBtn(null);
 
+  if (!isOpen) return null;
+
   return (
     <QuantityPickerContext.Provider value={pickerCtx}>
-    <div className="gm-overlay" onMouseDown={onBackdropClick} role="presentation">
-      <div className="gm-modal" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div className={`gm-overlay ${missionSurface ? 'mission-dialog' : ''}`} onMouseDown={onBackdropClick} role="presentation">
+      <div ref={dialogRef} tabIndex={-1} className="gm-modal" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={header.title}>
+        {refreshError && <div role="alert" className="p-3 text-sm text-red-300">{refreshError}{onRetryRefresh && <button onClick={onRetryRefresh}>Retry</button>}</div>}
+        {actionError && <p role="alert" className="p-3 text-sm text-red-300">{actionError}</p>}
+        {interactionBlocked && <p role="status" className="px-3 text-xs">Updating mission…</p>}
         <>
             {header.banner ? (
               <div className="gm-banner">
@@ -208,7 +250,7 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
                   ? computeCurrentSkipCosts(btn.skipMeta.baseCosts, btn.skipMeta.skipType)
                   : null;
                 const skipDisabled = currentCosts ? !isSkipAffordable(currentCosts) : false;
-                const isDisabled = btn.disabled || skipDisabled || actionLoading === btn.id;
+                const isDisabled = interactionBlocked || btn.disabled || skipDisabled || actionLoading !== null;
 
                 return (
                   <button
@@ -260,7 +302,7 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
               </button>
               <button
                 className="gm-btn gm-btn-primary flex-1"
-                disabled={actionLoading === pendingConfirmBtn.id}
+                disabled={interactionBlocked || actionLoading !== null}
                 onClick={handleConfirm}
               >
                 {actionLoading === pendingConfirmBtn.id ? '...' : (pendingConfirmBtn.requiresConfirm!.confirmLabel ?? 'Confirm')}

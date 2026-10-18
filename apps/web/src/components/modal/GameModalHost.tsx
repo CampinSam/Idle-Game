@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ModalAction } from '@derp/shared';
 import { useModal } from '../../context/ModalContext';
@@ -16,6 +16,16 @@ export default function GameModalHost() {
   const { execute } = useCommand();
   const dispatch = useAppDispatch();
   const jobs = useAppSelector((s) => s.sync.jobs);
+  const syncStatus = useAppSelector((s) => s.sync.status);
+  const jobStateRef = useRef(jobs);
+  jobStateRef.current = jobs;
+  const modalRef = useRef(currentModal);
+  modalRef.current = currentModal;
+  const missionBinding = useRef<{ id: string; key: string; historical: boolean } | null>(null);
+  const refreshSequence = useRef(0);
+  const nonMissionRefreshKey = useRef('');
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleNavigate = useCallback(
     (route: string) => {
@@ -26,32 +36,68 @@ export default function GameModalHost() {
 
   const tryFetchFollowUp = useCallback(
     async (params: { jobId?: string; notificationId?: string; giftId?: string }): Promise<boolean> => {
+      const origin = modalRef.current;
+      const sequence = ++refreshSequence.current;
+      setRefreshing(true);
+      setRefreshError(null);
       try {
         const spec = await api.getModalSpec(params);
+        if (modalRef.current !== origin || sequence !== refreshSequence.current) return false;
         if (spec?.version === 1) {
+          if (params.jobId && missionBinding.current?.id === params.jobId &&
+            ['completed', 'failed', 'abandoned'].includes(jobStateRef.current[params.jobId]?.status)) {
+            missionBinding.current.historical = true;
+          }
           replaceModal(spec);
           return true;
         }
-      } catch {}
+      } catch (error: any) {
+        if (modalRef.current === origin && sequence === refreshSequence.current) {
+          setRefreshError(error?.message || 'Could not refresh mission. Retry to get current actions.');
+        }
+      } finally {
+        if (sequence === refreshSequence.current) setRefreshing(false);
+      }
       return false;
     },
     [replaceModal],
   );
 
   const currentJobId = currentModal?.telemetry?.jobId;
-  const currentJobStatus = currentJobId ? (jobs[currentJobId] as any)?.status : undefined;
-  const sseRefreshingRef = useRef(false);
-
+  const currentJob = currentJobId ? jobs[currentJobId] : undefined;
+  const currentJobStatus = currentJob?.status;
+  const jobKey = JSON.stringify([currentJob, syncStatus]);
   useEffect(() => {
-    if (!currentJobId || !currentModal || sseRefreshingRef.current) return;
-    if (currentJobStatus !== 'ready_notified') return;
-    const hasTimerBlock = currentModal.pages?.some((p) => p.body?.some((b) => b.type === 'timer'));
-    if (!hasTimerBlock) return;
-    sseRefreshingRef.current = true;
-    tryFetchFollowUp({ jobId: currentJobId }).finally(() => {
-      sseRefreshingRef.current = false;
-    });
-  }, [currentJobStatus, currentJobId, currentModal, tryFetchFollowUp]);
+    if (!currentJobId) {
+      missionBinding.current = null;
+      setRefreshError(null);
+      return;
+    }
+    const previous = missionBinding.current;
+    if (currentJob?.type === 'MissionJob' || previous?.id === currentJobId) {
+      const terminal = ['completed', 'failed', 'abandoned'].includes(currentJobStatus ?? '');
+      if (!previous || previous.id !== currentJobId) {
+        // Already-collected reports are intentional historical snapshots.
+        missionBinding.current = { id: currentJobId, key: jobKey, historical: terminal };
+        return;
+      }
+      if (previous.historical || previous.key === jobKey) return;
+      previous.key = jobKey;
+      if (syncStatus !== 'connected') return;
+      if (!currentJob) {
+        setRefreshError('This mission is no longer available. Close this dialog to continue.');
+        return;
+      }
+      void tryFetchFollowUp({ jobId: currentJobId });
+      return;
+    }
+    // Preserve the existing refresh behavior for other timed jobs.
+    const nonMissionKey = `${currentJobId}:${currentModal?.id}:${currentJobStatus}`;
+    if (nonMissionRefreshKey.current !== nonMissionKey && currentJobStatus === 'ready_notified' && currentModal?.pages?.some(p => p.body.some(b => b.type === 'timer'))) {
+      nonMissionRefreshKey.current = nonMissionKey;
+      tryFetchFollowUp({ jobId: currentJobId });
+    }
+  }, [currentJobId, jobKey, tryFetchFollowUp, currentJob, currentJobStatus, currentModal?.pages, currentModal?.id, syncStatus]);
 
   const handleTimerExpire = useCallback(() => {
     if (!currentJobId) return;
@@ -118,7 +164,7 @@ export default function GameModalHost() {
           }
 
           const replaced = await tryFetchFollowUp({ jobId });
-          if (!replaced) {
+          if (!replaced && type !== 'MissionJob') {
             dismissModal();
           }
           return;
@@ -258,10 +304,14 @@ export default function GameModalHost() {
         case 'EXECUTE_COMMAND': {
           try {
             await execute(action.command, action.payload as Record<string, any>);
-            dismissModal();
+            if (['ContinueMission', 'AbandonMission', 'CompleteMission'].includes(action.command) && action.payload?.jobId) {
+              await tryFetchFollowUp({ jobId: String(action.payload.jobId) });
+            } else {
+              dismissModal();
+            }
           } catch (err: any) {
             audioEngine.play('ui.error');
-            console.warn('[GameModalHost] EXECUTE_COMMAND failed:', err?.message);
+            throw err;
           }
           return;
         }
@@ -293,7 +343,7 @@ export default function GameModalHost() {
         }
       }
     },
-    [dismissModal, execute, handleNavigate, tryFetchFollowUp, jobs],
+    [dismissModal, execute, handleNavigate, tryFetchFollowUp, jobs, dispatch, replaceModal],
   );
 
   if (!currentModal) return null;
@@ -301,6 +351,10 @@ export default function GameModalHost() {
   return (
     <ModalRefreshContext.Provider value={handleTimerExpire}>
       <GameModal
+        refreshError={refreshError}
+        onRetryRefresh={currentJobId ? () => tryFetchFollowUp({ jobId: currentJobId }) : undefined}
+        missionSurface={!!currentJobId && (currentJob?.type === 'MissionJob' || missionBinding.current?.id === currentJobId)}
+        interactionBlocked={!!currentJobId && (currentJob?.type === 'MissionJob' || missionBinding.current?.id === currentJobId) && (syncStatus !== 'connected' || refreshing || !!refreshError)}
         spec={currentModal}
         isOpen={true}
         onRequestClose={dismissModal}

@@ -6,6 +6,8 @@
  * can update it in response to live SSE-driven state changes.
  */
 export interface ContentDocumentContext {
+  /** Optional bounded mission layout settings; omitted content retains defaults. */
+  missionPresentation?: import('./mission-presentation').MissionPresentation;
   /** Which phase of the mission lifecycle is being shown. */
   missionMode?: 'planning' | 'in_progress' | 'outcome';
   /** Whether the team is interactively editable or read-only. */
