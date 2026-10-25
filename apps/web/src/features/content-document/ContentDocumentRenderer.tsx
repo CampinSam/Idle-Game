@@ -5,7 +5,7 @@ import type {
   ContentDocumentContext,
   SurfaceContextOverrideRule,
 } from '@derp/shared';
-import { SurfaceContextProvider } from './SurfaceContext';
+import { SurfaceContextProvider, useSurfaceContext } from './SurfaceContext';
 import { BLOCK_REGISTRY } from './blockRegistry';
 import { api } from '../../services/api';
 
@@ -18,7 +18,13 @@ export interface ContentDocumentRendererProps {
   className?: string;
 }
 
-export function ContentDocumentRenderer({
+export function ContentDocumentRenderer(props: ContentDocumentRendererProps) {
+  // A new source owns a fresh fetch lifetime, including inline/fetched swaps.
+  const source = props.definition ? 'inline' : `document:${props.documentId ?? ''}`;
+  return <DocumentSource key={source} {...props} />;
+}
+
+function DocumentSource({
   definition,
   documentId,
   baseContext = {},
@@ -79,21 +85,24 @@ export function ContentDocumentRenderer({
     ...baseContext,
   };
 
-  const presentation = effectiveContext.missionPresentation;
+  return (
+    <SurfaceContextProvider baseContext={effectiveContext} overrideRules={overrideRules} data={data}>
+      <DocumentBlocks doc={doc} className={className} />
+    </SurfaceContextProvider>
+  );
+}
+
+function DocumentBlocks({ doc, className }: { doc: ContentDocumentDefinition; className?: string }) {
+  // Validate and style the same merged context that the blocks consume.
+  const { context } = useSurfaceContext();
+  const presentation = context.missionPresentation;
   try { assertMissionPresentation(presentation); } catch (error) {
     return <p role="alert">{(error as Error).message}</p>;
   }
-  const missionDocument = effectiveContext.missionMode === 'planning';
-  const presentationClass = missionDocument
+  const presentationClass = context.missionMode === 'planning'
     ? `${presentation?.spacing === 'compact' ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-2'} ${presentation?.variant === 'panel' ? 'rounded-xl bg-bg-secondary' : ''}`
     : '';
-
   return (
-    <SurfaceContextProvider
-      baseContext={effectiveContext}
-      overrideRules={overrideRules}
-      data={data}
-    >
       <div className={`${className ?? ''} ${presentationClass}`}>
         {doc.blocks.map((block, i) => {
           const Comp = BLOCK_REGISTRY[block.type];
@@ -101,6 +110,5 @@ export function ContentDocumentRenderer({
           return <Comp key={`${block.type}-${i}`} block={block} />;
         })}
       </div>
-    </SurfaceContextProvider>
   );
 }
