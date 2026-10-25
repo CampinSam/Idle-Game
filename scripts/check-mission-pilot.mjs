@@ -5,6 +5,7 @@ const output = process.env.MISSION_EVIDENCE_DIR || '/tmp/mission-pilot-evidence'
 fs.mkdirSync(output, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
 const results=[];
+let activePage;
 async function checkDialogScroll(page, stage) {
  const result = await page.getByRole('dialog').evaluate(dialog => {
   const owners = [dialog, ...dialog.querySelectorAll('*')].filter(e =>
@@ -26,6 +27,7 @@ async function checkDialogScroll(page, stage) {
 try {
 for (const [width,height,phases] of [[320,720,2],[390,844,1],[844,390,2]]) {
  const page=await browser.newPage({viewport:{width,height},hasTouch:true});
+ activePage = page;
  const errors=[]; const unexpected=[];
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',async route=>{
@@ -35,7 +37,7 @@ for (const [width,height,phases] of [[320,720,2],[390,844,1],[844,390,2]]) {
   if(url.pathname.startsWith('/media'))return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#514478"/></svg>'});
   return route.continue();
  });
- await page.goto(`http://127.0.0.1:15000/mission-pilot.html?phases=${phases}`);
+ await page.goto(`http://127.0.0.1:15000/mission-pilot.html?phases=${phases}&confirm=1&latency=${Number(process.env.MISSION_FIXTURE_LATENCY ?? 180)}`);
  await page.getByText('Field research',{exact:true}).click();
  await page.getByText('Survey the crystal marsh',{exact:true}).click();
  await page.getByRole('button',{name:'AUTO BUILD TEAM'}).click();
@@ -65,6 +67,19 @@ for (const [width,height,phases] of [[320,720,2],[390,844,1],[844,390,2]]) {
   decisionScroll = await checkDialogScroll(page, 'decision');
   await page.screenshot({path:`${output}/decision-${width}x${height}.png`});
   await page.getByRole('button',{name:'Continue',exact:true}).click();
+  const confirmation = page.getByRole('alertdialog');
+  await confirmation.waitFor();
+  for (let i = 0; i < 2; i++) {
+   if (!await page.getByRole('button', { name: 'Keep planning' }).evaluate(e => e === document.activeElement)) throw new Error('Confirmation did not receive focus');
+   await page.keyboard.press('Shift+Tab');
+   if (!await page.getByRole('button', { name: 'Yes, continue' }).evaluate(e => e === document.activeElement)) throw new Error('Confirmation reverse focus escaped');
+   await page.keyboard.press('Tab');
+   await page.keyboard.press('Escape');
+   await confirmation.waitFor({ state: 'hidden' });
+   if (!await page.getByRole('button', { name: 'Continue', exact: true }).evaluate(e => e === document.activeElement)) throw new Error('Confirmation did not restore focus');
+   await page.getByRole('button',{name:'Continue',exact:true}).click();
+  }
+  await page.getByRole('button', { name: 'Yes, continue' }).click();
   await page.getByRole('heading',{name:'Survey in progress — phase 2'}).waitFor();
   await page.evaluate(()=>window.missionPilot.advance());
  }
@@ -80,8 +95,14 @@ for (const [width,height,phases] of [[320,720,2],[390,844,1],[844,390,2]]) {
  if(await page.getByRole('heading',{name:'Field report: earned 10 crystals'}).count()!==1)throw new Error('Historical report changed');
  const starts=await page.evaluate(()=>window.missionPilot.startCount);
  if(starts!==1||errors.length||unexpected.length)throw new Error(JSON.stringify({starts,errors,unexpected}));
- results.push({width,height,phases,scrollOwners:scrolls.length,decisionScroll,resultScroll,starts,timerAdvanced:true,focusContained:focusInDialog,errors,unexpected});
+ results.push({width,height,phases,scrollOwners:scrolls.length,decisionScroll,resultScroll,starts,timerAdvanced:true,focusContained:focusInDialog,confirmationCycles:phases===2 ? 2 : 0,diagnostics:await page.evaluate(()=>window.missionPilot.diagnostics),errors,unexpected});
  await page.close();
 }
+} catch (error) {
+ if (activePage && !activePage.isClosed()) {
+  await activePage.screenshot({path:`${output}/failure.png`});
+  fs.writeFileSync(`${output}/failure.json`, JSON.stringify({message:String(error),body:await activePage.locator('body').innerText(),diagnostics:await activePage.evaluate(()=>window.missionPilot.diagnostics)},null,2));
+ }
+ throw error;
 } finally { await browser.close(); fs.writeFileSync(`${output}/results.json`,JSON.stringify(results,null,2)); }
 console.log(JSON.stringify(results,null,2));

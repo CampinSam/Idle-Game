@@ -27,12 +27,18 @@ let affordable = true;
 let startCount = 0;
 const twoPhase = new URLSearchParams(location.search).get('phases') !== '1';
 const definition = { ...missionDef, mode: twoPhase ? 'multi_phase' : 'single', phases: twoPhase ? [{ name: 'Survey', count: 1 }, { name: 'Return', count: 1 }] : [] };
-const pause = () => new Promise(resolve => setTimeout(resolve, 180));
+const fixtureDelay = Math.min(1500, Math.max(0, Number(new URLSearchParams(location.search).get('latency') ?? 180)));
+const trace: string[] = [];
+const record = (event: string) => { trace.push(`${event}:${status}:${phase}:${store.getState().sync.status}`); if (trace.length > 80) trace.shift(); };
+const pause = () => new Promise(resolve => setTimeout(resolve, fixtureDelay));
 function patchJob() {
   store.dispatch(applyPatches({ patches: [{ op: 'upsert', entity: 'job', id: 'job-pilot', data: missionJob(status, phase) }], cursor: String(++cursor) }));
 }
 function currentModal(): ModalSpecV1 {
   const spec = missionModal(status, phase);
+  if (status === 'phase_ready' && new URLSearchParams(location.search).has('confirm')) {
+    spec.buttons![0].requiresConfirm = { title: 'Continue this mission?', confirmLabel: 'Yes, continue', cancelLabel: 'Keep planning' };
+  }
   spec.pages[0].body = status === 'active'
     ? [{ type: 'timer', endsAt: new Date(Date.now() + 60000).toISOString(), wallClock: true, label: 'Time remaining' }]
     : [{ type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: 'The scout recorded the crystal marsh conditions. '.repeat(18) }] }] }];
@@ -49,9 +55,10 @@ Object.assign(api, {
     data: { layout: { layoutType: 'pass_through' }, sections: [{ id: 'missions', component: 'MissionBrowser', priority: 1 }] } }),
   getContentDocument: async () => document,
   jobPreview: async () => { await pause(); return missionPreview({ canAfford: affordable }); },
-  getModalSpec: async () => { await pause(); return currentModal(); },
+  getModalSpec: async () => { record('spec-request'); await pause(); record('spec-response'); return currentModal(); },
   getJob: async () => ({ ...missionJob(status, phase), skipInfo: { skipable: false } }),
   sendCommand: async ({ type }: { type: string }) => {
+    record(`command-request-${type}`);
     await pause();
     if (type === 'StartMission') { startCount++; started = true; status = 'active'; phase = 0; }
     else if (type === 'ContinueMission') { phase = 1; status = 'active'; }
@@ -59,6 +66,7 @@ Object.assign(api, {
     else throw new Error(`Unsupported fixture command: ${type}`);
     const response = { patches: [{ op: 'upsert' as const, entity: 'job' as const, id: 'job-pilot', data: missionJob(status, phase) }], ui: [], cursor: { delta: String(++cursor) } };
     assertCommandResponse(response);
+    record(`command-response-${type}`);
     return response;
   },
 });
@@ -68,11 +76,12 @@ store.dispatch(applyPatches({ patches: Array.from({ length: 12 }, (_, i) => ({ o
 store.dispatch(setTickSync({ currentTick: 100, tickRate: 1, serverTime: new Date().toISOString(), boosts: [], receivedAt: Date.now() }));
 store.dispatch(fetchMissionDefs()); store.dispatch(fetchMissionCategoryDefs());
 Object.assign(window, { missionPilot: {
-  advance() { if (!started) return; status = twoPhase && phase === 0 ? 'phase_ready' : 'ready_notified'; patchJob(); },
+  advance() { if (!started) return; status = twoPhase && phase === 0 ? 'phase_ready' : 'ready_notified'; record('advance'); patchJob(); },
   reconnect() { store.dispatch(setStatus('reconnecting')); setTimeout(() => store.dispatch(setStatus('connected')), 200); },
   balance() { affordable = !affordable; store.dispatch(applyPatches({ patches: [{ op: 'upsert', entity: 'currencyBalance', id: 'gold', data: { gold: affordable ? 10 : 0 } }], cursor: String(++cursor) })); },
   busy() { const id = 'bird-0'; store.dispatch(applyPatches({ patches: [{ op: 'upsert', entity: 'entity', id, data: { ...store.getState().sync.entities[id], status: 'mission' } }], cursor: String(++cursor) })); },
   get startCount() { return startCount; },
+  get diagnostics() { return { status, phase, syncStatus: store.getState().sync.status, trace: [...trace] }; },
 } });
 ReactDOM.createRoot(window.document.getElementById('root')!).render(
   <Provider store={store}><MemoryRouter><ModalProvider><TickEngineProvider>

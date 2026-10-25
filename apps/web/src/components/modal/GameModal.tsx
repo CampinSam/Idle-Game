@@ -28,6 +28,41 @@ export default function GameModal({ spec, interactionBlocked = false, missionSur
   const [pickerValues, setPickerValues] = useState<Record<string, number>>({});
 
   const dialogRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const confirmationRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isOpen || !pendingConfirmBtn) return;
+    const content = contentRef.current;
+    const confirmation = confirmationRef.current;
+    const dialog = dialogRef.current;
+    if (!content || !confirmation) return;
+    const previous = document.activeElement as HTMLElement | null;
+    content.setAttribute('inert', '');
+    const controls = () => Array.from(confirmation.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]'));
+    (controls()[0] ?? confirmation).focus();
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      // Stop the enclosing mission-dialog trap from including its own controls.
+      event.stopPropagation();
+      const items = controls();
+      const first = items[0]; const last = items[items.length - 1];
+      if (!first) { event.preventDefault(); confirmation.focus(); return; }
+      if (!confirmation.contains(document.activeElement) || document.activeElement === confirmation) {
+        event.preventDefault(); (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener('keydown', trap, true);
+    return () => {
+      document.removeEventListener('keydown', trap, true);
+      content.removeAttribute('inert');
+      if (previous?.isConnected && !previous.matches(':disabled')) previous.focus();
+      else dialog?.focus();
+    };
+  }, [isOpen, pendingConfirmBtn]);
   useEffect(() => {
     if (!isOpen || !missionSurface) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -124,7 +159,7 @@ export default function GameModal({ spec, interactionBlocked = false, missionSur
   );
 
   useEffect(() => {
-    if (!isOpen || !dismiss.escape) return;
+    if (!isOpen || (!dismiss.escape && !pendingConfirmBtn)) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (pendingConfirmBtn) {
@@ -204,6 +239,7 @@ export default function GameModal({ spec, interactionBlocked = false, missionSur
     <QuantityPickerContext.Provider value={pickerCtx}>
     <div className={`gm-overlay ${missionSurface ? 'mission-dialog' : ''}`} onMouseDown={onBackdropClick} role="presentation">
       <div ref={dialogRef} tabIndex={-1} className="gm-modal" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={header.title}>
+        <div ref={contentRef} style={{ display: 'contents' }} aria-hidden={pendingConfirmBtn ? true : undefined}>
         {refreshError && <div role="alert" className="p-3 text-sm text-red-300">{refreshError}{onRetryRefresh && <button onClick={onRetryRefresh}>Retry</button>}</div>}
         {actionError && <p role="alert" className="p-3 text-sm text-red-300">{actionError}</p>}
         {interactionBlocked && <p role="status" className="px-3 text-xs">Updating mission…</p>}
@@ -278,9 +314,15 @@ export default function GameModal({ spec, interactionBlocked = false, missionSur
               })}
             </div>
         </>
+        </div>
 
         {pendingConfirmBtn && (
           <div
+            ref={confirmationRef}
+            role="alertdialog"
+            aria-modal="true"
+            aria-label={pendingConfirmBtn.requiresConfirm!.title}
+            tabIndex={-1}
             className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 p-6"
             style={{ background: 'linear-gradient(180deg, rgba(20,10,40,0.97) 0%, rgba(10,5,25,0.97) 100%)' }}
           >
