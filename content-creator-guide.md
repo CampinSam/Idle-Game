@@ -1812,6 +1812,14 @@ Declared in the screen/modal config, not in the document itself. Overrides a sli
 
 Supported triggers: `job.completed`, `job.failed`, `job.ready`.
 
+Rules are derived from the current sync-store job, not latched events. `job.ready`
+matches `ready`, `ready_notified`, and `completed`; `phase_ready` is a phase
+decision, not collection readiness. Rules are scoped to their `jobId` and revert
+to the base context when that job no longer matches or a snapshot/reset removes
+it. Presentation validation and layout classes use the final merged context,
+including live overrides. Switching document sources clears the old document
+while the replacement loads; a failed replacement displays its error.
+
 ---
 
 ## TagDef

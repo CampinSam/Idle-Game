@@ -34,7 +34,7 @@ export function SurfaceContextProvider({
       let triggered = false;
       if (rule.on === 'job.completed' && job?.status === 'completed') triggered = true;
       if (rule.on === 'job.failed' && job?.status === 'failed') triggered = true;
-      if (rule.on === 'job.ready' && (job?.status === 'ready' || job?.status === 'completed')) triggered = true;
+      if (rule.on === 'job.ready' && (job?.status === 'ready' || job?.status === 'ready_notified' || job?.status === 'completed')) triggered = true;
       if (triggered) ctx = { ...ctx, ...rule.apply };
     }
     return ctx;
