@@ -31,6 +31,9 @@ export default function GameModal({ spec, interactionBlocked = false, missionSur
   const contentRef = useRef<HTMLDivElement>(null);
   const confirmationRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if (!isOpen) setPendingConfirmBtn(null);
+  }, [isOpen]);
+  useEffect(() => {
     if (!isOpen || !pendingConfirmBtn) return;
     const content = contentRef.current;
     const confirmation = confirmationRef.current;

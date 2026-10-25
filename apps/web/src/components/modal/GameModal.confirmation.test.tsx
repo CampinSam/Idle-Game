@@ -67,3 +67,14 @@ it('removes confirmation isolation when a live spec replaces it or the modal clo
   view.rerender(<GameModal {...handlers} spec={missionModal('completed')} />);
   expect(screen.getByRole('dialog')).toHaveFocus();
 });
+
+it('does not reopen an interrupted confirmation when the exact same spec is reused', () => {
+  const handlers = props(); const spec = confirmationSpec();
+  const view = renderWithProviders(<GameModal {...handlers} spec={spec} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  view.rerender(<GameModal {...handlers} isOpen={false} spec={spec} />);
+  view.rerender(<GameModal {...handlers} spec={spec} />);
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Continue' }).closest('[inert]')).toBeNull();
+  expect(handlers.onAction).not.toHaveBeenCalled();
+});

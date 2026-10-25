@@ -24,6 +24,12 @@ cannot receive restored focus. This assertion failed before correction; cleanup
 now focuses the parent dialog when that trigger is unavailable. Gameplay commands
 and state patches are unchanged.
 
+Independent review of the first candidate also identified a nonblocking component
+case: closing and reopening with the exact same spec object retained the pending
+confirmation. The production host unmounts sessions, so this was not a proven
+player-path regression. A new test reproduced it, and close now clears the
+pending confirmation even when the spec identity is unchanged.
+
 ## Browser timing investigation
 
 The development-only fixture now has bounded configurable response latency,
